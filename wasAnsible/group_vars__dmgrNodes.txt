@@ -1,0 +1,46 @@
+---
+nodeType: dmgrNodes
+##
+## WAS Variables
+was_download_url: http://docker1.hhue.at:4711/ibm
+##
+## Download package for IBM Installation manager
+iim_binaries: agent.installer.linux.gtk.x86_64_1.9.0.20190715_0328.zip
+##
+## sha256sum of {{ iim_binaries }}
+iim_binaries_sha256sum: d8779094e9bc1ebcb4e60d142bf32f13cbe3c72e758f3bb72ac108200af2e0a5
+##
+## sha256sum of imcl command in unpacked {{ iim_binaries }} package
+imcl_binaries_sha256sum: 88a803ea2325d564926198c9d2e11c92bbf73f784a3570b2676a1671b247bfba
+##
+## Download package for WAS v9
+was9_binaries: WAS_ND_V9.0.zip
+was9_fp_binaries: 9.0.5-WS-WAS-FP003.zip
+##
+## sha256sum of {{ was9_binaries }} / {{ was9_fp_binaries }}
+was9_binaries_sha256sum: 3a9784b7dd2975c27c77a25db838a8e03c3e3b0f5cc06ba35cc620dd220424bd
+was9_fp_binaries_sha256sum: d02f1b286e5b9944a54c5bb6011523d03712a9367f420609714e7747b7890151
+##
+## sha256sum of
+## Offerings/com.ibm.websphere.ND.v90_9.0.0.20160526_1854.jar in unpacked {{ was9_binaries }}
+## Offerings/com.ibm.websphere.ND.v90_9.0.5003.20200226_0941.jar in unpacked {{ was9_fp_binaries }}
+##
+was9_offering_sha256sum: 975006a1f7284b69103c244b0cf5fe70048a2b40707828f3c1dadbaac3c7d61a
+was9_fp_offering_sha256sum: 99ad503124d7e22bdea39eea0b77871a9ce5b1c9cbe6aa872ed4b1f0025ef7e4
+##
+##
+jdk8_binaries: SDKJAVA_TM_TE_V8.0_LINUX.zip
+jdk8_fp_binaries: ibm-java-sdk-8.0-6.7-linux-x64-installmgr.zip
+##
+## sha256sum of {{ jdk8_binaries }} / {{ jdk8_fp_binaries }}
+jdk8_binaries_sha256sum: 41f9b2783a11a091dab06857e6506efc56146f77799196712200554ab1be08c4
+jdk8_fp_binaries_sha256sum: c4a5e7f5462f13b50d4a652a11d7218f59ccd276a2b3c82223ca17230233712a
+##
+## sha256sum of
+## Offerings/com.ibm.java.jdk.v8_8.0.3000.20160526_1317.jar in unpacked {{ jdk8_binaries }}
+## Offerings/com.ibm.java.jdk.v8_8.0.6007.20200324_1954.jar in unpacked {{ jdk8_fp_binaries }}
+jdk8_offering_sha256sum: 975006a1f7284b69103c244b0cf5fe70048a2b40707828f3c1dadbaac3c7d61a
+jdk8_fp_offering_sha256sum: 5d4fc3262f0c8abe6b57c090d40d0ee1e51f8983afff5e37339602369006023e
+##
+## User under which WAS is installed
+was_user: hhuebler

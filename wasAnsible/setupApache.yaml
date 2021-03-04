@@ -1,0 +1,68 @@
+---
+- name: Setup apache server
+  hosts: dmgrNodes, wasNodes
+  become: yes
+  tasks:
+##
+## Install Apache
+  - name: latest Apache version installed
+    yum:
+      name: httpd
+      state: latest
+##
+## Enable Apache service
+  - name: Apache Service is endabled and started at server startup
+    service:
+      name: httpd
+      enabled: true
+      state: started
+##
+## Copy the index.html
+  - name: index.html is copied
+    copy:
+      backup: true
+      force: true
+      mode: 0440
+      owner: apache
+      group: apache
+      src: ~/ansible-files/apache-files/{{ nodeType }}_index.html
+      dest: /var/www/html/index.html
+##
+## Replace the tokens in the index.html
+  - name: Tokens replaced
+    replace:
+      backup: true
+      path: /var/www/html/index.html
+      regexp: ^(.*)@@@hostname@@@(.*)$
+      replace: '\1{{ ansible_fqdn }}\2'
+##
+## Open firewall ports for port 80
+  - name: Firewalld allows access to ports 80
+    firewalld:
+      immediate: true
+      permanent: true
+      offline: true
+      port: 80/tcp
+      state: enabled
+      zone: public
+    notify:
+      - restart_firewalld
+##
+## Open firewall ports for port 443
+  - name: Firewalld allows access to ports 443
+    firewalld:
+      immediate: true
+      permanent: true
+      offline: true
+      port: 443/tcp
+      state: enabled
+      zone: public
+    notify:
+      - restart_firewalld
+##
+## Configure handlers
+  handlers:
+    - name: restart_firewalld
+      service:
+        name: firewalld
+        state: restarted

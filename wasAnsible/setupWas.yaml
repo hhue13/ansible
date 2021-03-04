@@ -1,0 +1,303 @@
+---
+- name: WebSphere Application Server installed
+#####   hosts: dmgrNodes, wasNodes
+  hosts: dmgrNodes
+#####   become: yes
+  tasks:
+##
+## Install prereq yum packages
+  - name: Required RHEL packages installed
+    yum:
+      name:
+        - gtk2
+        - libXp
+        - libXmu
+        - libXtst
+        - pam
+        - rpm-build
+        - elfutils
+        - elfutils-libs
+        - libXft
+        - libXp.i686
+        - libXmu.i686
+        - libXtst.i686
+        - pam.i686
+        - libXft.i686
+        - gtk2.i686
+      state: latest
+    become: yes
+##
+## Install prereq yum packages for CentOS v7 (we need some more)
+  - name: Required RHEL packages installed
+    yum:
+      name:
+        - compat-libstdc++-33
+        - compat-db
+        - ksh
+        - compat-libstdc++-33.i686
+        - gtk2.i686
+      state: latest
+    become: yes
+    when: (ansible_distribution == 'CentOS' ) and
+          (ansible_distribution_major_version == '7')
+##
+## Create directory for the installation binaries
+  - name: Create installation source directory for IIM
+    file:
+      state: directory
+      path: /tmp/iimSrc/unpack
+    become_user: '{{ was_user }}'
+##
+## Check if the binaries files are already downloaded
+  - name: Register if IIM installation file exists
+    stat:
+      path: /tmp/iimSrc/{{ iim_binaries }}
+      checksum_algorithm: sha256
+      get_checksum: true
+    register: iimSrcExists
+    become_user: '{{ was_user }}'
+##
+## Download IIM binaries from the URL
+  - name: IBM Installation Manager binaries file is downloaded
+    get_url:
+      dest: /tmp/iimSrc/{{ iim_binaries }}
+      timeout: 7
+      url: '{{ was_download_url }}/iim/bin/{{ iim_binaries }}'
+      sha256sum: '{{ iim_binaries_sha256sum }}'
+    when: (iimSrcExists.stat.exists == false) or
+          (iimSrcExists.stat.checksum != iim_binaries_sha256sum)
+    become_user: '{{ was_user }}'
+##
+## Check if the binaries files are already unpacked (we assume that a valid imcl is ok!)
+  - name: Register if IIM installation command imcl exists
+    stat:
+      path: /tmp/iimSrc/unpack/tools/imcl
+      checksum_algorithm: sha256
+      get_checksum: true
+    register: iimImclExists
+    become_user: '{{ was_user }}'
+##
+## Unpack IBM Installation Manager
+  - name: IBM Installaton Manager binaries are unpacked
+    unarchive:
+      src: /tmp/iimSrc/{{ iim_binaries }}
+      remote_src: yes
+      dest: /tmp/iimSrc/unpack
+      list_files: false
+      mode: 'a+rx'
+    when: (iimImclExists.stat.exists == false) or
+          (iimImclExists.stat.checksum != imcl_binaries_sha256sum)
+    become_user: '{{ was_user }}'
+##
+## Install IIM
+  - name: IBM Installation Manager installed
+    ibmim_installer:
+      state: present
+      src: /tmp/iimSrc/unpack
+      dest: ~/IBM/InstallationManager
+#####       dest: /opt/IBM/InstallationManager
+      accessRights: nonAdmin
+      logdir: /tmp
+    become_user: '{{ was_user }}'
+#####     become: yes
+##
+## Create directory for the WAS v9 installation binaries
+  - name: Create installation source directory for WAS v9
+    file:
+      state: directory
+      path: /tmp/was9Src/unpack
+    become_user: '{{ was_user }}'
+##
+## Check if the binaries files for WAS v9 are already downloaded
+  - name: Register if WAS v9 installation file exists
+    stat:
+      path: /tmp/was9Src/{{ was9_binaries }}
+      checksum_algorithm: sha256
+      get_checksum: true
+    register: was9SrcExists
+    become_user: '{{ was_user }}'
+##
+## Download WAS v9 binaries from the URL
+  - name: WAS v9 installation binaries are downloaded
+    get_url:
+      dest: /tmp/was9Src/{{ was9_binaries }}
+      timeout: 7
+      url: '{{ was_download_url }}/was9/bin/{{ was9_binaries }}'
+      sha256sum: '{{ was9_binaries_sha256sum }}'
+    when: (was9SrcExists.stat.exists == false) or
+          (was9SrcExists.stat.checksum != was9_binaries_sha256sum)
+    become_user: '{{ was_user }}'
+##
+## Check if the WAS v9 binaries files are already unpacked
+## (we assume that a valid Offerings/com.ibm.websphere.ND.v90_9.0.0.20160526_1854.jar is ok!)
+  - name: Register if WAS v9 offering .jar exists
+    stat:
+      path: /tmp/was9Src/unpack/Offerings/com.ibm.websphere.ND.v90_9.0.0.20160526_1854.jar
+      checksum_algorithm: sha256
+      get_checksum: true
+    register: was9OfferingExists
+    become_user: '{{ was_user }}'
+##
+## Unpack WAS v9 binaries
+  - name: IBM WAS v9 binaries are unpacked
+    unarchive:
+      src: /tmp/was9Src/{{ was9_binaries }}
+      remote_src: yes
+      dest: /tmp/was9Src/unpack
+      list_files: false
+      mode: 'a+rx'
+    when: (was9OfferingExists.stat.exists == false) or
+          (was9OfferingExists.stat.checksum != was9_offering_sha256sum)
+    become_user: '{{ was_user }}'
+##
+## Create directory for the WAS v9 FP installation binaries
+  - name: Create installation source directory for WAS v9 FP
+    file:
+      state: directory
+      path: /tmp/was9FPSrc/unpack
+    become_user: '{{ was_user }}'
+##
+## Check if the binaries files for WAS v9 FP are already downloaded
+  - name: Register if WAS v9 FP installation file exists
+    stat:
+      path: /tmp/was9FPSrc/{{ was9_fp_binaries }}
+      checksum_algorithm: sha256
+      get_checksum: true
+    register: was9FPSrcExists
+    become_user: '{{ was_user }}'
+##
+## Download WAS v9 FP binaries from the URL
+  - name: WAS v9 FP installation binaries are downloaded
+    get_url:
+      dest: /tmp/was9FPSrc/{{ was9_fp_binaries }}
+      timeout: 7
+      url: '{{ was_download_url }}/was9/fp/{{ was9_fp_binaries }}'
+      sha256sum: '{{ was9_fp_binaries_sha256sum }}'
+    when: (was9FPSrcExists.stat.exists == false) or
+          (was9FPSrcExists.stat.checksum != was9_fp_binaries_sha256sum)
+    become_user: '{{ was_user }}'
+##
+## Check if the WAS v9 FP binaries files are already unpacked
+## (we assume that a valid Offerings/com.ibm.websphere.ND.v90*.jar is ok!)
+  - name: Register if WAS v9 FP offering .jar exists
+    stat:
+      path: /tmp/was9FPSrc/unpack/Offerings/com.ibm.websphere.ND.v90_9.0.5003.20200226_0941.jar
+      checksum_algorithm: sha256
+      get_checksum: true
+    register: was9FPOfferingExists
+    become_user: '{{ was_user }}'
+##
+## Unpack WAS v9 FP binaries
+  - name: IBM WAS v9 FP binaries are unpacked
+    unarchive:
+      src: /tmp/was9FPSrc/{{ was9_fp_binaries }}
+      remote_src: yes
+      dest: /tmp/was9FPSrc/unpack
+      list_files: false
+      mode: 'a+rx'
+    when: (was9FPOfferingExists.stat.exists == false) or
+          (was9FPOfferingExists.stat.checksum != was9_fp_offering_sha256sum)
+    become_user: '{{ was_user }}'
+##
+## Create directory for the JDK8 FP installation binaries
+  - name: Create installation source directory for JDK8 FP
+    file:
+      state: directory
+      path: /tmp/jdk8FPSrc/unpack
+    become_user: '{{ was_user }}'
+##
+## Check if the binaries files for jdk8 FP are already downloaded
+  - name: Register if JDK8 FP installation file exists
+    stat:
+      path: /tmp/jdk8FPSrc/{{ jdk8_fp_binaries }}
+      checksum_algorithm: sha256
+      get_checksum: true
+    register: jdk8FPSrcExists
+    become_user: '{{ was_user }}'
+##
+## Download JDK8 FP binaries from the URL
+  - name: JDK8 FP installation binaries are downloaded
+    get_url:
+      dest: /tmp/jdk8FPSrc/{{ jdk8_fp_binaries }}
+      timeout: 7
+      url: '{{ was_download_url }}/was9/fp/{{ jdk8_fp_binaries }}'
+      sha256sum: '{{ jdk8_fp_binaries_sha256sum }}'
+    when: (jdk8FPSrcExists.stat.exists == false) or
+          (jdk8FPSrcExists.stat.checksum != jdk8_fp_binaries_sha256sum)
+    become_user: '{{ was_user }}'
+##
+## Check if the JDK8 FP binaries files are already unpacked
+## (we assume that a valid Offerings/com.ibm.java.jdk.v8*.jar is ok!)
+  - name: Register if JDK8 FP offering .jar exists
+    stat:
+      path: /tmp/jdk8FPSrc/unpack/Offerings/com.ibm.java.jdk.v8_8.0.6007.20200324_1954.jar
+      checksum_algorithm: sha256
+      get_checksum: true
+    register: jdk8FPOfferingExists
+    become_user: '{{ was_user }}'
+##
+## Unpack JDK8 binaries
+  - name: JDK8 FP binaries are unpacked
+    unarchive:
+      src: /tmp/jdk8FPSrc/{{ jdk8_fp_binaries }}
+      remote_src: yes
+      dest: /tmp/jdk8FPSrc/unpack
+      list_files: false
+      mode: 'a+rx'
+    when: (jdk8FPOfferingExists.stat.exists == false) or
+          (jdk8FPOfferingExists.stat.checksum != jdk8_fp_offering_sha256sum)
+    become_user: '{{ was_user }}'
+##
+## Install WAS ND v9
+  - name: Install WebSphere Application Server ND v9
+    ibmim:
+      state: present
+      name: com.ibm.java.jdk.v8 com.ibm.websphere.ND.v90
+      ibmim: ~/IBM/InstallationManager
+      repositories:
+        - /tmp/was9Src/unpack/repository.config
+        - /tmp/was9FPSrc/unpack/repository.config
+        - /tmp/jdk8Src/unpack/repository.config
+        - /tmp/jdk8FPSrc/unpack/repository.config
+      dest: ~/IBM/WebSphere
+      log: /tmp/was905_install.log
+    become_user: '{{ was_user }}'
+##
+## Cleanup installation directories
+  - name: Cleaned up download and installation directories - gather directories
+    find:
+      paths: /tmp
+      file_type: directory
+      patterns: "^.*Src$"
+      use_regex: yes
+    register: wildcard_directories_to_delete
+    become: yes
+
+  - name: Cleaned up download and installation directories
+    file:
+      state: absent
+      path: "{{ item.path }}"
+      force: yes
+    with_items: "{{ wildcard_directories_to_delete.files }}"
+    become: yes
+##
+## Un-Install WAS ND v9
+  - name: Un-Install WebSphere Application Server ND v9
+    ibmim:
+      state: absent
+      name: com.ibm.java.jdk.v8 com.ibm.websphere.ND.v90
+      ibmim: ~/IBM/InstallationManager
+      dest: ~/IBM/WebSphere
+      log: /tmp/was905_un_install.log
+    become_user: '{{ was_user }}'
+##
+## Un-Install IIM
+  - name: IBM Installation Manager un-installed
+    ibmim_installer:
+      state: absent
+      dest: ~/IBM/InstallationManager
+#####       dest: /opt/IBM/InstallationManager
+      accessRights: nonAdmin
+      logdir: /tmp
+    become_user: '{{ was_user }}'
+#####     become: yes
