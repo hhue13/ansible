@@ -70,7 +70,6 @@ How I setup my CRC using the playbook:
 - ansible-playbook --tags tagAndPushImages -e @globalVars  setupDxOnCrc.yaml
 - ansible-playbook --tags dxStorage -e @globalVars  setupDxOnCrc.yaml
 - ansible-playbook --tags resourceOverride -e @globalVars  setupDxOnCrc.yaml
-- ansible-playbook --tags dxStorage -e @globalVars  setupDxOnCrc.yaml
 - ansible-playbook --tags dxHclDeployment -e @globalVars  setupDxOnCrc.yaml
   - *Note:* Wait for the core deployment to be ready and the pods up and running before preceeding. This is a **must** as the DAM deplyment runs ConfigEngine tasks for integration under the covers which will fail otherwise.
 - ansible-playbook --tags dxHclDam -e @globalVars  setupDxOnCrc.yaml
