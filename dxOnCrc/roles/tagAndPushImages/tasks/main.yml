@@ -8,6 +8,7 @@
     kind: Route
     name: default-route
     namespace: openshift-image-registry
+    api_key: "{{ kubeAdminApiKey }}"
   register: oscpDefaultRouteData
   failed_when: ((oscpDefaultRouteData is not defined) or
     (oscpDefaultRouteData == ""))

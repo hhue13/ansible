@@ -137,6 +137,8 @@
         - name: Tag and push DX images
           include_role:
             name: tagAndPushImages
+          vars:
+            kubeAdminApiKey: "{{ k8s_auth_results.k8s_auth.api_key }}"
 
       always:
         - name: Finial message for image re-tagging
