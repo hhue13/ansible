@@ -1,0 +1,63 @@
+---
+- name: Apache server installed
+  hosts: all
+  become: yes
+  tasks:
+    #
+    # Install rpm
+    - name: Latest Apache version is installed
+      yum:
+        name: httpd
+        state: latest
+      when: inventory_hostname in groups["httpservers"]
+    #
+    # Enable service
+    - name: Systemd service enbled
+      systemd:
+        daemon_reload: true
+        enabled: true
+        name: httpd
+        state: started
+      when: inventory_hostname in groups["httpservers"]
+    #
+    # Copy index.html to the target servers
+    - name: index.html copied
+      copy:
+        src: ./ansible-files/{{ stage }}_index.html
+        dest: /var/www/html/index.html
+      when: inventory_hostname in groups["httpservers"]
+    #
+    # Print Hostname and default IP address
+    - name: Host IP information
+      debug:
+        msg: "The default IPv4 address of {{ ansible_fqdn }} is {{ ansible_default_ipv4.address }}"
+    #
+    # We delete httpd on all servers which are not in the group http servers
+    - name: Cleanup HTTPD on non-http servers
+      yum:
+        name: httpd
+        state: removed
+      when: inventory_hostname not in groups["httpservers"]
+    #
+    # Install MariaDb on servers with more than 2GB of memory
+    - name: MariaDB installed on server
+      yum:
+        name: mariadb
+        state: latest
+      when: ansible_memtotal_mb >= 2048
+    #
+    # Update httpd.conf and restart the Apache
+    - name: httpd.conf updated
+      copy:
+        src: ./ansible-files/httpd.conf
+        dest: /etc/httpd/conf/
+      notify:
+        - restart_apache
+      when: inventory_hostname in groups["httpservers"]
+  #
+  # Handlers to be ran via notify
+  handlers:
+    - name: restart_apache
+      systemd:
+        name: httpd
+        state: restarted

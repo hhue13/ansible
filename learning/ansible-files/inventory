@@ -1,0 +1,10 @@
+[dmgr]
+centos8-01.os.hhue
+
+[wasnodes]
+centos8-02.os.hhue
+centos8-03.os.hhue
+
+[httpservers]
+centos8-02.os.hhue
+centos8-03.os.hhue
