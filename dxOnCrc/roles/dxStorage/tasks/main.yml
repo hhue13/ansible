@@ -1,0 +1,23 @@
+---
+# tasks file for dxStorage
+##
+## Create DX storage objects
+- name: Create DX storage objects block
+  block:
+    - name: Resolve variables in files and import them to OSCP
+      include_tasks: templateAndRunFile.yml
+      vars:
+        templateFile: "{{ item }}"
+      loop:
+        - "{{ dxDeployStgClassFile }}"
+        - "{{ dxDamPersistenceStgClassFile }}"
+        - "{{ dxDamPersistenceStgRoClassFile }}"
+        - "{{ dxDamPersistenceStgPvFile }}"
+        - "{{ dxDamPersistenceStgRoPvFile }}"
+        - "{{ dxDamPvFile }}"
+        - "{{ dxProfilePvFile }}"
+        - "{{ dxDamPvcFile }}"
+        - "{{ dxDamPersistenceStgPvcFile }}"
+        - "{{ dxDamPersistenceStgRoPvcFile }}"
+      loop_control:
+        pause: 3

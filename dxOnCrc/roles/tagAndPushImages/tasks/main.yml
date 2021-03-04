@@ -1,0 +1,71 @@
+---
+# tasks file for tagAndPushImages
+##
+## Get the default route for the image registry
+- name: Get default route for image registry
+  k8s_info:
+    api_version: route.openshift.io/v1
+    kind: Route
+    name: default-route
+    namespace: openshift-image-registry
+  register: oscpDefaultRouteData
+  failed_when: ((oscpDefaultRouteData is not defined) or
+    (oscpDefaultRouteData == ""))
+
+##
+## Debug default route data
+- name: Debug default route data
+  debug:
+    msg:
+      - "Default route host name: {{ oscpDefaultRouteData.resources[0].spec.host }}"
+##
+## Login to the cluster for as non-kubeadmin as the image registry does not accept kubeadmin user
+- name: Login to cluster as admin
+  k8s_auth:
+    username: "{{ oscpUserName }}"
+    password: "{{ oscpPassword }}"
+  register: k8s_admin_results
+##
+##  Login to the image registry
+- name: Login to the OSCP image registry
+  shell: "{{ dockerCliCommand }} login -u {{ oscpUserName }} -p {{ k8s_admin_results.k8s_auth.api_key }} --tls-verify=false {{ oscpDefaultRouteData.resources[0].spec.host }}"
+  register: podmanLogin
+
+##
+## Debug default route data
+- name: Debug default podman login data
+  debug:
+    msg:
+      - "Login data: {{ podmanLogin }}"
+
+##
+## Tag and push all images
+- name: Tag images and push to OSCP image registry
+  include_tasks: tagAndPushImages.yml
+  vars:
+    oscpDefaultRouteHostName: "{{ oscpDefaultRouteData.resources[0].spec.host }}"
+    oscpApiKey: "{{ k8s_admin_results.k8s_auth.api_key }}"
+  loop: "{{ dxImages }}"
+
+##
+## Logout of the user registry pod
+##
+##  Login to the image registry
+- name: Logout to the OSCP image registry
+  shell: "{{ dockerCliCommand }} logout {{ oscpDefaultRouteData.resources[0].spec.host }}"
+  register: podmanLogout
+
+##
+## Debug default route data
+- name: Debug default podman logout data
+  debug:
+    msg:
+      - "Logout data: {{ podmanLogout }}"
+
+##
+##
+- name: If login succeeded, try to log out (revoke access token)
+  k8s_auth:
+    state: absent
+    api_key: "{{ k8s_admin_results.k8s_auth.api_key }}"
+  when: k8s_admin_results.k8s_auth.api_key is defined

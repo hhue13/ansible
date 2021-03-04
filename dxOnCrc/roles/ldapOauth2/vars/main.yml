@@ -1,0 +1,5 @@
+---
+# vars file for ldapOauth2
+##
+## Variables to be set at invocation
+## - apiKey: The OSCP authentication apiKey taken from the login

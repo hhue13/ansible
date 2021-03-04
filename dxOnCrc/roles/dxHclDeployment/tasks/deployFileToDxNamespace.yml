@@ -1,0 +1,9 @@
+---
+##
+## Create storage object
+- name: Create OSCP objects in DX namespace
+  k8s:
+    api_key: "{{ apiKey }}"
+    state: present
+    namespace: "{{ dxNameSpace }}"
+    src: "{{ fileToDeploy }}"

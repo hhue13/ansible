@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: "{{ dxProfilePvName }}"
+spec:
+  capacity:
+    storage: "{{ dxProfileCapacity }}"
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    path: "{{ dxProfileNfsExport }}"
+    server: "{{ dxProfileNfsServer }}"
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: "{{ dxProfileStorageClassName }}"
+  mountOptions:
+    - hard
+    - nfsvers=4.1
+    - rsize=4194304
+    - wsize=4194304
+    - timeo=600
+    - retrans=2
+    - noresvport

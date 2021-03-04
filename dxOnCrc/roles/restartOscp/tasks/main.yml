@@ -1,0 +1,38 @@
+---
+# tasks file for restartOscp
+##
+## Log stdout
+- name: Before stopping OSCP
+  debug:
+    msg:
+      - "Stopping OSCP by running: {{ oscpStopCommand }} "
+##
+## Stop CRC
+- name: Stop OSCP environment
+  shell: "{{ oscpStopCommand }}"
+  register: crcStopResult
+  failed_when: ((crcStopResult.rc != 0) or
+    (crcStopResult.stdout | regex_search(oscpStopCommandStdOutStringRegEx, multiline=True, ignorecase=True)))
+##
+## Log stdout
+- name: Log StdOut text of OSCP stop command
+  debug:
+    msg:
+      - "Stdout of command {{ oscpStopCommand }} is: {{ crcStopResult.stdout }}"
+##
+## Start OSCP again
+- name: Start OSCP
+  block:
+    - name: Start OSCP environment
+      shell: "{{ oscpStartCommand }}"
+      register: crcStartResult
+      failed_when: crcStartResult.rc != 0
+##
+## Check the OSCP status
+- name: Check status of OSCP environment
+  shell: "{{ oscpStatusCommand }}"
+  register: crcStatusResult
+  failed_when: crcStatusResult.rc != 0
+  until: crcStatusResult.stdout | regex_search(oscpStatusCommandStdOutStringRegEx, multiline=True, ignorecase=True)
+  retries: 4
+  delay: 30

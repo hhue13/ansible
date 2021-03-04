@@ -1,0 +1,21 @@
+---
+# vars file for dxHclCrds
+text_to_replace_in_operator:
+  - {
+      regexp: "REPLACE_IMAGE",
+      replace: '{{ imageRegistryData.resources[0].metadata.name }}.{{ imageRegistryData.resources[0].metadata.namespace }}.svc:{{ imageRegistryData.resources[0].spec.ports[0].port }}/{{ dxNameSpace }}/{{ dxImages[0]["image-name"] }}:{{ dxImages[0]["image-tag"] }}',
+    }
+  - {
+      regexp: "REPOSITORY_NAME",
+      replace: "{{ imageRegistryData.resources[0].metadata.name }}.{{ imageRegistryData.resources[0].metadata.namespace }}.svc:{{ imageRegistryData.resources[0].spec.ports[0].port }}",
+    }
+  - {
+      regexp: "INGRESS_IMAGE",
+      replace: '{{ dxNameSpace }}/{{ dxImages[10]["image-name"] }}',
+    }
+  - { regexp: "INGRESS_TAG", replace: '{{ dxImages[10]["image-tag"] }}' }
+  - {
+      regexp: "REDIS_IMAGE",
+      replace: '{{ dxNameSpace }}/{{ dxImages[11]["image-name"] }}',
+    }
+  - { regexp: "REDIS_TAG", replace: '{{ dxImages[11]["image-tag"] }}' }

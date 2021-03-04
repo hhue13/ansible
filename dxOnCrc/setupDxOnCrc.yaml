@@ -1,0 +1,233 @@
+---
+- name: Setup DX
+  hosts: crchosts
+  become: yes
+  become_user: "{{ oscpOsUser }}"
+  gather_facts: false
+  module_defaults:
+    group/k8s:
+      host: "{{ oscpHostApiUrl }}"
+      validate_certs: false
+  #########################
+  ## Tasks of the play-book
+  #########################
+  tasks:
+    ##
+    ## Login
+    - name: Log in (obtain access token)
+      k8s_auth:
+        username: "{{ oscpKubeAdminUserName }}"
+        password: "{{ oscpKubeAdminPassword }}"
+      register: k8s_auth_results
+      tags:
+        - always
+    ##
+    ## Dump API Key
+    - name: Dump API Key in MAIN
+      debug:
+        msg:
+          - "API Key is {{ k8s_auth_results.k8s_auth.api_key }}"
+      tags:
+        - always
+
+    ##
+    ## Configure OAuth2 LDAP server if needed
+    - name: Configure LDAP as user registry for the OpenShift cluster
+      block:
+        - name: Run ldapOauth2 role
+          include_role:
+            name: ldapOauth2
+          vars:
+            apiKey: "{{ k8s_auth_results.k8s_auth.api_key }}"
+            roleBindingName: "{{ ldapRoleBindingName }}"
+            roleRefName: "{{ ldapRoleRefName }}"
+            userName: "{{ ldapAdminUser }}"
+
+      always:
+        - name: Finial message for OAuth2 setup
+          debug:
+            msg:
+              - "Configuration of OAuth2 LDAP Server done ..."
+      tags:
+        - ldapOauth2
+        - dx
+      when: ( ldapEnabledForAuthentication == true)
+
+    ##
+    ## Create PV for image registry
+    - name: Setup image registry
+      block:
+        - name: Running role setupRegistry
+          include_role:
+            name: setupRegistry
+          vars:
+            apiKey: "{{ k8s_auth_results.k8s_auth.api_key }}"
+            roleBindingName: "{{ imageRegistryRoleBindingName }}"
+            roleRefName: "{{ imageRegistryRoleRefName }}"
+            userName: "{{ imageRegistryAdminUser }}"
+
+      always:
+        - name: Finial message for image registry setup
+          debug:
+            msg:
+              - "Configuration of image registry done ..."
+      tags:
+        - setupRegistry
+        - dx
+
+    ##
+    ## Restart the CRC environment
+    - name: Restart OSCP environment
+      block:
+        - name: Run role restartOscp
+          include_role:
+            name: restartOscp
+
+      always:
+        - name: Finial message for restart of OSCP
+          debug:
+            msg:
+              - "OSCP restarted ..."
+      tags:
+        - restartOscp
+        - dx
+
+    ##
+    ## Retag loaded  DX images and push to OSCP image registry
+    - name: Re-tag and push DX images
+      block:
+        - name: Check if the namespace exists
+          k8s_info:
+            api_version: v1
+            kind: Namespace
+            name: "{{ dxNameSpace }}"
+            api_key: "{{ k8s_auth_results.k8s_auth.api_key }}"
+          register: dxNamespaceData
+        ##
+        ## Create the namespace if it does not exist
+        - name: Create namespace if it does not exist
+          block:
+            - name: Copy the dxNamespace template
+              copy:
+                src: "{{ dxNamespaceSrcFile }}"
+                dest: "{{ dxScriptsDir }}/dxNameSpace_{{ dxNameSpace }}.yaml"
+
+            - name: Set the namespace in yaml file
+              replace:
+                path: "{{ dxScriptsDir }}/dxNameSpace_{{ dxNameSpace }}.yaml"
+                regexp: "^(.*)NAMESPACE_NAME(.*)$"
+                replace: '\1{{ dxNameSpace }}\2'
+
+            - name: Create the namespace from yaml file
+              k8s:
+                api_key: "{{ k8s_auth_results.k8s_auth.api_key }}"
+                state: present
+                src: "{{ dxScriptsDir }}/dxNameSpace_{{ dxNameSpace }}.yaml"
+
+          always:
+            - name: Finial message for namespace created
+              debug:
+                msg:
+                  - "Namespace {{ dxNameSpace }} created ..."
+
+          when: ((dxNamespaceData.resources[0] is not defined) or
+            (dxNamespaceData.resources[0] == ""))
+        ##
+        ## Tag the locally prepared images and push them to the OSCP registry
+        - name: Tag and push DX images
+          include_role:
+            name: tagAndPushImages
+
+      always:
+        - name: Finial message for image re-tagging
+          debug:
+            msg:
+              - "DX images tagged and pushed to OSCP ..."
+      tags:
+        - tagAndPushImages
+        - dx
+
+      ##
+      ## Setup cluster resource overwrite for OSCP pass in
+    - name: Setup cluster resource overwrite for the Namespace
+      block:
+        - name: Run role resourceOverwrite
+          include_role:
+            name: resourceOverride
+          vars:
+            apiKey: "{{ k8s_auth_results.k8s_auth.api_key }}"
+
+      always:
+        - name: Finial message for setup cluster resource overwrite
+          debug:
+            msg:
+              - "Cluster resource overwrite setup completed ..."
+      when: (dxEnableResourceOverwriting == true)
+      tags:
+        - resourceOverride
+        - dx
+
+      ##
+      ## Setup DX storage
+    - name: Setup DX storage
+      block:
+        - name: Run role dxStorage
+          include_role:
+            name: dxStorage
+          vars:
+            apiKey: "{{ k8s_auth_results.k8s_auth.api_key }}"
+
+      always:
+        - name: Finial message for setup dxStorage
+          debug:
+            msg:
+              - "dxStorage setup completed ..."
+      tags:
+        - dxStorage
+        - dx
+
+      ##
+      ## Create HCLs CRDs and dxDeployment
+    - name: Create HCLs CRDs
+      block:
+        - name: Run role dxHclDeployment
+          include_role:
+            name: dxHclDeployment
+          vars:
+            apiKey: "{{ k8s_auth_results.k8s_auth.api_key }}"
+
+      always:
+        - name: Finial message for setup dxHclDeployment
+          debug:
+            msg:
+              - "dxHclDeployment setup completed ..."
+      tags:
+        - dxHclDeployment
+        - dx
+
+      ##
+      ## Create HCLs DAM definitions
+    - name: Create HCLs DAM definitions
+      block:
+        - name: Run role dxHclDam
+          include_role:
+            name: dxHclDam
+          vars:
+            apiKey: "{{ k8s_auth_results.k8s_auth.api_key }}"
+
+      always:
+        - name: Finial message for setup dxHclDam
+          debug:
+            msg:
+              - "dxHclDam setup completed ..."
+      tags:
+        - dxHclDam
+        - dx
+
+    ##
+    ##
+    - name: If login succeeded, try to log out (revoke access token)
+      k8s_auth:
+        state: absent
+        api_key: "{{ k8s_auth_results.k8s_auth.api_key }}"
+      when: k8s_auth_results.k8s_auth.api_key is defined

@@ -1,0 +1,10 @@
+---
+# vars file for restartOscp
+##
+## Start / stop commands - should be taken from the parent group_vars file to increase reuseability
+## as these might differ from host to host (OSCP vs. CRC)
+##### oscpStopCommand: /home/hhuebler/data/bin/crc stop
+##### oscpStopCommandStdOutStringRegEx: "^Stopped the OpenShift cluster .*$"
+##### oscpStartCommand: /home/hhuebler/data/bin/startCrc.sh
+##### oscpStatusCommand: /home/hhuebler/data/bin/crc status
+##### oscpStatusCommandStdOutStringRegEx: "^OpenShift: *Running .*$"

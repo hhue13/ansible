@@ -1,0 +1,49 @@
+---
+# tasks file for resourceOverwrite
+##
+## Enable the namespace for cluster resource overwriting
+- name: Patch the namespace to enable clusterresourceoverrides
+  k8s:
+    api_key: "{{ apiKey }}"
+    state: present
+    kind: Namespace
+    api_version: v1
+    name: "{{ dxNameSpace }}"
+    merge_type: merge
+    definition:
+      metadata:
+        labels:
+          clusterresourceoverrides.admission.autoscaling.openshift.io/enabled: "true"
+
+- name: Notify user that the DX namespace is setup for resource override
+  debug:
+    msg:
+      - "Namespace {{ dxNameSpace }} setup to allow cluster resource overwrite ..."
+
+##
+## Create namespace, operator, subscription, and overwrites
+- name: Create namespace, operator, subscription for resource overrides
+  k8s:
+    api_key: "{{ apiKey }}"
+    state: present
+    src: "{{ item }}"
+  loop:
+    - "{{ clusterResourceOverrideOperatorNamespaceFile }}"
+    - "{{ clusterResourceOverrideOperatorFile }}"
+    - "{{ clusterResourceOverrideSubscriptionFile }}"
+
+##
+## Wait for the CR ClusterResourceOverride to exist as we are getting the following error otherwise:
+## Failed to find exact match for operator.autoscaling.openshift.io/v1.ClusterResourceOverride by [kind, name, singularName, shortNames]
+##
+## Just wait .. not ideal but missing a better solution at the moment
+- name: Wait for clusterResourceOverrideOperator
+  pause:
+    seconds: "{{ clusterResourceOverrideSleepAfterOperatorDeployment }}"
+##
+## Create CR ClusterResourceOverride
+- name: Waiting for operator to create CR ClusterResourceOverride
+  k8s:
+    api_key: "{{ apiKey }}"
+    state: present
+    src: "{{ clusterResourceOverrideFile }}"

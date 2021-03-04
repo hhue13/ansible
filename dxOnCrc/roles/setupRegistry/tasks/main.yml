@@ -1,0 +1,95 @@
+---
+# tasks file for setupRegistry
+##
+## Create a temp file
+- name: Create temporary file to merge variables
+  tempfile:
+    state: file
+    suffix: temp
+  register: RegistryStgTempfile_1
+
+##
+## Prepare yaml file for image registry PV file to allow templating
+- name: Prepare PV for image registry template
+  template:
+    src: "{{ imageRegistryPvFile }}"
+    dest: RegistryStgTempfile_1
+
+- name: Create PV for image registry
+  k8s:
+    api_key: "{{ apiKey }}"
+    state: present
+    namespace: openshift-image-registry
+    src: RegistryStgTempfile_1
+##
+## Prepare yaml file for image registry PVC file to allow templating
+- name: Prepare PVC for image registry template
+  template:
+    src: "{{ imageRegistryPvcFile }}"
+    dest: RegistryStgTempfile_1
+##
+## Create PVC for image registry
+- name: Create PVC for image registry
+  k8s:
+    api_key: "{{ apiKey }}"
+    state: present
+    namespace: openshift-image-registry
+    src: RegistryStgTempfile_1
+##
+## Update / patch the operator to use the custome image-registry-claim
+## Equivalent to: oc patch configs.imageregistry.operator.openshift.io cluster --type merge --patch '{"spec":{"storage": {"pvc":{"claim": "image-registry-storage"}}}}'
+- name: Update the operator to use the custome image-registry-claim
+  k8s:
+    api_key: "{{ apiKey }}"
+    state: present
+    kind: Config
+    api_version: imageregistry.operator.openshift.io/v1
+    name: cluster
+    merge_type: merge
+    definition:
+      spec:
+        storage:
+          pvc:
+            claim: "{{ imageRegistryPvcName }}"
+##
+## Delete the default PVC for the image registry
+- name: Delete the default PVC (crc-image-registry-storage) for the image registry
+  k8s:
+    api_key: "{{ apiKey }}"
+    state: absent
+    kind: PersistentVolumeClaim
+    api_version: v1
+    name: crc-image-registry-storage
+    namespace: openshift-image-registry
+
+- name: Grant LDAP user get access to prometheus-scrapper if user is not empty
+  block:
+    ##
+    ## Create Prometheus scraper for the image registry
+    - name: Image registry prometheus scraper
+      k8s:
+        api_key: "{{ apiKey }}"
+        state: present
+        src: "{{ imageRegistryPrometheusScraperFile }}"
+    ##
+    ## Create a temp file
+    - name: Create temporary file to merge variables
+      tempfile:
+        state: file
+        suffix: temp
+      register: tempfile_1
+    ##
+    ## Prepare yaml file for admin role definition to allow templating of user name as per variable
+    - name: Prepare prmetheus-scraper access role template
+      template:
+        src: "{{ roleRefBindingTemplateFile }}"
+        dest: tempfile_1
+    ##
+    ## Create cluster role binding to user from LDAP
+    - name: Grant admin user from ldap get access to the prometheus scraper
+      k8s:
+        api_key: "{{ apiKey }}"
+        state: present
+        src: tempfile_1
+  when: ((userName is defined) and
+    (userName != ""))

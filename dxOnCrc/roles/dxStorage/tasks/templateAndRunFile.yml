@@ -1,0 +1,23 @@
+---
+##
+## Create a temp file
+- name: Create temporary file to merge variables
+  tempfile:
+    state: file
+    suffix: temp
+  register: dxStgTempfile_1
+
+##
+## Prepare yaml file for admin role definition to allow templating of user name as per variable
+- name: Prepare admin role template
+  template:
+    src: "{{ templateFile }}"
+    dest: dxStgTempfile_1
+##
+## Create storage object
+- name: Create DX storage objects
+  k8s:
+    api_key: "{{ apiKey }}"
+    state: present
+    namespace: "{{ dxNameSpace }}"
+    src: dxStgTempfile_1

@@ -1,0 +1,23 @@
+---
+# tasks file for dxHclDam
+##
+## Create the ConfigMap from the template
+- name: Create DX DAM ConfigMap
+  block:
+    - name: Copy the DX DAM ConfigMap template and resolve variables
+      template:
+        src: "{{ dxDeployDamConfigMapSrcFile }}"
+        dest: "{{ dxDeployDamConfigMapFile }}"
+
+    - name: Create the ConfigMap for DX Dam
+      k8s:
+        api_key: "{{ apiKey }}"
+        state: present
+        namespace: "{{ dxNameSpace }}"
+        src: "{{ dxDeployDamConfigMapFile }}"
+
+  always:
+    - name: Finial message for cluster-role-binding created
+      debug:
+        msg:
+          - "{{ dxClusterRoleBindingFile }} deployed ..."

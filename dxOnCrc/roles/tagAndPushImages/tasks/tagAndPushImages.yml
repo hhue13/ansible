@@ -1,0 +1,44 @@
+---
+###############################################################################
+# included tasks for tagAndPushImages
+# {{ item }} -  is an entry of the variable dxImages
+###############################################################################
+##
+## Check the namespace being used to make sure it exists
+- name: Get the namespace {{ dxNameSpace }}
+  k8s_info:
+    api_version: v1
+    kind: Namespace
+    name: "{{ dxNameSpace }}"
+    api_key: "{{ oscpApiKey }}"
+  register: dxNamespaceData
+  failed_when: ((dxNamespaceData.resources[0] is not defined) or
+    (dxNamespaceData.resources[0] == ""))
+
+##
+##  Debug shell result
+- name: Debug dxNamespaceData-01
+  debug:
+    msg:
+      - "{{ dxNamespaceData }}"
+
+##
+## Untag images just in case
+- name: Untag images in case they are have been tagged before
+  shell: "{{ dockerCliCommand }} rmi {{ oscpDefaultRouteHostName }}/{{ dxNameSpace }}/{{ item['image-name'] }}:{{ item['image-tag'] }}"
+  register: dockerCliResult
+  ignore_errors: yes
+
+##
+## Tag local images with OSCP image registry tags
+- name: Tag local images for OSCP image registry
+  shell: "{{ dockerCliCommand }} tag {{ item['image-prefix'] }}/{{ item['image-name'] }}:{{ item['image-tag'] }} {{ oscpDefaultRouteHostName }}/{{ dxNameSpace }}/{{ item['image-name'] }}:{{ item['image-tag'] }}"
+  register: dockerCliResult
+  failed_when: dockerCliResult.rc != 0
+
+##
+## Oush images to OSCP image registry
+- name: Push images to OSCP image registry
+  shell: "{{ dockerCliCommand }} push {{ oscpDefaultRouteHostName }}/{{ dxNameSpace }}/{{ item['image-name'] }}:{{ item['image-tag'] }}  --tls-verify=false"
+  register: dockerCliResult
+  failed_when: dockerCliResult.rc != 0

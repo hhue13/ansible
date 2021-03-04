@@ -1,0 +1,4 @@
+---
+# vars file for setupRegistry
+## Variables to be set at invocation
+## - apiKey: The OSCP authentication apiKey taken from the login

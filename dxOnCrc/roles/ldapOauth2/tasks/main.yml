@@ -1,0 +1,67 @@
+---
+# tasks file for ldapOauth2
+##
+## Dump API Key
+- name: Dump API Key
+  debug:
+    msg:
+      - "API Key is: {{ apiKey }}"
+##
+## Create a temp file to template variables
+- name: Create temporary file to merge variables
+  tempfile:
+    state: file
+    suffix: temp
+  register: tmpLdapConfigFile_1
+##
+## Prepare yaml file with the LDAP secret to allow templating of bind password as per variable
+- name: Prepare LDAP bind secret file resolving variables
+  template:
+    src: "{{ ldapBindSecretFile }}"
+    dest: tmpLdapConfigFile_1
+##
+## Create secret
+- name: Create LDAP Bind secret
+  k8s:
+    api_key: "{{ apiKey }}"
+    state: present
+    src: tmpLdapConfigFile_1
+##
+## Prepare yaml file with the LDAP CR to allow templating as per variables
+- name: Prepare LDAP CR from template by resolving variables
+  template:
+    src: "{{ ldapCrFile }}"
+    dest: tmpLdapConfigFile_1
+
+##
+## Configure OpenLDAP server as authentication mechanism
+- name: Create CR (custom resource) for LDAP server
+  k8s:
+    api_key: "{{ apiKey }}"
+    state: present
+    src: tmpLdapConfigFile_1
+
+- name: Add LDAP user to cluster admin role if user is not empty
+  block:
+    ##
+    ## Create a temp file
+    - name: Create temporary file to merge variables
+      tempfile:
+        state: file
+        suffix: temp
+      register: tempfile_1
+    ##
+    ## Prepare yaml file for admin role definition to allow templating of user name as per variable
+    - name: Prepare admin role template
+      template:
+        src: "{{ roleRefBindingTemplateFile }}"
+        dest: tempfile_1
+    ##
+    ## Create cluster role binding to user from LDAP
+    - name: Add admins from LDAP to the cluster-adm role
+      k8s:
+        api_key: "{{ apiKey }}"
+        state: present
+        src: tempfile_1
+  when: ((userName is defined) and
+    (userName != ""))
