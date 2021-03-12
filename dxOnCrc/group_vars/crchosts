@@ -6,7 +6,7 @@ oscpConfigFilesDir: /home/hhuebler/data/2i/git/ansible/dxOnCrc/crcTemplates
 ##
 ## OSCP Authenticaton data
 oscpKubeAdminUserName: kubeadmin
-oscpKubeAdminPassword: APBEh-jjrVy-hLQZX-VI9Kg
+oscpKubeAdminPassword: T3sJD-jjueE-2BnHe-ftNBw
 #
 # User / password from the user registry. This is needed as OSCP user
 # registry does not accept kubeadmin user
@@ -81,34 +81,34 @@ oscpStatusCommandStdOutStringRegEx: "^OpenShift: *Running .*$"
 ## DX Images - DO NOT REORDER!!
 dxImages:
   - image-prefix: "localhost/hcl/dx"
-    image-tag: "v95_CF191_20201214-1527"
+    image-tag: "v95_CF192_20210305-2309"
     image-name: cloud-operator
   - image-prefix: "localhost/hcl/dx"
-    image-tag: "v95_CF191_20201212-1421"
+    image-tag: "v95_CF192_20210305-1758"
     image-name: remote-search
   - image-prefix: "localhost/hcl/dx"
-    image-tag: "v95_CF191_20201212-1421"
+    image-tag: "v95_CF192_20210305-1758"
     image-name: core
   - image-prefix: "localhost/hcl/dx"
-    image-tag: "v1.0.0-master_20201212_1607741365"
+    image-tag: "v1.0.0-master_20210305_1614986151"
     image-name: openldap
   - image-prefix: "localhost/hcl/dx"
-    image-tag: "v1.5.0_20201211-2155"
+    image-tag: "v1.6.0_20210305-1802"
     image-name: digital-asset-manager
   - image-prefix: "localhost/hcl/dx"
-    image-tag: "v1.5.0_20201211-2200"
+    image-tag: "v1.6.0_20210305-1802"
     image-name: ringapi
   - image-prefix: "localhost/hcl/dx"
-    image-tag: "v1.5.0_20201211-2151"
+    image-tag: "v1.6.0_20210305-1756"
     image-name: content-composer
   - image-prefix: "localhost/hcl/dx"
-    image-tag: "v1.5.0_20201211-2155"
+    image-tag: "v1.6.0_20210305-1800"
     image-name: postgres
   - image-prefix: "localhost/hcl/dx"
-    image-tag: "v1.5.0_20201211-2154"
+    image-tag: "v1.6.0_20210305-1758"
     image-name: image-processor
   - image-prefix: "localhost/hcl/dx"
-    image-tag: "v95_CF191_20201211-2152"
+    image-tag: "v95_CF192_20210305-1757"
     image-name: digital-asset-management-operator
   - image-prefix: "localhost/hcl/dx"
     image-tag: "154"
@@ -135,7 +135,7 @@ dxWaitSecondsAfterOperatorDeployment: 180
 ##
 ## Directory where the hcl-dx-cloud-scripts package is unpacked.
 ## Write access is required for this directory
-dxScriptsDir: /2tmp/hcl-dx-cloud-scripts.crc
+dxScriptsDir: /2tmp/hcl-dx-cloud-scripts
 dxNamespaceSrcFile: "{{ dxScriptsDir }}/deploy/dxNameSpace.yaml"
 ##
 ## Allow resource overriding to allow running with fewer resources
@@ -155,6 +155,8 @@ dxClusterRoleBindingSrcFile: "{{ dxScriptsDir }}/deploy/cluster-role-binding.yam
 dxClusterRoleBindingFile: "{{ dxScriptsDir }}/cluster-role-binding_{{ dxNameSpace }}.yaml"
 ##
 ## dx storage for deployments
+dxThinRetainStgClassName: thin-retain
+dxThinRetainStgClassFile: "{{ oscpConfigFilesDir }}/thin-retain-stg.yaml"
 dxDeployStgClassFile: "{{ oscpConfigFilesDir }}/dx-deploy-stg.yaml"
 dxDamPersistenceStgClassFile: "{{ oscpConfigFilesDir }}/dx-dam-persistence-stg.yaml"
 dxDamPersistenceStgRoClassFile: "{{ oscpConfigFilesDir }}/dx-dam-persistence-ro-stg.yaml"
@@ -187,6 +189,14 @@ dxDamPvcFile: "{{ oscpConfigFilesDir }}/dx_dam_claim.yaml"
 dxDamPersistenceStgPvcFile: "{{ oscpConfigFilesDir }}/dam-persistence-dx-deployment-persistence-0-claim.yaml"
 dxDamPersistenceStgRoPvcFile: "{{ oscpConfigFilesDir }}/dam-persistence-dx-deployment-persistence-ro-0-claim.yaml"
 
+dxTranLogStgPvcFile: "{{ oscpConfigFilesDir }}/tranlog-dx-deployment-claim.yaml"
+dxTranLogStgPvcName: "tranlog-dx-deployment-"
+dxTranLogStgPvFile: "{{ oscpConfigFilesDir }}/tranlog-dx-deployment-pv.yaml"
+dxTranLogStgPvName: "tranlog-dx-deployment-pv-"
+dxTranLogNfsServer: nfs01crc.hhue.at
+dxTranLogNfsExport: /nfs06/crc-dx-deployment-
+dxTranLogStgCapacity: 2Gi
+dxTranLogStgClassName: "{{ dxThinRetainStgClassName }}"
 ##
 ## dx-deplyment ConfigMap
 dxDeployDamConfigMapSrcFile: "{{ oscpConfigFilesDir }}/dx-deployment-ConfigMap.yaml.template"

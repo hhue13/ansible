@@ -79,16 +79,20 @@ How I setup my CRC using the playbook:
 
 # How I setup CRC locally
 
-Here is my cheat sheet to setup CRC locally to directory **/vms/crc** with the following directories in my **PATH**:  ~/.crc/bin:~~/.crc/bin/oc:/vms/icp/crc-linux
+1. Here is my cheat sheet to setup CRC locally to directory **/vms/crc** with the following directories in my **PATH**:  ~/.crc/bin:~~/.crc/bin/oc:/vms/icp/crc-linux
 
 ```bash
-crc delete
+crc stop
+crc delete -f --clear-cache
+
 @nfs01:
 cd /nfs01 && rm -rf crcprofile && mkdir crcprofile && chown 1000:1001 crcprofile && sync && ls -altr
 cd /nfs02 && rm -rf crcregistry && mkdir crcregistry && chmod 777 . crcregistry && sync && ls -altr
 cd /nfs03 && rm -rf crcdamdata && mkdir crcdamdata && chmod 777 . crcdamdata && sync && ls -altr
 cd /nfs04 && rm -rf crcpersistence && mkdir crcpersistence && chmod 777 . crcpersistence && sync && ls -altr
 cd /nfs05 && rm -rf crcpersistence-ro && mkdir crcpersistence-ro && chmod 777 . crcpersistence-ro && sync && ls -altr
+cd /nfs06 && for x in 0 1 2 ; do rm -rf crc-dx-deployment-${x} ; mkdir crc-dx-deployment-${x} ; chown 1000:1001 crc-dx-deployment-${x} ; chmod 777 . crc-dx-deployment-${x}; sync ; done ; ls -altr
+
 
 rm -rf /vms/crc
 
@@ -97,7 +101,7 @@ mkdir -p /vms/crc/cache
 mkdir -p /vms/crc/machines
 
 cd /vms/crc
-tar -xf /download/crc-linux-amd64.tar
+tar -xf /download/crc-linux-amd64_1.23.0.tar
 crcdir=$(ls -d crc-linux*)
 ln -s ${crcdir} crc-linux
 

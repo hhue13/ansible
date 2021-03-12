@@ -1,0 +1,35 @@
+---
+##
+## Check if the PVC exists as this can't be changed
+- name: Check existence on PVC
+  k8s_info:
+    api_version: v1
+    kind: PersistentVolumeClaim
+    name: "{{ dxDeploymentTranLogPvcName }}"
+    namespace: "{{ dxNameSpace }}"
+    api_key: "{{ apiKey }}"
+  register: oscpPvcData
+##
+## Check if the PV exists
+- name: Check existence on PV
+  k8s_info:
+    api_version: v1
+    kind: PersistentVolumeClaim
+    name: "{{ dxDeploymentTranLogVolumeName }}"
+    namespace: "{{ dxNameSpace }}"
+    api_key: "{{ apiKey }}"
+  register: oscpPvData
+##
+## Create the PVs for the required number of tran-logs
+- name: Create PVs for DX tranlogs
+  include_tasks: templateAndRunFile.yml
+  vars:
+    templateFile: "{{ dxTranLogStgPvFile }}"
+  when: (oscpPvData.resources[0].name is not defined)
+##
+## Create the PVCs for the required number of tran-logs
+- name: Create PVCs for DX tranlogs
+  include_tasks: templateAndRunFile.yml
+  vars:
+    templateFile: "{{ dxTranLogStgPvcFile }}"
+  when: (oscpPvcData.resources[0].name is not defined)

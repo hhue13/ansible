@@ -9,6 +9,7 @@
       vars:
         templateFile: "{{ item }}"
       loop:
+        - "{{ dxThinRetainStgClassFile }}"
         - "{{ dxDeployStgClassFile }}"
         - "{{ dxDamPersistenceStgClassFile }}"
         - "{{ dxDamPersistenceStgRoClassFile }}"
@@ -19,5 +20,20 @@
         - "{{ dxDamPvcFile }}"
         - "{{ dxDamPersistenceStgPvcFile }}"
         - "{{ dxDamPersistenceStgRoPvcFile }}"
+      loop_control:
+        pause: 3
+##
+## Create a specific number of storage controls for the dx transaction logs
+- name: Create storage objects for DX transaction logs
+  block:
+    ##
+    ## Create the PVs for the required number of tran-logs
+    - name: Create PVs for DX tranlogs
+      include_tasks: createMissingPVCsAndPvs.yml
+      vars:
+        dxDeploymentTranLogVolumeName: "{{ dxTranLogStgPvName }}{{ item }}"
+        dxDeploymentTranLogExport: "{{ dxTranLogNfsExport }}{{ item }}"
+        dxDeploymentTranLogPvcName: "{{ dxTranLogStgPvcName }}{{ item }}"
+      with_sequence: start=0 end="{{ dxReplicas |int -1}}"
       loop_control:
         pause: 3
