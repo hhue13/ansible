@@ -81,34 +81,34 @@ oscpStatusCommandStdOutStringRegEx: "^OpenShift: *Running .*$"
 ## DX Images - DO NOT REORDER!!
 dxImages:
   - image-prefix: "localhost/hcl/dx"
-    image-tag: "v95_CF192_20210305-2309"
+    image-tag: "v95_CF193_20210331-1847"
     image-name: cloud-operator
   - image-prefix: "localhost/hcl/dx"
-    image-tag: "v95_CF192_20210305-1758"
+    image-tag: "v95_CF193_20210331-1336"
     image-name: remote-search
   - image-prefix: "localhost/hcl/dx"
-    image-tag: "v95_CF192_20210305-1758"
+    image-tag: "v95_CF193_20210331-1336"
     image-name: core
   - image-prefix: "localhost/hcl/dx"
-    image-tag: "v1.0.0-master_20210305_1614986151"
+    image-tag: "v1.1.0-master_20210331_1617216873"
     image-name: openldap
   - image-prefix: "localhost/hcl/dx"
-    image-tag: "v1.6.0_20210305-1802"
+    image-tag: "v1.7.0_20210331-1339"
     image-name: digital-asset-manager
   - image-prefix: "localhost/hcl/dx"
-    image-tag: "v1.6.0_20210305-1802"
+    image-tag: "v1.7.0_20210331-1339"
     image-name: ringapi
   - image-prefix: "localhost/hcl/dx"
-    image-tag: "v1.6.0_20210305-1756"
+    image-tag: "v1.7.0_20210331-1333"
     image-name: content-composer
   - image-prefix: "localhost/hcl/dx"
-    image-tag: "v1.6.0_20210305-1800"
+    image-tag: "v1.7.0_20210331-1337"
     image-name: postgres
   - image-prefix: "localhost/hcl/dx"
-    image-tag: "v1.6.0_20210305-1758"
+    image-tag: "v1.7.0_20210331-1336"
     image-name: image-processor
   - image-prefix: "localhost/hcl/dx"
-    image-tag: "v95_CF192_20210305-1757"
+    image-tag: "v95_CF193_20210331-1335"
     image-name: digital-asset-management-operator
   - image-prefix: "localhost/hcl/dx"
     image-tag: "154"
