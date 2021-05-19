@@ -1,0 +1,5 @@
+#######################################################
+## Extra variables
+#######################################################
+oscpHostApiUrl: https://api.crc.testing:6443 
+oscpOsUser: hhuebler

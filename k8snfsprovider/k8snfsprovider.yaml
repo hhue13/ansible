@@ -1,0 +1,257 @@
+#########################################################################
+## Playbook to deploy the nfs-provisioner. Taken mostly from
+## https://github.com/RedHat-EMEA-SSA-Team/hetzner-ocp4
+## All credits goes the the RedHat-EMEA-SSA-Team
+#########################################################################
+---
+- name: Setup DX
+  hosts: crchosts
+  become: yes
+  become_user: "{{ oscpOsUser }}"
+  gather_facts: false
+  module_defaults:
+    group/k8s:
+      host: "{{ oscpHostApiUrl }}"
+      validate_certs: false
+  #########################
+  ## Tasks of the play-book
+  #########################
+  tasks:
+    ##
+    ## Login
+    - name: Log in (obtain access token)
+      k8s_auth:
+        state: present
+        username: "{{ oscpKubeAdminUserName }}"
+        password: "{{ oscpKubeAdminPassword }}"
+      register: k8s_auth_results
+      tags:
+        - always
+    ##
+    ## Store the auth result in a fact variable
+    - set_fact:
+        kube_auth_results: "{{ k8s_auth_results }}"
+      tags:
+        - always
+    ##
+    ## Deploy and setup the nfs provisioner
+    - name: Setup the nfs-provisioner
+      block:
+        - name: Create Namespace for nfs-provisioner
+          k8s:
+            state: present
+            api_key: "{{ kube_auth_results.k8s_auth.api_key }}"
+            definition:
+              kind: Namespace
+              apiVersion: v1
+              metadata:
+                name: "{{ storage_nfs_target_namespace }}"
+
+        - name: Create ClusteRole nfs-client-provisioner-runner
+          k8s:
+            state: present
+            api_key: "{{ kube_auth_results.k8s_auth.api_key }}"
+            definition:
+              kind: ClusterRole
+              apiVersion: rbac.authorization.k8s.io/v1
+              metadata:
+                name: nfs-client-provisioner-runner
+              rules:
+                - apiGroups: [""]
+                  resources: ["persistentvolumes"]
+                  verbs: ["get", "list", "watch", "create", "delete"]
+                - apiGroups: [""]
+                  resources: ["persistentvolumeclaims"]
+                  verbs: ["get", "list", "watch", "update"]
+                - apiGroups: ["storage.k8s.io"]
+                  resources: ["storageclasses"]
+                  verbs: ["get", "list", "watch"]
+                - apiGroups: [""]
+                  resources: ["events"]
+                  verbs: ["create", "update", "patch"]
+
+        - name: Create ClusterRoleBinding nfs-client-provisioner-runner <-> nfs-client-provisioner
+          k8s:
+            state: present
+            api_key: "{{ kube_auth_results.k8s_auth.api_key }}"
+            definition:
+              kind: ClusterRoleBinding
+              apiVersion: rbac.authorization.k8s.io/v1
+              metadata:
+                name: run-nfs-client-provisioner
+              subjects:
+                - kind: ServiceAccount
+                  name: nfs-client-provisioner
+                  namespace: "{{ storage_nfs_target_namespace }}"
+              roleRef:
+                kind: ClusterRole
+                name: nfs-client-provisioner-runner
+                apiGroup: rbac.authorization.k8s.io
+
+        - name: Create Role nfs-client-provisioner
+          k8s:
+            state: present
+            api_key: "{{ kube_auth_results.k8s_auth.api_key }}"
+            definition:
+              kind: Role
+              apiVersion: rbac.authorization.k8s.io/v1
+              metadata:
+                name: nfs-client-provisioner
+                namespace: "{{ storage_nfs_target_namespace }}"
+              rules:
+                - apiGroups: [""]
+                  resources: ["endpoints"]
+                  verbs: ["get", "list", "watch", "create", "update", "patch"]
+                - apiGroups: ["security.openshift.io"]
+                  resourceNames: ["hostmount-anyuid"]
+                  resources: ["securitycontextconstraints"]
+                  verbs: ["use"]
+
+        - name: Create RoleBinding nfs-client-provisioner <-> nfs-client-provisioner
+          k8s:
+            state: present
+            api_key: "{{ kube_auth_results.k8s_auth.api_key }}"
+            definition:
+              kind: RoleBinding
+              apiVersion: rbac.authorization.k8s.io/v1
+              metadata:
+                name: nfs-client-provisioner
+                namespace: "{{ storage_nfs_target_namespace }}"
+              subjects:
+                - kind: ServiceAccount
+                  name: nfs-client-provisioner
+              roleRef:
+                kind: Role
+                name: nfs-client-provisioner
+                apiGroup: rbac.authorization.k8s.io
+
+        - name: Deploy nfs-provisioner
+          k8s:
+            state: present
+            api_key: "{{ kube_auth_results.k8s_auth.api_key }}"
+            definition:
+              kind: Deployment
+              apiVersion: apps/v1
+              metadata:
+                name: nfs-client-provisioner
+                namespace: "{{ storage_nfs_target_namespace }}"
+              spec:
+                replicas: 1
+                selector:
+                  matchLabels:
+                    app: nfs-client-provisioner
+                strategy:
+                  type: Recreate
+                template:
+                  metadata:
+                    labels:
+                      app: nfs-client-provisioner
+                  spec:
+                    serviceAccountName: nfs-client-provisioner
+                    containers:
+                      - name: nfs-client-provisioner
+                        image: quay.io/external_storage/nfs-client-provisioner:latest
+                        volumeMounts:
+                          - name: nfs-client-root
+                            mountPath: /persistentvolumes
+                        env:
+                          - name: PROVISIONER_NAME
+                            value: redhat-emea-ssa-team/hetzner-ocp4
+                          - name: NFS_SERVER
+                            value: "{{ storage_nfs_host_name_address }}"
+                          - name: NFS_PATH
+                            value: "{{ storage_nfs_exported_dir }}"
+                    volumes:
+                      - name: nfs-client-root
+                        nfs:
+                          server: "{{ storage_nfs_host_name_address }}"
+                          path: "{{ storage_nfs_exported_dir }}"
+
+        - name: Create Storage Class
+          k8s:
+            state: present
+            api_key: "{{ kube_auth_results.k8s_auth.api_key }}"
+            definition:
+              apiVersion: storage.k8s.io/v1
+              kind: StorageClass
+              metadata:
+                name: managed-nfs-storage
+                annotations:
+                  storageclass.kubernetes.io/is-default-class: "true"
+              provisioner: redhat-emea-ssa-team/hetzner-ocp4
+              parameters:
+                archiveOnDelete: "false"
+      tags:
+        - install
+    ####################################
+    ## Remove the nfs-provisioner again
+    ####################################
+    - name: Remove the nfs-provisioner from the setup
+      block:
+        ##
+        ## First we remove the namespace which should cleanup most of the objects
+        - name: Remove Namespace for nfs-provisioner
+          k8s:
+            state: absent
+            api_key: "{{ kube_auth_results.k8s_auth.api_key }}"
+            definition:
+              kind: Namespace
+              apiVersion: v1
+              metadata:
+                name: "{{ storage_nfs_target_namespace }}"
+        ##
+        ## Then we remove the non-namespace related objects
+        - name: Remove Storage Class
+          k8s:
+            state: absent
+            api_key: "{{ kube_auth_results.k8s_auth.api_key }}"
+            definition:
+              kind: StorageClass
+              apiVersion: storage.k8s.io/v1
+              metadata:
+                name: managed-nfs-storage
+
+        - name: Remove ClusterRoleBinding nfs-client-provisioner-runner <-> nfs-client-provisioner
+          k8s:
+            state: absent
+            api_key: "{{ kube_auth_results.k8s_auth.api_key }}"
+            definition:
+              kind: ClusterRoleBinding
+              apiVersion: rbac.authorization.k8s.io/v1
+              metadata:
+                name: run-nfs-client-provisioner
+
+        - name: Remove ClusteRole nfs-client-provisioner-runner
+          k8s:
+            state: absent
+            api_key: "{{ kube_auth_results.k8s_auth.api_key }}"
+            definition:
+              kind: ClusterRole
+              apiVersion: rbac.authorization.k8s.io/v1
+              metadata:
+                name: nfs-client-provisioner-runner
+      tags:
+        - remove
+      ##
+      ## Need to make sure we always (try) a logout (and not only after an error)
+      ## rescue:
+      always:
+        ##
+        ## Logout again
+        - name: Log-out of k8s
+          k8s_auth:
+            state: absent
+            api_key: "{{ kube_auth_results.k8s_auth.api_key }}"
+    ##
+    ## Debug k8s credentials
+    - name: Debug
+      debug:
+        msg:
+          - "K8S credentials ..."
+          - "kube_auth_results.api_key: {{ kube_auth_results.k8s_auth.api_key }}"
+          - "kube_auth_results.ca_cert: {{ kube_auth_results.k8s_auth.ca_cert }}"
+          - "kube_auth_results.host: {{ kube_auth_results.k8s_auth.host }}"
+          - "kube_auth_results.username: {{ kube_auth_results.k8s_auth.username }}"
+          - "kube_auth_results.validate_certs: {{ kube_auth_results.k8s_auth.validate_certs }}"
+      tags:
+        - never
