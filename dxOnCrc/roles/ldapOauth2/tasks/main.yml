@@ -1,11 +1,11 @@
 ---
 # tasks file for ldapOauth2
-##
-## Dump API Key
-- name: Dump API Key
-  debug:
-    msg:
-      - "API Key is: {{ apiKey }}"
+##### ##
+##### ## Dump API Key
+##### - name: Dump API Key
+#####   debug:
+#####     msg:
+#####       - "API Key is: {{ apiKey }}"
 ##
 ## Create a temp file to template variables
 - name: Create temporary file to merge variables
@@ -23,24 +23,93 @@
 ## Create secret
 - name: Create LDAP Bind secret
   k8s:
+    host: "{{ apiHost }}"
     api_key: "{{ apiKey }}"
     state: present
     src: tmpLdapConfigFile_1
 ##
-## Prepare yaml file with the LDAP CR to allow templating as per variables
-- name: Prepare LDAP CR from template by resolving variables
-  template:
-    src: "{{ ldapCrFile }}"
-    dest: tmpLdapConfigFile_1
-
+## Init target IDP providers
+- name: Init IDP providers to be set
+  set_fact:
+    identity_providers: "[]"
 ##
-## Configure OpenLDAP server as authentication mechanism
-- name: Create CR (custom resource) for LDAP server
+## Init fact to reflect if IDP exists
+- name: Init fact to determine if IDP exists
+  set_fact:
+    idpExists: false
+##
+## Set the fact with the LDAP provider
+- name: Set the fact with the LDAP provider
+  set_fact:
+    #####     newLdapOAuthEntry: "{{ lookup('template', ldapCrFile ) }}"
+    newIdp:
+      ldap:
+        attributes:
+          preferredUsername:
+            - "{{ ldapPreferredUserNameAttribute }}"
+          id:
+            - "{{ ldapIdAttribute }}"
+          email:
+            - "{{ ldapEmailAttribute }}"
+          name:
+            - "{{ ldapSnAttribute }}"
+        bindDN: "{{ ldapBindDn }}"
+        bindPassword:
+          name: "{{ ldapBindSecretNameInOscp }}"
+        insecure: true
+        url: "{{ ldapSchema }}://{{ ldapHostName }}/{{ ldapSuffix }}?{{ ldapLoginAttribteName }}"
+      name: "{{ ldapIdentityProviderNameInOscp }}"
+      mappingMethod: claim
+      type: LDAP
+##
+## Get the current OAuth providers
+- name: Get the current OAuth providers
+  k8s_info:
+    host: "{{ apiHost }}"
+    api_key: "{{ apiKey }}"
+    api_version: v1
+    kind: OAuth
+  register: currentOAuthProviders
+##
+## Only add IDP if it does not yet exist
+- name: Check if OAuth provider exists
+  include_tasks: checkIfIdpExists.yml
+  vars:
+    idps: "{{ item.spec.identityProviders }}"
+    newIdpName: "{{ ldapIdentityProviderNameInOscp }}"
+  with_items:
+    - "{{ currentOAuthProviders.resources }}"
+  when: (idpExists != true)
+##
+## Update the list of
+- name: "Add LDAP IDP to existing providers"
+  set_fact:
+    identity_providers: "{{ item.spec.identityProviders }} + [ {{ newIdp }} ]"
+  with_items:
+    - "{{ currentOAuthProviders.resources }}"
+  when: (idpExists != true)
+##### ##
+##### ## Debug identity providers
+##### - name: "Debug current list of IDPs"
+#####   debug:
+#####     msg: "Current IDPs: {{ identity_providers }}\n"
+##
+## Update OAuth providers to include LDAP
+- name: Configure OAuth providers
   k8s:
-    api_key: "{{ apiKey }}"
+    host: "{{ apiHost }}"
     state: present
-    src: tmpLdapConfigFile_1
-
+    api_key: "{{ k8s_auth_results.k8s_auth.api_key }}"
+    definition:
+      apiVersion: config.openshift.io/v1
+      kind: OAuth
+      metadata:
+        name: cluster
+      spec:
+        identityProviders: "{{ identity_providers }}"
+  when: (idpExists != true)
+##
+## Add ldap admin user to cluster admin role
 - name: Add LDAP user to cluster admin role if user is not empty
   block:
     ##
@@ -60,6 +129,7 @@
     ## Create cluster role binding to user from LDAP
     - name: Add admins from LDAP to the cluster-adm role
       k8s:
+        host: "{{ apiHost }}"
         api_key: "{{ apiKey }}"
         state: present
         src: tempfile_1
