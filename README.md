@@ -4,7 +4,7 @@
 
 The following ones might be interesting:
 - [Deploy the NFS strorage provisioner to OCP](k8snfsprovider/README.md)
-- [Deploy HCLL Digital Experience to OCP](dxOnCrc/README.md)
+- [Deploy HCL Digital Experience to OCP](dxOnCrc/README.md)
 
 # Authentication when using the K8S run books
 For the K8S access the following environment variables are in use:
