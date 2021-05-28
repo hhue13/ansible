@@ -3,22 +3,18 @@
   hosts: crchosts
   become: yes
   become_user: "{{ oscpOsUser }}"
-  gather_facts: false
+  gather_facts: true
   module_defaults:
     group/k8s:
-      host: "{{ oscpHostApiUrl }}"
       validate_certs: false
   #########################
   ## Tasks of the play-book
   #########################
   tasks:
     ##
-    ## Login
-    - name: Log in (obtain access token)
-      k8s_auth:
-        username: "{{ oscpKubeAdminUserName }}"
-        password: "{{ oscpKubeAdminPassword }}"
-      register: k8s_auth_results
+    ## Set login facts
+    - name: Set K8S login facts
+      include_tasks: k8slogin.yaml
       tags:
         - always
     ##
@@ -26,19 +22,22 @@
     - name: Dump API Key in MAIN
       debug:
         msg:
-          - "API Key is {{ k8s_auth_results.k8s_auth.api_key }}"
+          - "API Key is {{ kube_api_key  }}"
       tags:
-        - always
+        - never
 
     ##
     ## Configure OAuth2 LDAP server if needed
     - name: Configure LDAP as user registry for the OpenShift cluster
       block:
+        ##
+        ## Setup LDAP server as user registry
         - name: Run ldapOauth2 role
           include_role:
             name: ldapOauth2
           vars:
-            apiKey: "{{ k8s_auth_results.k8s_auth.api_key }}"
+            apiKey: "{{ kube_api_key }}"
+            apiHost: "{{ k8s_host }}"
             roleBindingName: "{{ ldapRoleBindingName }}"
             roleRefName: "{{ ldapRoleRefName }}"
             userName: "{{ ldapAdminUser }}"
@@ -61,7 +60,8 @@
           include_role:
             name: setupRegistry
           vars:
-            apiKey: "{{ k8s_auth_results.k8s_auth.api_key }}"
+            apiKey: "{{ kube_api_key }}"
+            apiHost: "{{ k8s_host }}"
             roleBindingName: "{{ imageRegistryRoleBindingName }}"
             roleRefName: "{{ imageRegistryRoleRefName }}"
             userName: "{{ imageRegistryAdminUser }}"
@@ -98,10 +98,11 @@
       block:
         - name: Check if the namespace exists
           k8s_info:
+            host: "{{ k8s_host }}"
             api_version: v1
             kind: Namespace
             name: "{{ dxNameSpace }}"
-            api_key: "{{ k8s_auth_results.k8s_auth.api_key }}"
+            api_key: "{{ kube_api_key }}"
           register: dxNamespaceData
         ##
         ## Create the namespace if it does not exist
@@ -120,7 +121,8 @@
 
             - name: Create the namespace from yaml file
               k8s:
-                api_key: "{{ k8s_auth_results.k8s_auth.api_key }}"
+                host: "{{ k8s_host }}"
+                api_key: "{{ kube_api_key }}"
                 state: present
                 src: "{{ dxScriptsDir }}/dxNameSpace_{{ dxNameSpace }}.yaml"
 
@@ -138,7 +140,8 @@
           include_role:
             name: tagAndPushImages
           vars:
-            kubeAdminApiKey: "{{ k8s_auth_results.k8s_auth.api_key }}"
+            kubeAdminApiKey: "{{ kube_api_key }}"
+            apiHost: "{{ k8s_host }}"
 
       always:
         - name: Finial message for image re-tagging
@@ -157,7 +160,8 @@
           include_role:
             name: resourceOverride
           vars:
-            apiKey: "{{ k8s_auth_results.k8s_auth.api_key }}"
+            apiKey: "{{ kube_api_key }}"
+            apiHost: "{{ k8s_host }}"
 
       always:
         - name: Finial message for setup cluster resource overwrite
@@ -168,35 +172,16 @@
       tags:
         - resourceOverride
         - dx
-
-      ##
-      ## Setup DX storage
-    - name: Setup DX storage
-      block:
-        - name: Run role dxStorage
-          include_role:
-            name: dxStorage
-          vars:
-            apiKey: "{{ k8s_auth_results.k8s_auth.api_key }}"
-
-      always:
-        - name: Finial message for setup dxStorage
-          debug:
-            msg:
-              - "dxStorage setup completed ..."
-      tags:
-        - dxStorage
-        - dx
-
       ##
       ## Create HCLs CRDs and dxDeployment
-    - name: Create HCLs CRDs
+    - name: Run HCLs deployment
       block:
         - name: Run role dxHclDeployment
           include_role:
             name: dxHclDeployment
           vars:
-            apiKey: "{{ k8s_auth_results.k8s_auth.api_key }}"
+            apiKey: "{{ kube_api_key }}"
+            apiHost: "{{ k8s_host }}"
 
       always:
         - name: Finial message for setup dxHclDeployment
@@ -206,30 +191,11 @@
       tags:
         - dxHclDeployment
         - dx
-
-      ##
-      ## Create HCLs DAM definitions
-    - name: Create HCLs DAM definitions
-      block:
-        - name: Run role dxHclDam
-          include_role:
-            name: dxHclDam
-          vars:
-            apiKey: "{{ k8s_auth_results.k8s_auth.api_key }}"
-
-      always:
-        - name: Finial message for setup dxHclDam
-          debug:
-            msg:
-              - "dxHclDam setup completed ..."
-      tags:
-        - dxHclDam
-        - dx
-
     ##
     ##
     - name: If login succeeded, try to log out (revoke access token)
       k8s_auth:
+        host: "{{ k8s_host }}"
         state: absent
-        api_key: "{{ k8s_auth_results.k8s_auth.api_key }}"
-      when: k8s_auth_results.k8s_auth.api_key is defined
+        api_key: "{{ kube_api_key }}"
+      when: kube_api_key is defined

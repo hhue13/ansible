@@ -99,7 +99,7 @@
   k8s:
     host: "{{ apiHost }}"
     state: present
-    api_key: "{{ k8s_auth_results.k8s_auth.api_key }}"
+    api_key: "{{ apiKey }}"
     definition:
       apiVersion: config.openshift.io/v1
       kind: OAuth

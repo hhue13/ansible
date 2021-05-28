@@ -4,6 +4,7 @@
 ## Enable the namespace for cluster resource overwriting
 - name: Patch the namespace to enable clusterresourceoverrides
   k8s:
+    host: "{{ apiHost }}"
     api_key: "{{ apiKey }}"
     state: present
     kind: Namespace
@@ -24,6 +25,7 @@
 ## Create namespace, operator, subscription, and overwrites
 - name: Create namespace, operator, subscription for resource overrides
   k8s:
+    host: "{{ apiHost }}"
     api_key: "{{ apiKey }}"
     state: present
     src: "{{ item }}"
@@ -44,6 +46,7 @@
 ## Create CR ClusterResourceOverride
 - name: Waiting for operator to create CR ClusterResourceOverride
   k8s:
+    host: "{{ apiHost }}"
     api_key: "{{ apiKey }}"
     state: present
     src: "{{ clusterResourceOverrideFile }}"

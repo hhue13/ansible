@@ -3,32 +3,81 @@
 text_to_replace_for_hcl_deployment:
   - { regexp: '"DB_TYPE"', replace: "{{ dxDatabaseType }}" }
   - {
-      regexp: "IMAGE_NAME",
+      regexp: "CLOUD_OPERATOR_IMAGE_NAME",
+      replace: '{{ dxNameSpace }}/{{ dxImages[0]["image-name"] }}',
+    }
+  - {
+      regexp: "CLOUD_OPERATOR_IMAGE_TAG",
+      replace: '{{ dxImages[0]["image-tag"] }}',
+    }
+  - {
+      regexp: "REMOTE_SEARCH_IMAGE_NAME",
+      replace: '{{ dxNameSpace }}/{{ dxImages[1]["image-name"] }}',
+    }
+  - {
+      regexp: "REMOTE_SEARCH_IMAGE_TAG",
+      replace: '{{ dxImages[1]["image-tag"] }}',
+    }
+  - {
+      regexp: "CORE_IMAGE_NAME",
       replace: '{{ dxNameSpace }}/{{ dxImages[2]["image-name"] }}',
     }
-  - { regexp: "IMAGE_TAG", replace: '"{{ dxImages[2]["image-tag"] }}"' }
+  - { regexp: "CORE_IMAGE_TAG", replace: '{{ dxImages[2]["image-tag"] }}' }
   - {
-      regexp: '"INGRESS_IMAGE"',
+      regexp: "OPENLDAP_IMAGE_NAME",
+      replace: '{{ dxNameSpace }}/{{ dxImages[3]["image-name"] }}',
+    }
+  - { regexp: "OPENLDAP_IMAGE_TAG", replace: '{{ dxImages[3]["image-tag"] }}' }
+  - {
+      regexp: "DAM_IMAGE_NAME",
+      replace: '{{ dxNameSpace }}/{{ dxImages[4]["image-name"] }}',
+    }
+  - { regexp: "DAM_IMAGE_TAG", replace: '{{ dxImages[4]["image-tag"] }}' }
+  - {
+      regexp: "RINGAPI_IMAGE_NAME",
+      replace: '{{ dxNameSpace }}/{{ dxImages[5]["image-name"] }}',
+    }
+  - { regexp: "RINGAPI_IMAGE_TAG", replace: '{{ dxImages[5]["image-tag"] }}' }
+  - {
+      regexp: "CONTENT_COMPOSER_IMAGE_NAME",
+      replace: '{{ dxNameSpace }}/{{ dxImages[6]["image-name"] }}',
+    }
+  - {
+      regexp: "CONTENT_COMPOSER_IMAGE_TAG",
+      replace: '{{ dxImages[6]["image-tag"] }}',
+    }
+  - {
+      regexp: "POSTGRES_IMAGE_NAME",
+      replace: '{{ dxNameSpace }}/{{ dxImages[7]["image-name"] }}',
+    }
+  - { regexp: "POSTGRES_IMAGE_TAG", replace: '{{ dxImages[7]["image-tag"] }}' }
+  - {
+      regexp: "IMAGE_PROCESSOR_IMAGE_NAME",
+      replace: '{{ dxNameSpace }}/{{ dxImages[8]["image-name"] }}',
+    }
+  - {
+      regexp: "IMAGE_PROCESSOR_IMAGE_TAG",
+      replace: '{{ dxImages[8]["image-tag"] }}',
+    }
+  - {
+      regexp: "DAM_OPERATOR_IMAGE_NAME",
+      replace: '{{ dxNameSpace }}/{{ dxImages[9]["image-name"] }}',
+    }
+  - {
+      regexp: "DAM_OPERATOR_IMAGE_TAG",
+      replace: '{{ dxImages[9]["image-tag"] }}',
+    }
+  - {
+      regexp: "INGRESS_IMAGE_NAME",
       replace: '{{ dxNameSpace }}/{{ dxImages[10]["image-name"] }}',
     }
-  - { regexp: '"INGRESS_TAG"', replace: '"{{ dxImages[10]["image-tag"] }}"' }
+  - { regexp: "INGRESS_IMAGE_TAG", replace: '{{ dxImages[10]["image-tag"] }}' }
   - {
-      regexp: '"REDIS_IMAGE"',
+      regexp: "REDIS_IMAGE_NAME",
       replace: '{{ dxNameSpace }}/{{ dxImages[11]["image-name"] }}',
     }
-  - { regexp: '"REDIS_TAG"', replace: '"{{ dxImages[11]["image-tag"] }}"' }
-  - {
-      regexp: "REPLACE_IMAGE",
-      replace: '{{ imageRegistryData.resources[0].metadata.name }}.{{ imageRegistryData.resources[0].metadata.namespace }}.svc:{{ imageRegistryData.resources[0].spec.ports[0].port }}/{{ dxNameSpace }}/{{ dxImages[0]["image-name"] }}:{{ dxImages[0]["image-tag"] }}',
-    }
-  - { regexp: "REPLICAS", replace: "{{ dxReplicas }}" }
+  - { regexp: "REDIS_IMAGE_TAG", replace: '{{ dxImages[11]["image-tag"] }}' }
   - {
       regexp: "REPOSITORY_NAME",
       replace: "{{ imageRegistryData.resources[0].metadata.name }}.{{ imageRegistryData.resources[0].metadata.namespace }}.svc:{{ imageRegistryData.resources[0].spec.ports[0].port }}",
     }
-  - {
-      regexp: '"REPOSITORY_NAME"',
-      replace: "{{ imageRegistryData.resources[0].metadata.name }}.{{ imageRegistryData.resources[0].metadata.namespace }}.svc:{{ imageRegistryData.resources[0].spec.ports[0].port }}",
-    }
-  - { regexp: '"STORAGE_CLASS"', replace: "{{ dxProfileStorageClassName }}" }
-  - { regexp: '"VOLUME_NAME"', replace: "{{ dxProfilePvName }}" }

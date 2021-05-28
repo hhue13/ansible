@@ -7,6 +7,7 @@
 ## Check the namespace being used to make sure it exists
 - name: Get the namespace {{ dxNameSpace }}
   k8s_info:
+    host: "{{ oscpApiHost }}"
     api_version: v1
     kind: Namespace
     name: "{{ dxNameSpace }}"
@@ -37,8 +38,13 @@
   failed_when: dockerCliResult.rc != 0
 
 ##
-## Oush images to OSCP image registry
+## Push images to OSCP image registry
 - name: Push images to OSCP image registry
   shell: "{{ dockerCliCommand }} push {{ oscpDefaultRouteHostName }}/{{ dxNameSpace }}/{{ item['image-name'] }}:{{ item['image-tag'] }}  --tls-verify=false"
   register: dockerCliResult
   failed_when: dockerCliResult.rc != 0
+##
+## Print SystemOut
+- name: Print stdout of the push operation
+  debug:
+    msg: "stdout: {{ dockerCliResult.stdout_lines }}"

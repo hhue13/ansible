@@ -8,4 +8,5 @@ spec:
   resources:
     requests:
       storage: 64Gi
+  storageClassName: "{{ imageRegistryStorageClass }}"
   volumeName: "{{ imageRegistryPvName }}"

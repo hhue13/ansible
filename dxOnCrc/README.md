@@ -13,7 +13,7 @@ To run the playbook you need:
 - SSH setup to the Ansible target host as required by Ansible. Specifically you need:
   - SSH key authentication setup
   - NOPWD sudo support for the user used by Ansible
-- Persistent storage for OSCP image registry, DX profile, DAM data etc. The templates provided are setup for NFS storage.
+- Persistent storage for OSCP image registry, DX profile, DAM data etc. Since CF192 HCL Digital exerience containers don't accept predefined PVs anymore but work only with PVS whose stroage provisioner provides the PV. If using NFS the [NFS storage provisioner](../k8snfsprovider/README.md) can be installed before deploying DX
   *Note:* Make sure that permissions on the exportet storage are setup properly
 - An LDAP server for authentication
   *Note* THe playbook does not yet provide *htpasswd* authentication setup. Only LDAP.
@@ -50,9 +50,7 @@ The playbook is written to use tags for specific steps. These are:
   }
   ```
 - *ToDo:* Make that configurable as well
-- *dxStorage* - setup the required Volumes and storage claims for DX pods
 - *dxHclDeployment* - Deploy DX core component
-- *dxHclDam* - Deploy DAM components
 
 To run the full playbook run: `ansible-playbook  --tags all -e @globalVars  setupDxOnCrc.yam`.
 
@@ -68,12 +66,8 @@ How I setup my CRC using the playbook:
 - ansible-playbook --tags setupRegistry -e @globalVars  setupDxOnCrc.yaml
 - ansible-playbook --tags restartOscp -e @globalVars  setupDxOnCrc.yaml
 - ansible-playbook --tags tagAndPushImages -e @globalVars  setupDxOnCrc.yaml
-- ansible-playbook --tags dxStorage -e @globalVars  setupDxOnCrc.yaml
 - ansible-playbook --tags resourceOverride -e @globalVars  setupDxOnCrc.yaml
 - ansible-playbook --tags dxHclDeployment -e @globalVars  setupDxOnCrc.yaml
-  - *Note:* Wait for the core deployment to be ready and the pods up and running before preceeding. This is a **must** as the DAM deplyment runs ConfigEngine tasks for integration under the covers which will fail otherwise.
-- ansible-playbook --tags dxHclDam -e @globalVars  setupDxOnCrc.yaml
--
 
 **Note:** Sometimes I got failures due to timing issues. Just retrying the tag fixed that in my cases (and don't have time at the moment to investigate furtjer).
 
@@ -85,14 +79,14 @@ How I setup my CRC using the playbook:
 crc stop
 crc delete -f --clear-cache
 
-@nfs01:
+~~@nfs01:
 cd /nfs01 && rm -rf crcprofile && mkdir crcprofile && chown 1000:1001 crcprofile && sync && ls -altr
 cd /nfs02 && rm -rf crcregistry && mkdir crcregistry && chmod 777 . crcregistry && sync && ls -altr
 cd /nfs03 && rm -rf crcdamdata && mkdir crcdamdata && chmod 777 . crcdamdata && sync && ls -altr
 cd /nfs04 && rm -rf crcpersistence && mkdir crcpersistence && chmod 777 . crcpersistence && sync && ls -altr
 cd /nfs05 && rm -rf crcpersistence-ro && mkdir crcpersistence-ro && chmod 777 . crcpersistence-ro && sync && ls -altr
 cd /nfs06 && for x in 0 1 2 ; do rm -rf crc-dx-deployment-${x} ; mkdir crc-dx-deployment-${x} ; chown 1000:1001 crc-dx-deployment-${x} ; chmod 777 . crc-dx-deployment-${x}; sync ; done ; ls -altr
-
+~~
 
 rm -rf /vms/crc
 

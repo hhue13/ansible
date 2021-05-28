@@ -5,6 +5,7 @@ metadata:
 spec:
   capacity:
     storage: "{{ imageRegistryCapacity }}"
+  storageClassName: "{{ imageRegistryStorageClass }}"
   accessModes:
     - ReadWriteMany
   nfs:

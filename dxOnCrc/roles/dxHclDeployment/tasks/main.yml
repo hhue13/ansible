@@ -4,6 +4,7 @@
 ## Get image registry's service information
 - name: Get image registry's service information
   k8s_info:
+    host: "{{ apiHost }}"
     api_version: v1
     kind: Service
     name: image-registry
@@ -18,90 +19,19 @@
       - "ImageRegistryService: {{ imageRegistryData }}"
       - "ImageRegistryService port: {{ imageRegistryData.resources[0].spec.ports[0].port }}"
       - "ImageRegistryService name: {{ imageRegistryData.resources[0].metadata.name }}"
-
 ##
-## Replace placeholders in operator.yaml
-- name: Prepare deploy/operator.yaml
-  block:
-    - name: Copy the operator.yaml template
-      copy:
-        src: "{{ dxOperatorSrcFile }}"
-        dest: "{{ dxOperatorFile }}"
-
-    - name: Replace the placeholders in operator.yaml file
-      replace:
-        path: "{{ dxOperatorFile }}"
-        regexp: "{{ item.regexp }}"
-        replace: "{{ item.replace }}"
-      loop: "{{ text_to_replace_for_hcl_deployment }}"
-
-  always:
-    - name: Finial message for setup deploy/operator.yaml
-      debug:
-        msg:
-          - "{{ dxOperatorFile }} setup ..."
-
-##
-## Replace placeholders in dxdeployment_cr.yaml
-- name: Prepare dxdeployment_cr
-  block:
-    - name: Copy the git.cwp.pnp-hcl.com_v1_dxdeployment_cr.yaml template
-      copy:
-        src: "{{ dxDeploymentSrcFile }}"
-        dest: "{{ dxDeploymentFile }}"
-
-    - name: Add additional configuration to git_v1_dxdeployment_cr_$NAMESPACE.yaml file
-      blockinfile:
-        path: "{{ dxDeploymentFile }}"
-        block: "{{ lookup('file', dxDeploymentDataToAppendFile) }}"
-        insertafter: EOF
-
-    - name: Replace placeholders in git_v1_dxdeployment_cr_dxNameSpace.yaml
-      replace:
-        path: "{{ dxDeploymentFile }}"
-        regexp: "{{ item.regexp }}"
-        replace: "{{ item.replace }}"
-      loop: "{{ text_to_replace_for_hcl_deployment }}"
-
-  always:
-    - name: Finial message for setup dxdeployment_cr.yaml
-      debug:
-        msg:
-          - "Namespace {{ dxNameSpace }} created ..."
-##
-## Deploy the dxdeployments.git.cwp.pnp-hcl.com CRD
-- name: Deploy the dxdeployments.git.cwp.pnp-hcl.com CRD
+## Deploy the DX CRD
+- name: Deploy the DX CRD
   k8s:
+    host: "{{ apiHost }}"
+    api_key: "{{ apiKey }}"
     state: present
     src: "{{ dxDeploymentCRDFile }}"
-    api_key: "{{ apiKey }}"
 ##
 ## Give OSCP some time to process CRD
 - name: Wait for dxDeploymentCRD
   pause:
     seconds: "{{ dxWaitSecondsAfterCrdDeployment }}"
-##
-## Deploy files to dx namespace
-- name: Deploy files to dx namespace
-  block:
-    - name: Deploy a file to dx namespace
-      include_tasks: deployFileToDxNamespace.yml
-      vars:
-        fileToDeploy: "{{ item }}"
-      loop:
-        - "{{ dxServiceAccountFile }}"
-        - "{{ dxRoleFile }}"
-        - "{{ dxRoleBindingFile }}"
-      loop_control:
-        pause: 3
-##
-## Create cluster role
-- name: Apply cluster-role.yaml
-  k8s:
-    api_key: "{{ apiKey }}"
-    state: present
-    src: "{{ dxClusterRoleFile }}"
-
 ##
 ## Create the cluster-role-binding
 - name: Create cluster-role-binding
@@ -117,8 +47,9 @@
         regexp: "^(.*)NAMESPACE_NAME(.*)$"
         replace: '\1{{ dxNameSpace }}\2'
 
-    - name: Create the namespace from yaml file
+    - name: Create the cluster-role-binding from yaml file
       k8s:
+        host: "{{ apiHost }}"
         api_key: "{{ apiKey }}"
         state: present
         src: "{{ dxClusterRoleBindingFile }}"
@@ -128,26 +59,95 @@
       debug:
         msg:
           - "{{ dxClusterRoleBindingFile }} deployed ..."
+##### ##
+##### ## Replace placeholders in dxdeployment_cr.yaml
+##### - name: Prepare dxdeployment_cr
+#####   block:
+#####     - name: Copy the git.cwp.pnp-hcl.com_v1_dxdeployment_cr.yaml template
+#####       copy:
+#####         src: "{{ dxDeploymentSrcFile }}"
+#####         dest: "{{ dxDeploymentFile }}"
+#####
+#####     - name: Add additional configuration to git_v1_dxdeployment_cr_$NAMESPACE.yaml file
+#####       blockinfile:
+#####         path: "{{ dxDeploymentFile }}"
+#####         block: "{{ lookup('file', dxDeploymentDataToAppendFile) }}"
+#####         insertafter: EOF
+#####
+#####     - name: Replace placeholders in git_v1_dxdeployment_cr_dxNameSpace.yaml
+#####       replace:
+#####         path: "{{ dxDeploymentFile }}"
+#####         regexp: "{{ item.regexp }}"
+#####         replace: "{{ item.replace }}"
+#####       loop: "{{ text_to_replace_for_hcl_deployment }}"
+#####
+#####   always:
+#####     - name: Finial message for setup dxdeployment_cr.yaml
+#####       debug:
+#####         msg:
+#####           - "Namespace {{ dxNameSpace }} created ..."
+#####
+
 ##
-## Deploy the DX operator file
-- name: Deploy DX operator file
-  k8s:
-    api_key: "{{ apiKey }}"
-    state: present
-    namespace: "{{ dxNameSpace }}"
-    src: "{{ dxOperatorFile }}"
-##
-## Give OSCP some time to process operator
-- name: Wait for dx Operator
-  pause:
-    seconds: "{{ dxWaitSecondsAfterCrdDeployment }}"
-##
-## Deploy DX CR definition to dx namespace
-- name: Deploy DX CR definition to dx namespace
-  include_tasks: deployFileToDxNamespace.yml
-  vars:
-    fileToDeploy: "{{ item }}"
-  loop:
-    - "{{ dxDeploymentFile }}"
-  loop_control:
-    pause: 3
+## Deploy DX using dxctl
+- name: Deploy DX using dxctl
+  block:
+    ##
+    ## Create a temp file to template variables
+    - name: Create temporary file to merge variables into properties files
+      tempfile:
+        state: file
+        suffix: temp
+      register: tmpPropsFiles_1
+    ##
+    ## Resolve the Ansible variables
+    - name: Resolve variables in template properties file file
+      template:
+        src: "{{ dxCtlPropertiesTemplateFile }}"
+        dest: "{{ tmpPropsFiles_1.path }}"
+
+    - name: Replace placeholders in properties file
+      replace:
+        path: "{{ tmpPropsFiles_1.path }}"
+        regexp: "{{ item.regexp }}"
+        replace: "{{ item.replace }}"
+      loop: "{{ text_to_replace_for_hcl_deployment }}"
+
+    - name: Debug properties file content
+      debug:
+        msg: "{{ lookup('file', tmpPropsFiles_1.path) }}"
+
+    - name: Deploy DX using file {{ tmpPropsFiles_1.path }}
+      command: "{{ dxScriptsDir }}/dxctl/linux/dxctl {{ dxDeployCommandAction }} -p {{ tmpPropsFiles_1.path }}"
+      register: dxDeployResult
+      when: ansible_system == "Linux"
+
+    - name: Debug dxctl stdout
+      debug:
+        msg: "{{ dxDeployResult.stdout_lines }}"
+
+    - name: Unsupported OS to deploy DX using file {{ tmpPropsFiles_1.path }}
+      command: /usr/bin/false
+      when: ansible_system != "Linux"
+##### ## Deploy the DX operator file
+##### - name: Deploy DX operator file
+#####   k8s:
+#####     api_key: "{{ apiKey }}"
+#####     state: present
+#####     namespace: "{{ dxNameSpace }}"
+#####     src: "{{ dxOperatorFile }}"
+##### ##
+##### ## Give OSCP some time to process operator
+##### - name: Wait for dx Operator
+#####   pause:
+#####     seconds: "{{ dxWaitSecondsAfterCrdDeployment }}"
+##### ##
+##### ## Deploy DX CR definition to dx namespace
+##### - name: Deploy DX CR definition to dx namespace
+#####   include_tasks: deployFileToDxNamespace.yml
+#####   vars:
+#####     fileToDeploy: "{{ item }}"
+#####   loop:
+#####     - "{{ dxDeploymentFile }}"
+#####   loop_control:
+#####     pause: 3

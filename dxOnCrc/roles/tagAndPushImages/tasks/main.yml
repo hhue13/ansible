@@ -4,6 +4,7 @@
 ## Get the default route for the image registry
 - name: Get default route for image registry
   k8s_info:
+    host: "{{ apiHost }}"
     api_version: route.openshift.io/v1
     kind: Route
     name: default-route
@@ -23,6 +24,7 @@
 ## Login to the cluster for as non-kubeadmin as the image registry does not accept kubeadmin user
 - name: Login to cluster as admin
   k8s_auth:
+    host: "{{ apiHost }}"
     username: "{{ oscpUserName }}"
     password: "{{ oscpPassword }}"
   register: k8s_admin_results
@@ -46,12 +48,11 @@
   vars:
     oscpDefaultRouteHostName: "{{ oscpDefaultRouteData.resources[0].spec.host }}"
     oscpApiKey: "{{ k8s_admin_results.k8s_auth.api_key }}"
+    oscpApiHost: "{{ apiHost }}"
   loop: "{{ dxImages }}"
 
 ##
 ## Logout of the user registry pod
-##
-##  Login to the image registry
 - name: Logout to the OSCP image registry
   shell: "{{ dockerCliCommand }} logout {{ oscpDefaultRouteData.resources[0].spec.host }}"
   register: podmanLogout
@@ -67,6 +68,7 @@
 ##
 - name: If login succeeded, try to log out (revoke access token)
   k8s_auth:
+    host: "{{ apiHost }}"
     state: absent
     api_key: "{{ k8s_admin_results.k8s_auth.api_key }}"
   when: k8s_admin_results.k8s_auth.api_key is defined

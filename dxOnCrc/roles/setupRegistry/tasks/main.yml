@@ -7,7 +7,31 @@
     state: file
     suffix: temp
   register: RegistryStgTempfile_1
-
+##
+## Check if the storage class exists (can't update reclaimPolicy)
+- name: Check if storage class {{ imageRegistryStorageClass }} exists
+  k8s_info:
+    host: "{{ apiHost }}"
+    api_key: "{{ apiKey }}"
+    api_version: storage.k8s.io/v1
+    kind: StorageClass
+    name: "{{ imageRegistryStorageClass }}"
+  register: imageRegistryStorage
+##
+## Create the storage class for the image registry volume
+- name: Create storage class for image registry
+  k8s:
+    host: "{{ apiHost }}"
+    api_key: "{{ apiKey }}"
+    state: present
+    definition:
+      kind: StorageClass
+      api_version: storage.k8s.io/v1
+      name: "{{ imageRegistryStorageClass }}"
+      provisioner: kubernetes.io/no-provisioner
+      reclaimPolicy: Retain
+      volumeBindingMode: WaitForFirstConsumer
+  when: (imageRegistryStorage is not defined)
 ##
 ## Prepare yaml file for image registry PV file to allow templating
 - name: Prepare PV for image registry template
@@ -17,6 +41,7 @@
 
 - name: Create PV for image registry
   k8s:
+    host: "{{ apiHost }}"
     api_key: "{{ apiKey }}"
     state: present
     namespace: openshift-image-registry
@@ -31,6 +56,7 @@
 ## Create PVC for image registry
 - name: Create PVC for image registry
   k8s:
+    host: "{{ apiHost }}"
     api_key: "{{ apiKey }}"
     state: present
     namespace: openshift-image-registry
@@ -40,6 +66,7 @@
 ## Equivalent to: oc patch configs.imageregistry.operator.openshift.io cluster --type merge --patch '{"spec":{"storage": {"pvc":{"claim": "image-registry-storage"}}}}'
 - name: Update the operator to use the custome image-registry-claim
   k8s:
+    host: "{{ apiHost }}"
     api_key: "{{ apiKey }}"
     state: present
     kind: Config
@@ -55,6 +82,7 @@
 ## Delete the default PVC for the image registry
 - name: Delete the default PVC (crc-image-registry-storage) for the image registry
   k8s:
+    host: "{{ apiHost }}"
     api_key: "{{ apiKey }}"
     state: absent
     kind: PersistentVolumeClaim
@@ -68,6 +96,7 @@
     ## Create Prometheus scraper for the image registry
     - name: Image registry prometheus scraper
       k8s:
+        host: "{{ apiHost }}"
         api_key: "{{ apiKey }}"
         state: present
         src: "{{ imageRegistryPrometheusScraperFile }}"
@@ -88,6 +117,7 @@
     ## Create cluster role binding to user from LDAP
     - name: Grant admin user from ldap get access to the prometheus scraper
       k8s:
+        host: "{{ apiHost }}"
         api_key: "{{ apiKey }}"
         state: present
         src: tempfile_1
