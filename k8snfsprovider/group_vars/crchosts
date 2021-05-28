@@ -1,5 +1,9 @@
 ---
 nodeType: crchosts
+##
+## OSCP Authenticaton data
+oscpKubeAdminUserName: kubeadmin
+oscpKubeAdminPassword: 2MNfd-zc3j2-7Bkn7-MbTGf
 #
 # User / password from the user registry. This is needed as OSCP user
 # registry does not accept kubeadmin user
@@ -21,10 +25,6 @@ oscpAppsApiName: "apps-{{ oscpClusterName }}"
 ##
 ## Docker CLI command (docker | podman)
 dockerCliCommand: podman
-##
-## OSCP Authenticaton data
-oscpKubeAdminUserName: kubeadmin
-oscpKubeAdminPassword: SVv3E-q6qNU-4ejGc-c9G2s
 ##
 ## Namespace for nfsprovisioner
 storage_nfs_target_namespace: openshift-nfs-provisioner

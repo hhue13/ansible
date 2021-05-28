@@ -4,33 +4,22 @@
 ## All credits goes the the RedHat-EMEA-SSA-Team
 #########################################################################
 ---
-- name: Setup DX
+- name: Setup NFS provisioner
   hosts: crchosts
   become: yes
   become_user: "{{ oscpOsUser }}"
-  gather_facts: false
+  gather_facts: true
   module_defaults:
     group/k8s:
-      host: "{{ oscpHostApiUrl }}"
       validate_certs: false
   #########################
   ## Tasks of the play-book
   #########################
   tasks:
     ##
-    ## Login
-    - name: Log in (obtain access token)
-      k8s_auth:
-        state: present
-        username: "{{ oscpKubeAdminUserName }}"
-        password: "{{ oscpKubeAdminPassword }}"
-      register: k8s_auth_results
-      tags:
-        - always
-    ##
-    ## Store the auth result in a fact variable
-    - set_fact:
-        kube_auth_results: "{{ k8s_auth_results }}"
+    ## Set login facts
+    - name: Set K8S login facts
+      include_tasks: k8slogin.yaml
       tags:
         - always
     ##
@@ -39,18 +28,32 @@
       block:
         - name: Create Namespace for nfs-provisioner
           k8s:
+            host: "{{ k8s_host }}"
             state: present
-            api_key: "{{ kube_auth_results.k8s_auth.api_key }}"
+            api_key: "{{ kube_api_key }}"
             definition:
               kind: Namespace
               apiVersion: v1
               metadata:
                 name: "{{ storage_nfs_target_namespace }}"
 
+        - name: Create ServiceAccount
+          k8s:
+            host: "{{ k8s_host }}"
+            state: present
+            api_key: "{{ kube_api_key }}"
+            definition:
+              apiVersion: v1
+              kind: ServiceAccount
+              metadata:
+                name: nfs-client-provisioner
+                namespace: "{{ storage_nfs_target_namespace }}"
+
         - name: Create ClusteRole nfs-client-provisioner-runner
           k8s:
+            host: "{{ k8s_host }}"
             state: present
-            api_key: "{{ kube_auth_results.k8s_auth.api_key }}"
+            api_key: "{{ kube_api_key }}"
             definition:
               kind: ClusterRole
               apiVersion: rbac.authorization.k8s.io/v1
@@ -72,8 +75,9 @@
 
         - name: Create ClusterRoleBinding nfs-client-provisioner-runner <-> nfs-client-provisioner
           k8s:
+            host: "{{ k8s_host }}"
             state: present
-            api_key: "{{ kube_auth_results.k8s_auth.api_key }}"
+            api_key: "{{ kube_api_key }}"
             definition:
               kind: ClusterRoleBinding
               apiVersion: rbac.authorization.k8s.io/v1
@@ -90,8 +94,9 @@
 
         - name: Create Role nfs-client-provisioner
           k8s:
+            host: "{{ k8s_host }}"
             state: present
-            api_key: "{{ kube_auth_results.k8s_auth.api_key }}"
+            api_key: "{{ kube_api_key }}"
             definition:
               kind: Role
               apiVersion: rbac.authorization.k8s.io/v1
@@ -109,8 +114,9 @@
 
         - name: Create RoleBinding nfs-client-provisioner <-> nfs-client-provisioner
           k8s:
+            host: "{{ k8s_host }}"
             state: present
-            api_key: "{{ kube_auth_results.k8s_auth.api_key }}"
+            api_key: "{{ kube_api_key }}"
             definition:
               kind: RoleBinding
               apiVersion: rbac.authorization.k8s.io/v1
@@ -127,8 +133,9 @@
 
         - name: Deploy nfs-provisioner
           k8s:
+            host: "{{ k8s_host }}"
             state: present
-            api_key: "{{ kube_auth_results.k8s_auth.api_key }}"
+            api_key: "{{ kube_api_key }}"
             definition:
               kind: Deployment
               apiVersion: apps/v1
@@ -167,10 +174,11 @@
                           server: "{{ storage_nfs_host_name_address }}"
                           path: "{{ storage_nfs_exported_dir }}"
 
-        - name: Create Storage Class
+        - name: Create Storage Class managed-nfs-storage
           k8s:
+            host: "{{ k8s_host }}"
             state: present
-            api_key: "{{ kube_auth_results.k8s_auth.api_key }}"
+            api_key: "{{ kube_api_key }}"
             definition:
               apiVersion: storage.k8s.io/v1
               kind: StorageClass
@@ -179,6 +187,23 @@
                 annotations:
                   storageclass.kubernetes.io/is-default-class: "true"
               provisioner: redhat-emea-ssa-team/hetzner-ocp4
+              parameters:
+                archiveOnDelete: "false"
+
+        - name: Create Storage Class managed-nfs-storage-retain
+          k8s:
+            host: "{{ k8s_host }}"
+            state: present
+            api_key: "{{ kube_api_key }}"
+            definition:
+              apiVersion: storage.k8s.io/v1
+              kind: StorageClass
+              metadata:
+                name: managed-nfs-storage-retain
+                annotations:
+                  storageclass.kubernetes.io/is-default-class: "false"
+              provisioner: redhat-emea-ssa-team/hetzner-ocp4
+              reclaimPolicy: Retain
               parameters:
                 archiveOnDelete: "false"
       tags:
@@ -192,8 +217,9 @@
         ## First we remove the namespace which should cleanup most of the objects
         - name: Remove Namespace for nfs-provisioner
           k8s:
+            host: "{{ k8s_host }}"
             state: absent
-            api_key: "{{ kube_auth_results.k8s_auth.api_key }}"
+            api_key: "{{ kube_api_key }}"
             definition:
               kind: Namespace
               apiVersion: v1
@@ -201,10 +227,22 @@
                 name: "{{ storage_nfs_target_namespace }}"
         ##
         ## Then we remove the non-namespace related objects
-        - name: Remove Storage Class
+        - name: Remove Storage Class managed-nfs-storage-retain
           k8s:
+            host: "{{ k8s_host }}"
             state: absent
-            api_key: "{{ kube_auth_results.k8s_auth.api_key }}"
+            api_key: "{{ kube_api_key }}"
+            definition:
+              kind: StorageClass
+              apiVersion: storage.k8s.io/v1
+              metadata:
+                name: managed-nfs-storage-retain
+
+        - name: Remove Storage Class managed-nfs-storage
+          k8s:
+            host: "{{ k8s_host }}"
+            state: absent
+            api_key: "{{ kube_api_key }}"
             definition:
               kind: StorageClass
               apiVersion: storage.k8s.io/v1
@@ -213,8 +251,9 @@
 
         - name: Remove ClusterRoleBinding nfs-client-provisioner-runner <-> nfs-client-provisioner
           k8s:
+            host: "{{ k8s_host }}"
             state: absent
-            api_key: "{{ kube_auth_results.k8s_auth.api_key }}"
+            api_key: "{{ kube_api_key }}"
             definition:
               kind: ClusterRoleBinding
               apiVersion: rbac.authorization.k8s.io/v1
@@ -223,8 +262,9 @@
 
         - name: Remove ClusteRole nfs-client-provisioner-runner
           k8s:
+            host: "{{ k8s_host }}"
             state: absent
-            api_key: "{{ kube_auth_results.k8s_auth.api_key }}"
+            api_key: "{{ kube_api_key }}"
             definition:
               kind: ClusterRole
               apiVersion: rbac.authorization.k8s.io/v1
@@ -240,18 +280,12 @@
         ## Logout again
         - name: Log-out of k8s
           k8s_auth:
+            host: "{{ k8s_host }}"
             state: absent
-            api_key: "{{ kube_auth_results.k8s_auth.api_key }}"
+            api_key: "{{ kube_api_key }}"
     ##
     ## Debug k8s credentials
     - name: Debug
       debug:
         msg:
-          - "K8S credentials ..."
-          - "kube_auth_results.api_key: {{ kube_auth_results.k8s_auth.api_key }}"
-          - "kube_auth_results.ca_cert: {{ kube_auth_results.k8s_auth.ca_cert }}"
-          - "kube_auth_results.host: {{ kube_auth_results.k8s_auth.host }}"
-          - "kube_auth_results.username: {{ kube_auth_results.k8s_auth.username }}"
-          - "kube_auth_results.validate_certs: {{ kube_auth_results.k8s_auth.validate_certs }}"
-      tags:
-        - never
+          - "Logged out of K8S again ..."
