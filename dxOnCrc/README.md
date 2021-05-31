@@ -29,6 +29,7 @@ You need to customize the variables in the following files:
 
 - globalVars
 - group_vars/crchosts
+- ansible-files/inventory
 
 ## Running the playbook
 
@@ -68,6 +69,11 @@ How I setup my CRC using the playbook:
 - ansible-playbook --tags tagAndPushImages -e @globalVars  setupDxOnCrc.yaml
 - ansible-playbook --tags resourceOverride -e @globalVars  setupDxOnCrc.yaml
 - ansible-playbook --tags dxHclDeployment -e @globalVars  setupDxOnCrc.yaml
+
+In an environment where OpenShift is prepared (i.e. LDAP & registry is configured) and you just want to add DX you need to run:
+- ansible-playbook --tags tagAndPushImages -e @globalVars  setupDxOnCrc.yaml
+- ansible-playbook --tags dxHclDeployment -e @globalVars  setupDxOnCrc.yaml
+
 
 **Note:** Sometimes I got failures due to timing issues. Just retrying the tag fixed that in my cases (and don't have time at the moment to investigate furtjer).
 
