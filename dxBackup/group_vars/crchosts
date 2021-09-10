@@ -1,0 +1,31 @@
+---
+##
+## OSCP Authenticaton data
+oscpKubeAdminUserName: hhue
+oscpKubeAdminPassword: sha256~XG7EyJDjXIc2H-PKv9nraRqIfTvfoL2r9FXNF6m6HbQ
+##
+## User / password from the user registry. This is needed as OSCP user
+## registry does not accept kubeadmin user
+oscpUserName:
+oscpPassword:
+##
+## OSCP installation details
+oscpDomain: cloud.2i.at
+oscpClusterName: ocp00
+##
+## Namespace
+oscpNameSpace: dxd
+##
+## Docker CLI command (docker | podman)
+dockerCliCommand: podman
+##
+## Databases to backup !!
+backupDatabases:
+  - name: "dxmediadb"
+  - name: "dx_user"
+##
+## POD to be backed up
+persistencePodName: dx-native-persistence-rw-0
+##
+## Target directory for backups
+targetDirectoryForBackupFiles: /dev/shm

@@ -7,7 +7,7 @@
   tags:
     - always
 ##
-## Checking for env variable K8S_API_TOKEN
+## Checking for env variable K8S_HOST_URL
 - name: Checking for env variable K8S_HOST_URL
   set_fact:
     k8s_host: "{{ lookup('env', 'K8S_HOST_URL') }}"
@@ -47,7 +47,7 @@
     - always
 ##
 ## If no K8S_PASSWORD is set we use the var oscpKubeAdminPassword
-- name: User is taken from variable oscpKubeAdminPassword
+- name: Password is taken from variable oscpKubeAdminPassword
   set_fact:
     k8s_password: "{{ oscpKubeAdminPassword }}"
   when: (( k8s_password is not defined) or

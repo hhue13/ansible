@@ -1,0 +1,85 @@
+---
+- name: Backup DB
+  hosts: crchosts
+  become: yes
+  become_user: "{{ oscpOsUser }}"
+  gather_facts: true
+  module_defaults:
+    group/k8s:
+      validate_certs: false
+  #########################
+  ## Tasks of the play-book
+  #########################
+  tasks:
+    ##
+    ## Set login facts
+    - name: Set K8S login facts
+      include_tasks: k8slogin.yaml
+      tags:
+        - always
+    ##
+    ## Retrieving the current timestamp
+    - name: Retrieving the current timestamp
+      set_fact:
+        backup_timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
+      tags:
+        - always
+    ##
+    ## Checking for env variable K8S_NAMESPACE
+    - name: Set backup timestamp
+      set_fact:
+        k8s_ns: "{{ lookup('env', 'K8S_NAMESPACE') }}"
+      tags:
+        - always
+    ##
+    ## Get the namespace from the variables file of no ENV variable set
+    - name: Get backup namespace
+      set_fact:
+        k8s_ns: "{{ oscpNameSpace }}"
+      when: (( k8s_ns is not defined) or
+        (k8s_ns == ''))
+      tags:
+        - always
+    ##
+    ## Dump API Key
+    - name: Dump API Key in MAIN
+      debug:
+        msg:
+          - "API Key is {{ kube_api_key  }}"
+      tags:
+        - never
+    ##
+    ## Run backup command on POD
+    - name: Create postgress backup file
+      community.kubernetes.k8s_exec:
+        namespace: "{{ k8s_ns }}"
+        host: "{{ k8s_host }}"
+        api_key: "{{ kube_api_key }}"
+        command: "pg_dump -d {{ item['name'] }} -f /tmp/{{ item['name'] }}_{{ backup_timestamp }}.dmp"
+        pod: "{{ persistencePodName }}"
+        validate_certs: "no"
+      loop: "{{ backupDatabases }}"
+    ##
+    ## Compress backups on POD
+    - name: Compress postgress backup file
+      community.kubernetes.k8s_exec:
+        namespace: "{{ k8s_ns }}"
+        host: "{{ k8s_host }}"
+        api_key: "{{ kube_api_key }}"
+        command: "gzip -9 /tmp/{{ item['name'] }}_{{ backup_timestamp }}.dmp"
+        pod: "{{ persistencePodName }}"
+        validate_certs: "no"
+      loop: "{{ backupDatabases }}"
+    ##
+    ## Copy backup files to local directory
+    - name: Copy backup files to local directory
+      command: "/usr/local/bin/oc -n {{ k8s_ns }} cp {{ persistencePodName }}:/tmp/{{ item['name'] }}_{{ backup_timestamp }}.dmp.gz {{ targetDirectoryForBackupFiles }}/{{ item['name'] }}_{{ backup_timestamp }}.dmp.gz"
+      loop: "{{ backupDatabases }}"
+    ##
+    ##
+    - name: If login succeeded, try to log out (revoke access token)
+      k8s_auth:
+        host: "{{ k8s_host }}"
+        state: absent
+        api_key: "{{ kube_api_key }}"
+      when: kube_api_key is defined
