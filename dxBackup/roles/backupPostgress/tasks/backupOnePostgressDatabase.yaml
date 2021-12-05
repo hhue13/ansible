@@ -1,0 +1,27 @@
+---
+- name: Create postgress backup file for database {{ backupFileDict['name'] }}
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "pg_dump -d {{ backupFileDict['name'] }} -f /tmp/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.dmp"
+    pod: "{{ rolePersistentPodName }}"
+    validate_certs: "no"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+##
+## Compress backups on POD
+- name: Compress postgress backup file {{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.dmp
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "gzip -9 /tmp/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.dmp"
+    pod: "{{ rolePersistentPodName }}"
+    validate_certs: "no"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always

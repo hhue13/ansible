@@ -1,0 +1,139 @@
+---
+##
+## Set the database connection limit to 0
+- name: Set the database connection limit to 0
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: 'psql -c "ALTER DATABASE {{ backupFileDict[''name''] }} CONNECTION LIMIT 0;"'
+    pod: "{{ rolePersistentPodName }}"
+    validate_certs: "no"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+##
+## Terminate all the existing connections to the database
+- name: Terminate all the existing connections to the database
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: 'psql -c "SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = ''{{ backupFileDict[''name''] }}'' AND pid <> pg_backend_pid();"'
+    pod: "{{ rolePersistentPodName }}"
+    validate_certs: "no"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+##
+##
+- name: Wait some seconds to allow connections to terminate
+  pause:
+    seconds: 10
+  tags:
+    - always
+##
+## dropdb dxmediadb
+- name: dropdb {{ backupFileDict['name'] }}
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "dropdb {{ backupFileDict['name'] }}"
+    pod: "{{ rolePersistentPodName }}"
+    validate_certs: "no"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+##
+## Create the database
+- name: Create database {{ backupFileDict['name'] }}
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "createdb -O {{ backupFileDict['dbrole'] }} {{ backupFileDict['name'] }}"
+    pod: "{{ rolePersistentPodName }}"
+    validate_certs: "no"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+##
+## Remove .gz extension
+- name: Create uncompressed dump files name
+  ansible.builtin.shell: "echo /tmp/{{ backupFileDict['backupFile'] }} | sed s#\\.gz##g"
+  register: cmdResult
+##
+## Delete unzipped backup file if it exists
+- name: Delete file {{ cmdResult.stdout }} in case it exists
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "rm -f {{ cmdResult.stdout }}"
+    pod: "{{ rolePersistentPodName }}"
+    validate_certs: "no"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+##
+## Unzip the file to restore
+- name: Unzip backup file /tmp/{{ backupFileDict['backupFile'] }} to {{ cmdResult.stdout }}
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "gunzip -d {{ cmdResult.stdout }}.gz"
+    pod: "{{ rolePersistentPodName }}"
+    validate_certs: "no"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+##
+## List temp directory
+- name: List content of /tmp
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "ls -altr /tmp"
+    pod: "{{ rolePersistentPodName }}"
+    validate_certs: "no"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+##
+## Restore the database
+- name: Restore database {{ backupFileDict['name'] }}
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: 'bash -c "psql {{ backupFileDict[''name''] }} < {{ cmdResult.stdout }}"'
+    pod: "{{ rolePersistentPodName }}"
+    validate_certs: "no"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+##
+## Set the connection limt for the database
+- name: Set the connection limt for the database {{ backupFileDict['name'] }}
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: 'psql -c "ALTER DATABASE {{ backupFileDict[''name''] }} CONNECTION LIMIT {{ backupFileDict[''connLimitToSet''] }};"'
+    pod: "{{ rolePersistentPodName }}"
+    validate_certs: "no"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always

@@ -3,6 +3,7 @@
 ## Create storage object
 - name: Create OSCP objects in DX namespace
   k8s:
+    host: "{{ apiHost }}"
     api_key: "{{ apiKey }}"
     state: present
     namespace: "{{ dxNameSpace }}"

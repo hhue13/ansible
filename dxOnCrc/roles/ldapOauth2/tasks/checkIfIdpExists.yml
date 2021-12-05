@@ -1,0 +1,13 @@
+---
+##
+## Check if IDP exists
+- name: Check if IDP {{ newIdpName }} exists
+  ##
+  ## sets idpExists = true if IDP with name is found
+  include_tasks: checkIfIdpNameExists.yml
+  vars:
+    idp: "{{ item.name }}"
+    idpName: "{{ newIdpName }}"
+  with_items:
+    - "{{ idps }}"
+  when: (idpExists != true)

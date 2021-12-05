@@ -1,0 +1,34 @@
+---
+nodeType: crchosts
+##
+## OSCP Authenticaton data
+oscpKubeAdminUserName: kubeadmin
+oscpKubeAdminPassword: 2MNfd-zc3j2-7Bkn7-MbTGf
+#
+# User / password from the user registry. This is needed as OSCP user
+# registry does not accept kubeadmin user
+oscpUserName: ocpadmin
+oscpPassword: start123.
+##
+## OSCP installation details
+oscpDomain: testing
+oscpClusterName: crc
+#
+# Crc
+oscpAppsApiName: "apps-{{ oscpClusterName }}"
+#
+# native OSCP
+# oscpAppsApiName: "apps.{{ oscpClusterName }}"
+## Needs to be provided as global var
+##### crcHostApiUrl: https://api.crc.testing:6443
+
+##
+## Docker CLI command (docker | podman)
+dockerCliCommand: podman
+##
+## Namespace for nfsprovisioner
+storage_nfs_target_namespace: openshift-nfs-provisioner
+##
+## Name / IP address of the NFS Server
+storage_nfs_host_name_address: "192.168.130.32"
+storage_nfs_exported_dir: "/nfs01"

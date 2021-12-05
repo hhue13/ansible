@@ -1,0 +1,248 @@
+---
+#####################################################
+## Requires the following collections
+## ansible-galaxy collection install community.okd
+## ansible-galaxy collection install kubernetes.core
+#####################################################
+- name: Backup HCL DX DAM Data
+  hosts: crchosts
+  become: yes
+  become_user: "{{ oscpOsUser }}"
+  gather_facts: true
+  force_handlers: true
+  module_defaults:
+    kubernetes.core.k8s:
+      validate_certs: "no"
+    community.okd:
+      validate_certs: "no"
+  #########################
+  ## Tasks of the play-book
+  #########################
+  tasks:
+    ##
+    ## Set login facts
+    - name: Set K8S login facts
+      include_tasks: k8slogin.yaml
+      tags:
+        - always
+    ##
+    ## Retrieving the current timestamp
+    - name: Retrieving the current timestamp
+      ansible.builtin.set_fact:
+        backup_timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
+      tags:
+        - always
+    ##
+    ## Checking for env variable K8S_NAMESPACE
+    - name: Checking for env variable K8S_NAMESPACE
+      ansible.builtin.set_fact:
+        k8s_ns: "{{ lookup('env', 'K8S_NAMESPACE') }}"
+      tags:
+        - always
+    ##
+    ## Get the namespace from the variables file of no ENV variable set
+    - name: Get backup namespace
+      ansible.builtin.set_fact:
+        k8s_ns: "{{ oscpDamNameSpace }}"
+      when: (( k8s_ns is not defined) or
+        (k8s_ns == ''))
+      tags:
+        - always
+    ##
+    ## Dump API Key
+    - name: Dump API Key in MAIN
+      ansible.builtin.debug:
+        msg:
+          - "API Key is {{ kube_api_key  }}"
+      tags:
+        - never
+    ##
+    ## Run oc login using the api key
+    - name: Login to the oc client using the API key
+      ansible.builtin.command: "{{ oscpClientBin | default('/usr/local/bin/oc')  }} login --token={{ kube_api_key }} --server={{ k8s_host }}"
+      register: cmdResult
+      failed_when: (cmdResult.rc != 0)
+      tags:
+        - always
+    ########################################################################################
+    ### Restore of DAM Data - part #1
+    ########################################################################################
+    - name: Verify that the DAM files to restore exist
+      ansible.builtin.include_tasks: checkFilesExistence.yaml
+      vars:
+        fileToCheck: "{{ item }}"
+      loop: "{{ restoreDirectories }}"
+      tags:
+        - restore
+    - name: Verify that the Postgress files to restore exist
+      ansible.builtin.include_tasks: checkFilesExistence.yaml
+      vars:
+        fileToCheck: "{{ item }}"
+      loop: "{{ restoreDatabases }}"
+      tags:
+        - restore
+    ##
+    ## Retrieve the current STS definition
+    - name: Retrieve the current STS definition for sts {{ persistenceStsName }}
+      kubernetes.core.k8s_info:
+        host: "{{ k8s_host }}"
+        api_key: "{{ kube_api_key }}"
+        namespace: "{{ k8s_ns }}"
+        api_version: "apps/v1"
+        kind: "StatefulSet"
+        name: "{{ persistenceStsName }}"
+        validate_certs: "no"
+      register: currentStsData
+      tags:
+        - always
+    ##
+    ## Debug the number of replicas
+    - name: Debug the number of replicas for sts {{ persistenceStsName }}
+      ansible.builtin.debug:
+        msg:
+          - "Current number of replicas of {{ item.kind }}/{{ item.metadata.name }} is: {{ item.spec.replicas }}"
+      loop: "{{ currentStsData.resources }}"
+      tags:
+        - always
+    ##
+    ## Need to scale down the StatefulSet to 1
+    - name: Update Replicas to 1 as per https://help.hcltechsw.com/digital-experience/9.5/digital_asset_mgmt/helm_dam_backup_restore_image.html
+      kubernetes.core.k8s:
+        host: "{{ k8s_host }}"
+        api_key: "{{ kube_api_key }}"
+        namespace: "{{ k8s_ns }}"
+        state: present
+        api_version: "{{ item.apiVersion}}"
+        kind: "{{ item.kind}}"
+        name: "{{ item.metadata.name }}"
+        validate_certs: "no"
+        spec:
+          replicas: "1"
+      when: (item.spec.replicas != 1)
+      loop: "{{ currentStsData.resources }}"
+      tags:
+        - always
+    ##
+    ## Wait until the number of pods is down to 1
+    - name: Wait for the number of replicas being scaled down to 1
+      ansible.builtin.include_tasks: waitForAllStsToScaleDown.yaml
+      vars:
+        stsResourceItem: "{{ item }}"
+      when: (item.spec.replicas != 1)
+      loop: "{{ currentStsData.resources }}"
+      tags:
+        - always
+    ##
+    ## Test debug
+    - name: Test handler debug
+      ansible.builtin.shell: 'echo "Test-0: Current date is: $(date)" >> /dev/shm/hhue.txt'
+      tags:
+        - always
+    ########################################################################################
+    ### Backup of DAM Data
+    ########################################################################################
+    ##
+    - name: Backup DAM data
+      block:
+        ## Run the backup of the database pod
+        - name: Run role backupPostgress
+          ansible.builtin.include_role:
+            name: backupPostgress
+          vars:
+            roleKey: "{{ kube_api_key }}"
+            roleNs: "{{ k8s_ns }}"
+            roleHost: "{{ k8s_host }}"
+            roleDatabases: "{{ backupDatabases }}"
+            roleBackupTimestamp: "{{ backup_timestamp }}"
+            rolePersistentPodName: "{{ persistencePodName }}"
+            roleTargetDirectoryForBackupFiles: "{{ targetDirectoryForBackupFiles }}"
+        ##
+        ## Run the backup of the DAM pod
+        - name: Run role backupDam
+          ansible.builtin.include_role:
+            name: backupDam
+          vars:
+            roleKey: "{{ kube_api_key }}"
+            roleNs: "{{ k8s_ns }}"
+            roleHost: "{{ k8s_host }}"
+            roleDirectories: "{{ backupDirectories }}"
+            roleBackupTimestamp: "{{ backup_timestamp }}"
+            roleDamPodName: "{{ damPodName }}"
+            roleTargetDirectoryForBackupFiles: "{{ targetDirectoryForBackupFiles }}"
+      tags:
+        - backup
+    ########################################################################################
+    ### Restore of DAM Data - part #2
+    ########################################################################################
+    ##
+    ## Restore the DAM directories
+    - name: Restore DAM data
+      block:
+        - name: Restore DAM data
+          ansible.builtin.include_role:
+            name: restoreDam
+          vars:
+            roleKey: "{{ kube_api_key }}"
+            roleNs: "{{ k8s_ns }}"
+            roleHost: "{{ k8s_host }}"
+            roleDirectories: "{{ restoreDirectories }}"
+            roleDamPodName: "{{ damPodName }}"
+            roleTargetDirectoryForBackupFiles: "{{ targetDirectoryForBackupFiles }}"
+        ##
+        ## Restore Postgress database
+        - name: Restore Postgress data
+          ansible.builtin.include_role:
+            name: restorePostgress
+          vars:
+            roleKey: "{{ kube_api_key }}"
+            roleNs: "{{ k8s_ns }}"
+            roleHost: "{{ k8s_host }}"
+            roleDatabases: "{{ restoreDatabases }}"
+            rolePersistentPodName: "{{ persistencePodName }}"
+            roleTargetDirectoryForBackupFiles: "{{ targetDirectoryForBackupFiles }}"
+      tags:
+        - restore
+    ##
+    ## Scale up the StatefuleSet to the values before
+    - name: Update Replicas to the configured value(s)
+      kubernetes.core.k8s:
+        host: "{{ k8s_host }}"
+        api_key: "{{ kube_api_key }}"
+        namespace: "{{ k8s_ns }}"
+        state: present
+        api_version: "{{ item.apiVersion}}"
+        kind: "{{ item.kind}}"
+        name: "{{ item.metadata.name }}"
+        validate_certs: "no"
+        spec:
+          replicas: "{{ item.spec.replicas }}"
+      when: (item.spec.replicas != 1)
+      loop: "{{ currentStsData.resources }}"
+      tags:
+        - always
+    ##
+    ## Perform the oc logout
+    - name: Logout of the command line client
+      ansible.builtin.command: "{{ oscpClientBin | default('/usr/local/bin/oc')  }} login --token={{ kube_api_key }} --server={{ k8s_host }}"
+      when: ((oscpLogoutOfOc is defined) and
+        (oscpLogoutOfOc | bool))
+      tags:
+        - always
+    ##
+    ## Logout
+    - name: If login succeeded, try to log out (revoke access token)
+      community.okd.openshift_auth:
+        host: "{{ k8s_host }}"
+        state: absent
+        api_key: "{{ kube_api_key }}"
+        validate_certs: "no"
+      when: kube_api_key is defined
+      tags:
+        - always
+
+    ##
+    ## Test debug
+    - name: Test handler debug
+      ansible.builtin.shell: 'echo "Test-1: Current date is: $(date)" >> /dev/shm/hhue.txt'
+      tags:
+        - always

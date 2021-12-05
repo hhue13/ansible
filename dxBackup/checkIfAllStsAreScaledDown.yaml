@@ -1,0 +1,36 @@
+---
+##
+## Can't loop over a block ... need to include the tasks
+- name: Initialize fact to ensure that all resources are scaled down
+  set_fact:
+    allResourcesAreScaledDown: true
+  tags:
+    - always
+
+- name: Get current Stateful set definition for status check
+  kubernetes.core.k8s_info:
+    host: "{{ k8s_host }}"
+    api_key: "{{ kube_api_key }}"
+    namespace: "{{ k8s_ns }}"
+    api_version: "{{ stsResourceItem.apiVersion}}"
+    kind: "{{ stsResourceItem.kind}}"
+    name: "{{ stsResourceItem.metadata.name }}"
+    validate_certs: "no"
+  register: stsStatus
+  tags:
+    - always
+
+- name: Verify the status of each resource
+  set_fact:
+    allResourcesAreScaledDown: false
+  when: (item.status.currentReplicas != 1)
+  loop: "{{ stsStatus.resources }}"
+  tags:
+    - always
+
+- name: Sleep before retrying
+  pause:
+    seconds: 5
+  when: (allResourcesAreScaledDown == false)
+  tags:
+    - always

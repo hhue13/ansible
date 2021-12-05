@@ -32,7 +32,7 @@
 - name: Check status of OSCP environment
   shell: "{{ oscpStatusCommand }}"
   register: crcStatusResult
-  failed_when: crcStatusResult.rc != 0
+  #####   failed_when: crcStatusResult.rc != 0
   until: crcStatusResult.stdout | regex_search(oscpStatusCommandStdOutStringRegEx, multiline=True, ignorecase=True)
   retries: 4
   delay: 30

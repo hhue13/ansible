@@ -1,0 +1,33 @@
+---
+##
+## Copy DB backup files to the target pod
+- name: Copy DB backup files to target pod {{ rolePersistentPodName }}
+  ansible.builtin.include_tasks: copyOneBackupFileToPod.yaml
+  vars:
+    backupFileDict: "{{ item }}"
+  loop: "{{ roleDatabases }}"
+  tags:
+    - always##
+## Restore databases to target pod
+- name: Restore databases to target pod {{ rolePersistentPodName }}
+  ansible.builtin.include_tasks: restoreOneDatabase.yaml
+  vars:
+    backupFileDict: "{{ item }}"
+  loop: "{{ roleDatabases }}"
+  tags:
+    - always##
+## Delete the DAM pod
+- name: Delete DAM pod
+  ansible.builtin.command: "{{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ roleNs }} delete pod/{{ damPodName }}"
+  register: cmdResult
+  failed_when: (cmdResult.rc != 0)
+  tags:
+    - always
+##
+## Echo the backup file name
+- name: Echo the Postgress restored file names
+  ansible.builtin.debug:
+    msg: "Restored file: {{ item['backupFile'] }} to {{ item['name'] }}"
+  loop: "{{ roleDatabases }}"
+  tags:
+    - always

@@ -1,0 +1,14 @@
+---
+##
+## sets idpExists if IDP with the same name is found
+- name: Check IDP name
+  ##
+  ## sets idpExists = true if IDP with name is found
+  set_fact:
+    idpExists: true
+  when: (idp == idpName)
+##
+## Debug names and idpExists
+- name: "Debug names and idpExists"
+  debug:
+    msg: "\nidp: {{ idp }} ; idpName: {{ idpName }}; idpExists: {{ idpExists }}"
