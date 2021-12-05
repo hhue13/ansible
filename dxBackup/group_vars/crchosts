@@ -1,13 +1,9 @@
 ---
 ##
-## OSCP Authenticaton data
+## OSCP Authenticaton data used to login to K8S
+## ansible-vault encrypt_string --vault-id dev@~ansible_password '<plain-text-password>' --name 'oscpKubeAdminPassword'
 oscpKubeAdminUserName:
 oscpKubeAdminPassword:
-##
-## User / password from the user registry. This is needed as OSCP user
-## registry does not accept kubeadmin user
-oscpUserName:
-oscpPassword:
 ##
 ## OSCP installation details
 oscpDomain: cloud.2i.at
@@ -43,13 +39,13 @@ backupDirectories:
 ## Note: The 'backupFile' must be located in the director {{ targetDirectoryForBackupFiles }}
 restoreDirectories:
   - name: "/opt/app/upload"
-    backupFile: "damFiles_20211205T095738.tar.gz"
+    backupFile: "damFiles_20211205T200121.tar.gz"
 ##
 ## Database backup files to be restored
 ## Note: The 'backupFile' must be located in the director {{ targetDirectoryForBackupFiles }}
 restoreDatabases:
   - name: "dxmediadb"
-    backupFile: "dxmediadb_20211205T095738.dmp.gz"
+    backupFile: "dxmediadb_20211205T200121.dmp.gz"
     connLimitToSet: 500
     dbrole: "dxuser"
 ##
