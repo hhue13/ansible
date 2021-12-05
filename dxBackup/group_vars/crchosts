@@ -1,8 +1,8 @@
 ---
 ##
 ## OSCP Authenticaton data
-oscpKubeAdminUserName: hhue
-oscpKubeAdminPassword: sha256~XG7EyJDjXIc2H-PKv9nraRqIfTvfoL2r9FXNF6m6HbQ
+oscpKubeAdminUserName:
+oscpKubeAdminPassword:
 ##
 ## User / password from the user registry. This is needed as OSCP user
 ## registry does not accept kubeadmin user
@@ -13,19 +13,51 @@ oscpPassword:
 oscpDomain: cloud.2i.at
 oscpClusterName: ocp00
 ##
-## Namespace
-oscpNameSpace: dxd
+## Namespace and deployment name
+oscpDamNameSpace: "dxd"
+oscpDamDeployment: "dx-native"
 ##
 ## Docker CLI command (docker | podman)
-dockerCliCommand: podman
+dockerCliCommand: "podman"
+##
+## OpenShift client to be used
+oscpClientBin: "/usr/local/bin/oc"
+##
+## Logout of the OC command shell at the end?
+oscpLogoutOfOc: true
+##
+## Target directory for backups. This is also the locations for the files to restore!
+targetDirectoryForBackupFiles: "/2tmp/damBackup"
 ##
 ## Databases to backup !!
 backupDatabases:
   - name: "dxmediadb"
-  - name: "dx_user"
+    backupFile: "dxmediadb"
 ##
-## POD to be backed up
-persistencePodName: dx-native-persistence-rw-0
+## DAM Direcories to backup
+backupDirectories:
+  - name: "/opt/app/upload"
+    backupFile: "damFiles"
 ##
-## Target directory for backups
-targetDirectoryForBackupFiles: /dev/shm
+## Restore file(s) and directories.
+## Note: The 'backupFile' must be located in the director {{ targetDirectoryForBackupFiles }}
+restoreDirectories:
+  - name: "/opt/app/upload"
+    backupFile: "damFiles_20211205T095738.tar.gz"
+##
+## Database backup files to be restored
+## Note: The 'backupFile' must be located in the director {{ targetDirectoryForBackupFiles }}
+restoreDatabases:
+  - name: "dxmediadb"
+    backupFile: "dxmediadb_20211205T095738.dmp.gz"
+    connLimitToSet: 500
+    dbrole: "dxuser"
+##
+## Database pod to be backed up
+persistencePodName: "{{ oscpDamDeployment }}-persistence-rw-0"
+persistenceStsName: "{{ oscpDamDeployment }}-persistence-rw"
+##
+## DAM pod name to be backed up
+##
+## D A M
+damPodName: "{{ oscpDamDeployment }}-digital-asset-management-0"

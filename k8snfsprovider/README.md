@@ -1,5 +1,13 @@
 # Ansible play-book to deploy K8S NFS storage provisioner
 
+**N O T E**
+
+> This is meanwhiel **outdated** !!
+
+> Please use the helm chart based deployment of the [nfs-subdir-external-provisioner](https://github.com/kubernetes-sigs/nfs-subdir-external-provisionernfs-subdir-external-provisioner) instead.
+
+**N O T E**
+
 **NOTE:** Everything here is provided on an as-is basis! Use it at your own risk! No support, liability  or any other responsibility granted.
 
 This Ansible play-book can be used to install / uninstall the K8S NFS storage provider on OpenShift deployments.
@@ -18,7 +26,6 @@ To run the ansible play-book to install the NFS provisioner perform the followin
 
 - `cd <path>/k8snfsprovider`
 - `ansible-playbook -e @globalVars k8snfsprovider.yaml --tags "install"`
-
 
 ## Remove the K8S NFS storage provisioner
 

@@ -1,0 +1,28 @@
+---
+## Run tar command for directories on POD
+- name: Extract directory backup file {{ backupFileDict['backupFile'] }} to {{ backupFileDict['name'] }}
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "tar -mpxf /tmp/{{ backupFileDict['backupFile'] }} --directory {{ backupFileDict['name'] }}"
+    pod: "{{ roleDamPodName }}"
+    validate_certs: "no"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+##
+## Remove the backup file from the pod
+- name: Remove directory backup file {{ backupFileDict['backupFile'] }}
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "rm -rf /tmp/{{ backupFileDict['backupFile'] }}"
+    pod: "{{ roleDamPodName }}"
+    validate_certs: "no"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always

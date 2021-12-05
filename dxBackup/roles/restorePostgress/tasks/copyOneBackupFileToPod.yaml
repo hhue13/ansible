@@ -1,0 +1,9 @@
+---
+##
+## Copy DB backup files to the target pod
+- name: Copy DB backup files to target pod {{ rolePersistentPodName }}
+  ansible.builtin.command: "{{ oscpClientBin | default('/usr/local/bin/oc')  }} -n {{ roleNs }} cp {{ roleTargetDirectoryForBackupFiles }}/{{ backupFileDict['backupFile'] }} {{ rolePersistentPodName }}:/tmp/{{ backupFileDict['backupFile'] }}"
+  register: cmdResult
+  failed_when: (cmdResult.rc != 0)
+  tags:
+    - always

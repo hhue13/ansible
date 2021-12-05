@@ -1,0 +1,28 @@
+---
+# tasks file for backupDam
+##
+## Run tar command for directories on POD
+- name: Create directory backup file
+  ansible.builtin.include_tasks: backupOneDirectory.yaml
+  vars:
+    backupFileDict: "{{ item }}"
+  loop: "{{ roleDirectories }}"
+  tags:
+    - always
+##
+## Copy DAM backup files to local directory
+- name: Copy DAM backup files to local directory
+  ansible.builtin.include_tasks: copyOneBackupFileFromPodToLocal.yaml
+  vars:
+    backupFileDict: "{{ item }}"
+  loop: "{{ roleDirectories }}"
+  tags:
+    - always
+##
+## Echo the backup file name
+- name: Echo the DAM backup file name
+  ansible.builtin.debug:
+    msg: "Backup copied to file: {{ roleTargetDirectoryForBackupFiles }}/{{ item['backupFile'] }}_{{ roleBackupTimestamp }}.tar.gz"
+  loop: "{{ roleDirectories }}"
+  tags:
+    - always

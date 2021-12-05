@@ -194,7 +194,7 @@
     ##
     ##
     - name: If login succeeded, try to log out (revoke access token)
-      k8s_auth:
+      community.okd.openshift_auth:
         host: "{{ k8s_host }}"
         state: absent
         api_key: "{{ kube_api_key }}"

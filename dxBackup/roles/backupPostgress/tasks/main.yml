@@ -1,0 +1,29 @@
+---
+# tasks file for backupPostgress
+## backupOnePostgressDatabase.yaml
+## Run backup command on POD
+- name: Create postgress backup file
+  ansible.builtin.include_tasks: backupOnePostgressDatabase.yaml
+  vars:
+    backupFileDict: "{{ item }}"
+  loop: "{{ roleDatabases }}"
+  tags:
+    - always
+##
+##
+## Copy DB backup files to local directory
+- name: Copy DB backup files to local directory
+  ansible.builtin.include_tasks: copyOneBackupFileToLocal.yaml
+  vars:
+    backupFileDict: "{{ item }}"
+  loop: "{{ roleDatabases }}"
+  tags:
+    - always
+##
+## Echo the backup file name
+- name: Echo the Postgress backup file name
+  ansible.builtin.debug:
+    msg: "Backup copied to file: {{ roleTargetDirectoryForBackupFiles }}/{{ item['backupFile'] }}_{{ roleBackupTimestamp }}.dmp.gz"
+  loop: "{{ roleDatabases }}"
+  tags:
+    - always

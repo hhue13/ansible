@@ -1,5 +1,14 @@
 # Ansible playbook to setup DX on OpenShift Cloud Plattform / CRC
 
+**N O T E**
+
+> This is meanwhile outdated!!
+>
+> Please use the [helm based deployment of HCL DX](https://help.hcltechsw.com/digital-experience/9.5/containerization/helm.html) instead!
+
+**N O T E**
+
+
 **NOTE:** Everything here is provided on an as-is basis! Use it at your own risk! No support, liability  or any other responsibility granted.
 
 This playbook is intented to ease and automate the deployment of HCLs DX plattform on RedHat's Openshift plattform. Due to resource limitations testing so far was done only on RedHats [CRC - Code Ready Containers plattform](https://www.redhat.com/sysadmin/codeready-containers).
@@ -71,9 +80,9 @@ How I setup my CRC using the playbook:
 - ansible-playbook --tags dxHclDeployment -e @globalVars  setupDxOnCrc.yaml
 
 In an environment where OpenShift is prepared (i.e. LDAP & registry is configured) and you just want to add DX you need to run:
+
 - ansible-playbook --tags tagAndPushImages -e @globalVars  setupDxOnCrc.yaml
 - ansible-playbook --tags dxHclDeployment -e @globalVars  setupDxOnCrc.yaml
-
 
 **Note:** Sometimes I got failures due to timing issues. Just retrying the tag fixed that in my cases (and don't have time at the moment to investigate furtjer).
 

@@ -1,29 +1,21 @@
-# Ansible playbook to setup DX on OpenShift Cloud Plattform / CRC
+# Ansible playbook to backup and restore HCL Digital Asset Management (DAM)
 
 **NOTE:** Everything here is provided on an as-is basis! Use it at your own risk! No support, liability  or any other responsibility granted.
 
-This playbook is intented to ease and automate the deployment of HCLs DX plattform on RedHat's Openshift plattform. Due to resource limitations testing so far was done only on RedHats [CRC - Code Ready Containers plattform](https://www.redhat.com/sysadmin/codeready-containers).
+This playbook is intented to ease and automate the backup and restore of the HCL Digitial Asset Management data as per [Back up and restore a DAM image](https://help.hcltechsw.com/digital-experience/9.5/digital_asset_mgmt/helm_dam_backup_restore_image.html#helm_dam_backup_restore_image__helm_database_dam_backup_procedure) in the HCL DX documentation.
 
 ## What is needed to run the playbook
 
 To run the playbook you need:
 
-- An initial vanila setup of OpenShift (OSCP) or CRC. This playbook **does not** setup OSCP / CRC
+- A working ***helm based***  deployment of HCL DX on OpenShift with DAM installed.
+  _Note_: using the playbook on nateive Kubernetes should require minimal changes only
 - Setup and configured **oc** and **kubectl** CLI environment
 - SSH setup to the Ansible target host as required by Ansible. Specifically you need:
   - SSH key authentication setup
   - NOPWD sudo support for the user used by Ansible
-- Persistent storage for OSCP image registry, DX profile, DAM data etc. Since CF192 HCL Digital exerience containers don't accept predefined PVs anymore but work only with PVS whose stroage provisioner provides the PV. If using NFS the [NFS storage provisioner](../k8snfsprovider/README.md) can be installed before deploying DX
-  *Note:* Make sure that permissions on the exportet storage are setup properly
-- An LDAP server for authentication
-  *Note* THe playbook does not yet provide *htpasswd* authentication setup. Only LDAP.
-- The playbook itself which can be found in the **dxOnCrc** folder of my project [Github ansible](https://github.com/hhue13/ansible). As this is still WiP you might need to checkout the development branch there.
-- Some configuration files templates which you might need to adapt for your needs and will most likely move to a separate project. Sample configuration files are in projects folder *crcTemplates*. Note that these templates must be available on the Ansible target system. I.e. the system to which Ansible is SSH'ing.
-- The HCL docker images
-- The HCL docker images being loaded locally as docker images from the downloaded **.tar.gz** files
-- An unpacked version of the HCLs script package
-
-## Setup variables
+- The playbook itself which can be found in the **dxBackup** folder of my project [Github ansible](https://github.com/hhue13/ansible). As this is still WiP you might need to checkout the development branch there as well.
+- # Setup variables
 
 You need to customize the variables in the following files:
 
@@ -31,90 +23,26 @@ You need to customize the variables in the following files:
 - group_vars/crchosts
 - ansible-files/inventory
 
+Before running this play-book you need to update the following files and adjust them to your environment:
+
+* [ansible-files/inventory](ansible-files/inventory): Set the host group on which OpenShift is running is called _crchosts_ . There you set the name of the host where _oc_ & _kubectl_ is deployed and which must be setup for Ansible deployment
+* [globalVars](globalVars): In this file set the Login URLs for OpenShift and the OS user under which the play-book should be executed
+* [group_vars/crchosts](group_vars/crchosts): In the file set the envirnment specific values like the where to store the backups, which databases and directories should be backed up etc.
+  **Note**: You need to set the name of the backup files before running the restore via the properties *restoreDirectories* and *restoreDatabases*
+
 ## Running the playbook
 
-The playbook is written to use tags for specific steps. These are:
+1. The playbook is written to use tags for specific steps. These are:
 
-- *ldapOauth2* - Configure OSCP to use LDAP authentication.
-- *setupRegistry* - Configures persistent storage for the OSCP image registry.
-- *restartOscp* - Restart the OSCP environment
-- *tagAndPushImages* - Retags the loaded images and pushes them to the OSCP image registry
-  *Note:* This is done using docker CLI command which mit differ (docker, podman) based on the environment being used. To change the CLI command update the `dockerCliCommand` variable
-- *resourceOverride* - Configures the cluster to overwrite the resource requests configured to allow running the setup on smaller environments with less CPUs (and memory). See the template file `clusterResourceOverride.yaml` for the current overriding values. I'm running my CRC with the following setup and needed that for a smooth deployment:
-  ```json
-  {
-    "consent-telemetry": "yes",
-    "cpus": 5,
-    "disk-size": 75,
-    "memory": 32768,
-    "pull-secret-file": "/home/hhuebler/data/crc/pullSecret.yaml"
-  }
-  ```
-- *ToDo:* Make that configurable as well
-- *dxHclDeployment* - Deploy DX core component
+* *backup* - Create a backup of the DAM data
+  To run the backup of the datarun: `ansible-playbook  --tags backup -e @globalVars backupDam.yaml`
+* *restore* - Restore _previously_ backed update to the current deployment
+  To run the backup of the datarun: `ansible-playbook  --tags restore -e @globalVars backupDam.yaml`
+  **NOTE**: Don't forget to set the files to restore via the variables *restoreDirectories* and *restoreDatabases* **before** running the restore. These files must be available in the direcory set via the variable _targetDirectoryForBackupFiles_
 
-To run the full playbook run: `ansible-playbook  --tags all -e @globalVars  setupDxOnCrc.yam`.
+## Verifying the backup
 
-Alternatively you can run the deployment in single steps. Please see the *roles* subdirectory for the different tags being implemented (tag name being used is the role name).
+After a successful run of the backup you should see the backed up data in the directory configured via variable _targetDirectoryForBackupFiles_ in the variables file.
 
-For example to setup LDAP authentication for the OSCP environment only you can run:
-
-`ansible-playbook --tags ldapOauth2 -e @globalVars  setupDxOnCrc.yaml`
-
-How I setup my CRC using the playbook:
-
-- ansible-playbook --tags ldapOauth2 -e @globalVars  setupDxOnCrc.yaml
-- ansible-playbook --tags setupRegistry -e @globalVars  setupDxOnCrc.yaml
-- ansible-playbook --tags restartOscp -e @globalVars  setupDxOnCrc.yaml
-- ansible-playbook --tags tagAndPushImages -e @globalVars  setupDxOnCrc.yaml
-- ansible-playbook --tags resourceOverride -e @globalVars  setupDxOnCrc.yaml
-- ansible-playbook --tags dxHclDeployment -e @globalVars  setupDxOnCrc.yaml
-
-In an environment where OpenShift is prepared (i.e. LDAP & registry is configured) and you just want to add DX you need to run:
-- ansible-playbook --tags tagAndPushImages -e @globalVars  setupDxOnCrc.yaml
-- ansible-playbook --tags dxHclDeployment -e @globalVars  setupDxOnCrc.yaml
-
-
-**Note:** Sometimes I got failures due to timing issues. Just retrying the tag fixed that in my cases (and don't have time at the moment to investigate furtjer).
-
-# How I setup CRC locally
-
-1. Here is my cheat sheet to setup CRC locally to directory **/vms/crc** with the following directories in my **PATH**:  ~/.crc/bin:~~/.crc/bin/oc:/vms/icp/crc-linux
-
-```bash
-crc stop
-crc delete -f --clear-cache
-
-~~@nfs01:
-cd /nfs01 && rm -rf crcprofile && mkdir crcprofile && chown 1000:1001 crcprofile && sync && ls -altr
-cd /nfs02 && rm -rf crcregistry && mkdir crcregistry && chmod 777 . crcregistry && sync && ls -altr
-cd /nfs03 && rm -rf crcdamdata && mkdir crcdamdata && chmod 777 . crcdamdata && sync && ls -altr
-cd /nfs04 && rm -rf crcpersistence && mkdir crcpersistence && chmod 777 . crcpersistence && sync && ls -altr
-cd /nfs05 && rm -rf crcpersistence-ro && mkdir crcpersistence-ro && chmod 777 . crcpersistence-ro && sync && ls -altr
-cd /nfs06 && for x in 0 1 2 ; do rm -rf crc-dx-deployment-${x} ; mkdir crc-dx-deployment-${x} ; chown 1000:1001 crc-dx-deployment-${x} ; chmod 777 . crc-dx-deployment-${x}; sync ; done ; ls -altr
-~~
-
-rm -rf /vms/crc
-
-mkdir -p /vms/crc/bin
-mkdir -p /vms/crc/cache
-mkdir -p /vms/crc/machines
-
-cd /vms/crc
-tar -xf /download/crc-linux-amd64_1.23.0.tar
-crcdir=$(ls -d crc-linux*)
-ln -s ${crcdir} crc-linux
-
-mkdir -p ~/.crc
-cd ~/.crc
-ln -s /vms/crc/cache cache
-ln -s /vms/crc/bin bin
-ln -s /vms/crc/machines machines
-
-cd ~
-
-crc setup
-~/data/bin/startCrc.sh
-```
-
-**Note:** Don't forget to cleanup the persistent storage
+- The database backup (taken from the Postgress pod) follows the following naming: `<database>_<timestamp>.dmp.gz`
+- The directory backup taken on the DAM pod follows the following naming: `<directory>_<timestamp>.tar.gz`

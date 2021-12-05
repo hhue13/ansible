@@ -6,7 +6,7 @@ oscpConfigFilesDir: /home/hhuebler/data/2i/git/ansible/dxOnCrc/crcTemplates
 ##
 ## OSCP Authenticaton data
 oscpKubeAdminUserName: kubeadmin
-oscpKubeAdminPassword: RQxiJ-cTBMo-zBFZP-XAe8c
+oscpKubeAdminPassword: 2gMCh-ZjHRz-9r2tz-VzqjL
 #
 # User / password from the user registry. This is needed as OSCP user
 # registry does not accept kubeadmin user
