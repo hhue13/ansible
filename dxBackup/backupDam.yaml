@@ -1,9 +1,14 @@
 ---
-#####################################################
+#######################################################################################################
 ## Requires the following collections
 ## ansible-galaxy collection install community.okd
 ## ansible-galaxy collection install kubernetes.core
-#####################################################
+##
+## ansible-playbook  --tags backup -e @globalVars backupDam.yaml
+## ansible-playbook  --tags restore -e @globalVars backupDam.yaml
+##
+## ansible-playbook --vault-id k8s@~/ansible_password --tags backup -e @globalVars backupDam.yaml
+#######################################################################################################
 - name: Backup HCL DX DAM Data
   hosts: crchosts
   become: yes

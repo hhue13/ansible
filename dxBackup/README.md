@@ -15,13 +15,16 @@ To run the playbook you need:
   - SSH key authentication setup
   - NOPWD sudo support for the user used by Ansible
 - The playbook itself which can be found in the **dxBackup** folder of my project [Github ansible](https://github.com/hhue13/ansible). As this is still WiP you might need to checkout the development branch there as well.
-- # Setup variables
+
+# Setup variables
 
 You need to customize the variables in the following files:
 
 - globalVars
 - group_vars/crchosts
 - ansible-files/inventory
+
+**Note**: Read the following [README.md](../README.md) for information on encrypting passwords in the variables files
 
 Before running this play-book you need to update the following files and adjust them to your environment:
 
@@ -35,9 +38,10 @@ Before running this play-book you need to update the following files and adjust 
 1. The playbook is written to use tags for specific steps. These are:
 
 * *backup* - Create a backup of the DAM data
-  To run the backup of the datarun: `ansible-playbook  --tags backup -e @globalVars backupDam.yaml`
+  To run the backup of the data run: `ansible-playbook  --tags backup -e @globalVars backupDam.yaml`
 * *restore* - Restore _previously_ backed update to the current deployment
-  To run the backup of the datarun: `ansible-playbook  --tags restore -e @globalVars backupDam.yaml`
+  To run the backup of the data
+* run: `ansible-playbook  --tags restore -e @globalVars backupDam.yaml`
   **NOTE**: Don't forget to set the files to restore via the variables *restoreDirectories* and *restoreDatabases* **before** running the restore. These files must be available in the direcory set via the variable _targetDirectoryForBackupFiles_
 
 ## Verifying the backup
