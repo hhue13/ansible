@@ -228,7 +228,7 @@
     ##
     ## Perform the oc logout
     - name: Logout of the command line client
-      ansible.builtin.command: "{{ oscpClientBin | default('/usr/local/bin/oc')  }} login --token={{ kube_api_key }} --server={{ k8s_host }}"
+      ansible.builtin.command: "{{ oscpClientBin | default('/usr/local/bin/oc')  }} logout"
       when: ((oscpLogoutOfOc is defined) and
         (oscpLogoutOfOc | bool))
       tags:
