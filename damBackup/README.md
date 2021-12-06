@@ -14,7 +14,7 @@ To run the playbook you need:
 - SSH setup to the Ansible target host as required by Ansible. Specifically you need:
   - SSH key authentication setup
   - NOPWD sudo support for the user used by Ansible
-- The playbook itself which can be found in the **dxBackup** folder of my project [Github ansible](https://github.com/hhue13/ansible). As this is still WiP you might need to checkout the development branch there as well.
+- The playbook itself which can be found in the **damBackup** folder of my project [Github ansible](https://github.com/hhue13/ansible). As this is still WiP you might need to checkout the development branch there as well.
 
 # Setup variables
 

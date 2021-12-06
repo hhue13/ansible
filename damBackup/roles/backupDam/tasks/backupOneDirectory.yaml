@@ -1,4 +1,6 @@
 ---
+##
+## Create the backup of the directory
 - name: Create directory backup file for directory {{ backupFileDict['name'] }}
   kubernetes.core.k8s_exec:
     namespace: "{{ roleNs }}"
@@ -9,5 +11,14 @@
     validate_certs: "no"
   register: podResult
   failed_when: (podResult.rc != 0)
+  tags:
+    - always
+##
+## Log the files being backed up
+- name: Log files being backed up
+  ansible.builtin.debug:
+    msg:
+      - "Files being backed up:"
+      - "{{ podResult.stdout_lines }}"
   tags:
     - always
