@@ -1,8 +1,8 @@
 ---
 #######################################################################################################
-## Requires the following collections
-## ansible-galaxy collection install community.okd
-## ansible-galaxy collection install kubernetes.core
+## Requires the following collections and python modules:
+##
+## See README.md for required software dependencies
 ##
 ## ansible-playbook  --tags backup -e @globalVars backupDam.yaml
 ## ansible-playbook  --tags restore -e @globalVars backupDam.yaml
