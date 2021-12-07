@@ -16,6 +16,18 @@ To run the playbook you need:
   - NOPWD sudo support for the user used by Ansible
 - The playbook itself which can be found in the **damBackup** folder of my project [Github ansible](https://github.com/hhue13/ansible). As this is still WiP you might need to checkout the development branch there as well.
 
+## Setup of Ansible environment
+
+I addition to the standard setup of Ansible you need to install and setup the following software:
+
+- Python
+  - `pip` / `pip3` depending on the python version being used
+  - Python's `requests-oauthlib` module
+  - Python's `kubernetes` module
+- Ansible collections
+  - Run: `ansible-galaxy collection install community.okd`
+  - Run: `ansible-galaxy collection install kubernetes.core`
+
 # Setup variables
 
 You need to customize the variables in the following files:
