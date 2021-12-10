@@ -25,8 +25,8 @@ I addition to the standard setup of Ansible you need to install and setup the fo
   - Python's `requests-oauthlib` module
   - Python's `kubernetes` module
 - Ansible collections
-  - Run: `ansible-galaxy collection install community.okd`
-  - Run: `ansible-galaxy collection install kubernetes.core`
+  - ~~Run: `ansible-galaxy collection install community.okd`~~
+  - ~~Run: `ansible-galaxy collection install kubernetes.core`~~
 
 # Setup variables
 
