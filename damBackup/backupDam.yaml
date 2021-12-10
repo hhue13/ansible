@@ -8,6 +8,8 @@
 ## ansible-playbook  --tags restore -e @globalVars backupDam.yaml
 ##
 ## ansible-playbook --vault-id k8s@~/ansible_password --tags backup -e @globalVars backupDam.yaml
+##
+## Note: Make sure you setup visudo correctly so that "sudo -i -u <become_user>" works
 #######################################################################################################
 - name: Backup HCL DX DAM Data
   hosts: crchosts
@@ -66,7 +68,15 @@
     - name: Login to the oc client using the API key
       ansible.builtin.command: "{{ oscpClientBin | default('/usr/local/bin/oc')  }} login --token={{ kube_api_key }} --server={{ k8s_host }}"
       register: cmdResult
-      failed_when: (cmdResult.rc != 0)
+      ##### failed_when: (cmdResult.rc != 0)
+      tags:
+        - always
+    ##
+    ## Run oc login using the api key
+    - name: Debug the command result of 'oc login'
+      ansible.builtin.debug:
+        msg:
+          - "cmdResult is {{ cmdResult }}"
       tags:
         - always
     ########################################################################################
