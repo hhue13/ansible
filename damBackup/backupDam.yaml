@@ -140,7 +140,7 @@
     ##
     ## Test debug
     - name: Test handler debug
-      ansible.builtin.shell: 'echo "Test-0: Current date is: $(date)" >> /dev/shm/hhue.txt'
+      shell: 'echo "Test-0: Current date is: $(date)" >> /dev/shm/hhue.txt'
       tags:
         - always
     ########################################################################################
@@ -248,6 +248,6 @@
     ##
     ## Test debug
     - name: Test handler debug
-      ansible.builtin.shell: 'echo "Test-1: Current date is: $(date)" >> /dev/shm/hhue.txt'
+      shell: 'echo "Test-1: Current date is: $(date)" >> /dev/shm/hhue.txt'
       tags:
         - always

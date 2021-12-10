@@ -65,7 +65,7 @@
 ##
 ## Remove .gz extension
 - name: Create uncompressed dump files name
-  ansible.builtin.shell: "echo /tmp/{{ backupFileDict['backupFile'] }} | sed s#\\.gz##g"
+  shell: "echo /tmp/{{ backupFileDict['backupFile'] }} | sed s#\\.gz##g"
   register: cmdResult
 ##
 ## Delete unzipped backup file if it exists
