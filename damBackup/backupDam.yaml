@@ -8,6 +8,8 @@
 ## ansible-playbook  --tags restore -e @globalVars backupDam.yaml
 ##
 ## ansible-playbook --vault-id k8s@~/ansible_password --tags backup -e @globalVars backupDam.yaml
+##
+## Note: Make sure you setup visudo correctly so that "sudo -i -u <become_user>" works
 #######################################################################################################
 - name: Backup HCL DX DAM Data
   hosts: crchosts
@@ -64,9 +66,22 @@
     ##
     ## Run oc login using the api key
     - name: Login to the oc client using the API key
-      ansible.builtin.command: "{{ oscpClientBin | default('/usr/local/bin/oc')  }} login --token={{ kube_api_key }} --server={{ k8s_host }}"
+      ansible.builtin.command:
+        argv:
+          - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+          - "login"
+          - "--token={{ kube_api_key }}"
+          - "--server={{ k8s_host }}"
       register: cmdResult
       failed_when: (cmdResult.rc != 0)
+      tags:
+        - always
+    ##
+    ## Run oc login using the api key
+    - name: Debug the command result of 'oc login'
+      ansible.builtin.debug:
+        msg:
+          - "cmdResult is {{ cmdResult }}"
       tags:
         - always
     ########################################################################################
@@ -140,7 +155,7 @@
     ##
     ## Test debug
     - name: Test handler debug
-      ansible.builtin.shell: 'echo "Test-0: Current date is: $(date)" >> /dev/shm/hhue.txt'
+      shell: 'echo "Test-0: Current date is: $(date)" >> /dev/shm/hhue.txt'
       tags:
         - always
     ########################################################################################
@@ -228,7 +243,10 @@
     ##
     ## Perform the oc logout
     - name: Logout of the command line client
-      ansible.builtin.command: "{{ oscpClientBin | default('/usr/local/bin/oc')  }} logout"
+      ansible.builtin.command:
+        argv:
+          - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+          - "logout"
       when: ((oscpLogoutOfOc is defined) and
         (oscpLogoutOfOc | bool))
       tags:
@@ -248,6 +266,6 @@
     ##
     ## Test debug
     - name: Test handler debug
-      ansible.builtin.shell: 'echo "Test-1: Current date is: $(date)" >> /dev/shm/hhue.txt'
+      shell: 'echo "Test-1: Current date is: $(date)" >> /dev/shm/hhue.txt'
       tags:
         - always
