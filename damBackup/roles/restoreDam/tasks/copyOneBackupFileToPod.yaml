@@ -5,8 +5,10 @@
   ansible.builtin.command:
     argv:
       - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
-      - "-n {{ roleNs }}"
-      - "cp {{roleTargetDirectoryForBackupFiles}}/{{ backupFileDict['backupFile'] }}"
+      - "-n"
+      - "{{ roleNs }}"
+      - "cp"
+      - "{{roleTargetDirectoryForBackupFiles}}/{{ backupFileDict['backupFile'] }}"
       - "{{ roleDamPodName }}:/tmp/{{ backupFileDict['backupFile'] }}"
   register: cmdResult
   failed_when: (cmdResult.rc != 0)
