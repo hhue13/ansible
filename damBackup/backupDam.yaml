@@ -66,9 +66,22 @@
     ##
     ## Run oc login using the api key
     - name: Login to the oc client using the API key
-      ansible.builtin.command: "{{ oscpClientBin | default('/usr/local/bin/oc')  }} login --token={{ kube_api_key }} --server={{ k8s_host }}"
+      ansible.builtin.command:
+        argv:
+          - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+          - "login"
+          - "--token={{ kube_api_key }}"
+          - "--server={{ k8s_host }}"
       register: cmdResult
       ##### failed_when: (cmdResult.rc != 0)
+      tags:
+        - always
+    ##
+    ## Run oc login using the api key
+    - name: Debug the command result of 'oc login'
+      ansible.builtin.debug:
+        msg:
+          - "cmdResult is {{ cmdResult }}"
       tags:
         - always
     ##
@@ -238,7 +251,10 @@
     ##
     ## Perform the oc logout
     - name: Logout of the command line client
-      ansible.builtin.command: "{{ oscpClientBin | default('/usr/local/bin/oc')  }} logout"
+      ansible.builtin.command:
+        argv:
+          - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+          - "logout"
       when: ((oscpLogoutOfOc is defined) and
         (oscpLogoutOfOc | bool))
       tags:

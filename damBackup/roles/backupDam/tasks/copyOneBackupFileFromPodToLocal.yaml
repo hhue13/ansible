@@ -1,6 +1,13 @@
 ---
 - name: Copy DAM backup file to {{ roleTargetDirectoryForBackupFiles }}/{{ item['backupFile'] }}_{{ roleBackupTimestamp }}.tar.gz
-  ansible.builtin.command: "{{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ roleNs }} cp {{ roleDamPodName }}:/tmp/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.tar.gz {{ roleTargetDirectoryForBackupFiles }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.tar.gz"
+  ansible.builtin.command:
+    argv:
+      - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+      - "-n"
+      - "{{ roleNs }}"
+      - "cp"
+      - "{{ roleDamPodName }}:/tmp/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.tar.gz"
+      - "{{ roleTargetDirectoryForBackupFiles }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.tar.gz"
   register: cmdResult
   failed_when: (cmdResult.rc != 0)
   tags:

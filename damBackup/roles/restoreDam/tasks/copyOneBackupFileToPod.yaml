@@ -2,7 +2,14 @@
 ##
 ## Copy DAM backup files from local directory to the target pod
 - name: Copy DAM backup files {{ backupFileDict['backupFile'] }} from {{targetDirectoryForBackupFiles}} to the target pod
-  ansible.builtin.command: "{{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ roleNs }} cp {{roleTargetDirectoryForBackupFiles}}/{{ backupFileDict['backupFile'] }} {{ roleDamPodName }}:/tmp/{{ backupFileDict['backupFile'] }}"
+  ansible.builtin.command:
+    argv:
+      - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+      - "-n"
+      - "{{ roleNs }}"
+      - "cp"
+      - "{{roleTargetDirectoryForBackupFiles}}/{{ backupFileDict['backupFile'] }}"
+      - "{{ roleDamPodName }}:/tmp/{{ backupFileDict['backupFile'] }}"
   register: cmdResult
   failed_when: (cmdResult.rc != 0)
   tags:

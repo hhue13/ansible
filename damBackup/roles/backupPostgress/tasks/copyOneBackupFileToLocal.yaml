@@ -1,6 +1,13 @@
 ---
 - name: Copy DB backup file /tmp/{{ backupFileDict['name'] }}_{{ roleBackupTimestamp }}.dmp.gz to {{ roleTargetDirectoryForBackupFiles }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.dmp.gz
-  ansible.builtin.command: "{{ oscpClientBin | default('/usr/local/bin/oc')  }} -n {{ roleNs }} cp {{ rolePersistentPodName }}:/tmp/{{ backupFileDict['name'] }}_{{ roleBackupTimestamp }}.dmp.gz {{ roleTargetDirectoryForBackupFiles }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.dmp.gz"
+  ansible.builtin.command:
+    argv:
+      - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+      - "-n"
+      - "{{ roleNs }}"
+      - "cp"
+      - "{{ rolePersistentPodName }}:/tmp/{{ backupFileDict['name'] }}_{{ roleBackupTimestamp }}.dmp.gz"
+      - "{{ roleTargetDirectoryForBackupFiles }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.dmp.gz"
   register: cmdResult
   failed_when: (cmdResult.rc != 0)
   tags:

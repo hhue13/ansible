@@ -18,7 +18,13 @@
     - always##
 ## Delete the DAM pod
 - name: Delete DAM pod
-  ansible.builtin.command: "{{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ roleNs }} delete pod/{{ damPodName }}"
+  ansible.builtin.command:
+    argv:
+      - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+      - "-n"
+      - "{{ roleNs }}"
+      - "delete"
+      - "pod/{{ damPodName }}"
   register: cmdResult
   failed_when: (cmdResult.rc != 0)
   tags:
