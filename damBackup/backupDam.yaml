@@ -183,6 +183,7 @@
             roleDatabases: "{{ backupDatabases }}"
             roleBackupTimestamp: "{{ backup_timestamp }}"
             rolePersistentPodName: "{{ persistencePodName }}"
+            rolePersistentPodContainerName: "{{ persistencePodContainerName | default('persistence-node') }}"
             roleTargetDirectoryForBackupFiles: "{{ targetDirectoryForBackupFiles }}"
         ##
         ## Run the backup of the DAM pod
@@ -227,6 +228,7 @@
             roleHost: "{{ k8s_host }}"
             roleDatabases: "{{ restoreDatabases }}"
             rolePersistentPodName: "{{ persistencePodName }}"
+            rolePersistentPodContainerName: "{{ persistencePodContainerName | default('persistence-node') }}"
             roleTargetDirectoryForBackupFiles: "{{ targetDirectoryForBackupFiles }}"
       tags:
         - restore
