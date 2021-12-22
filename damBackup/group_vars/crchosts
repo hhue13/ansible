@@ -45,19 +45,20 @@ backupDirectories:
 ## Note: The 'backupFile' must be located in the director {{ targetDirectoryForBackupFiles }}
 restoreDirectories:
   - name: "/opt/app/upload"
-    backupFile: "damFiles_20211214T163555.tar.gz"
+    backupFile: "damFiles_20211222T083342.tar.gz"
 ##
 ## Database backup files to be restored
 ## Note: The 'backupFile' must be located in the director {{ targetDirectoryForBackupFiles }}
 restoreDatabases:
   - name: "dxmediadb"
-    backupFile: "dxmediadb_20211214T163555.dmp.gz"
+    backupFile: "dxmediadb_20211222T083342.dmp.gz"
     connLimitToSet: 500
     dbrole: "dxuser"
 ##
 ## Database pod to be backed up
-persistencePodName: "{{ oscpDamDeployment }}-persistence-rw-0"
-persistenceStsName: "{{ oscpDamDeployment }}-persistence-rw"
+persistencePodName: "{{ oscpDamDeployment }}-persistence-node-0"
+persistencePodContainerName: "persistence-node"
+persistenceStsName: "{{ oscpDamDeployment }}-persistence-node"
 ##
 ## DAM pod name to be backed up
 ##

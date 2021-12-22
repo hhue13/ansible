@@ -6,6 +6,7 @@
     api_key: "{{ roleKey }}"
     command: "pg_dump -d {{ backupFileDict['name'] }} -f /tmp/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.dmp"
     pod: "{{ rolePersistentPodName }}"
+    container: "{{ rolePersistentPodContainerName }}"
     validate_certs: "no"
   register: podResult
   failed_when: (podResult.rc != 0)
@@ -20,6 +21,7 @@
     api_key: "{{ roleKey }}"
     command: "gzip -9 /tmp/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.dmp"
     pod: "{{ rolePersistentPodName }}"
+    container: "{{ rolePersistentPodContainerName }}"
     validate_certs: "no"
   register: podResult
   failed_when: (podResult.rc != 0)
