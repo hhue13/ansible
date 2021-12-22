@@ -44,6 +44,7 @@ Before running this play-book you need to update the following files and adjust 
 * [globalVars](globalVars): In this file set the Login URLs for OpenShift and the OS user under which the play-book should be executed
 * [group_vars/crchosts](group_vars/crchosts): In the file set the envirnment specific values like the where to store the backups, which databases and directories should be backed up etc.
   **Note**: You need to set the name of the backup files before running the restore via the properties *restoreDirectories* and *restoreDatabases*
+  **Note:** Starting with CF200 the persistence-pod runs multiple containers. Hence we need to specify with container should be used to run the backup / restore commands. Hence a new variable *persistencePodContainerName* has been added with must be set. If this variable is not set it defaults to *persistence-node* which is compliant with CF200.
 
 ## Running the playbook
 
