@@ -30,7 +30,7 @@
 
 - name: Sleep before retrying
   pause:
-    seconds: 5
+    seconds: 30
   when: (allResourcesAreScaledDown == false)
   tags:
     - always

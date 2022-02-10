@@ -13,4 +13,4 @@
 
 - name: Run inner loop until number of replicas is scaled down
   include_tasks: checkIfAllStsAreScaledDown.yaml
-  until: allResourcesAreScaledDown == true
+#####   until: allResourcesAreScaledDown == true

@@ -134,32 +134,31 @@
         - always
     ##
     ## Need to scale down the StatefulSet to 1
-    - name: Update Replicas to 1 as per https://help.hcltechsw.com/digital-experience/9.5/digital_asset_mgmt/helm_dam_backup_restore_image.html
-      kubernetes.core.k8s:
-        host: "{{ k8s_host }}"
-        api_key: "{{ kube_api_key }}"
-        namespace: "{{ k8s_ns }}"
-        state: present
-        api_version: "{{ item.apiVersion}}"
-        kind: "{{ item.kind}}"
-        name: "{{ item.metadata.name }}"
-        validate_certs: "no"
-        spec:
-          replicas: "1"
-      when: (item.spec.replicas != 1)
-      loop: "{{ currentStsData.resources }}"
-      tags:
-        - always
+    ## Not needed anymore as per:
+    ## https://help.hcltechsw.com/digital-experience/9.5/containerization/operator_backup_and_recovery_procedures.html
+    #####     - name: Update Replicas to 1 as per https://help.hcltechsw.com/digital-experience/9.5/digital_asset_mgmt/helm_dam_backup_restore_image.html
+    #####       ansible.builtin.command:
+    #####         argv:
+    #####           - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+    #####           - "-n"
+    #####           - "{{ k8s_ns }}"
+    #####           - "scale"
+    #####           - "sts/{{ persistenceStsName }}"
+    #####           - "--replicas=1"
+    #####       register: cmdResult
+    #####       failed_when: (cmdResult.rc != 0)
+    #####       tags:
+    #####         - always
     ##
     ## Wait until the number of pods is down to 1
-    - name: Wait for the number of replicas being scaled down to 1
-      ansible.builtin.include_tasks: waitForAllStsToScaleDown.yaml
-      vars:
-        stsResourceItem: "{{ item }}"
-      when: (item.spec.replicas != 1)
-      loop: "{{ currentStsData.resources }}"
-      tags:
-        - always
+    #####     - name: Wait for the number of replicas being scaled down to 1
+    #####       ansible.builtin.include_tasks: waitForAllStsToScaleDown.yaml
+    #####       vars:
+    #####         stsResourceItem: "{{ item }}"
+    #####       when: (item.spec.replicas != 1)
+    #####       loop: "{{ currentStsData.resources }}"
+    #####       tags:
+    #####         - always
     ##
     ## Test debug
     - name: Test handler debug
@@ -234,22 +233,19 @@
         - restore
     ##
     ## Scale up the StatefuleSet to the values before
-    - name: Update Replicas to the configured value(s)
-      kubernetes.core.k8s:
-        host: "{{ k8s_host }}"
-        api_key: "{{ kube_api_key }}"
-        namespace: "{{ k8s_ns }}"
-        state: present
-        api_version: "{{ item.apiVersion}}"
-        kind: "{{ item.kind}}"
-        name: "{{ item.metadata.name }}"
-        validate_certs: "no"
-        spec:
-          replicas: "{{ item.spec.replicas }}"
-      when: (item.spec.replicas != 1)
-      loop: "{{ currentStsData.resources }}"
-      tags:
-        - always
+    #####     - name: Update Replicas to the configured value(s)
+    #####       ansible.builtin.command:
+    #####         argv:
+    #####           - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+    #####           - "-n"
+    #####           - "{{ k8s_ns }}"
+    #####           - "scale"
+    #####           - "sts/{{ persistenceStsName }}"
+    #####           - "--replicas={{ item.spec.replicas }}"
+    #####       when: (item.spec.replicas != 1)
+    #####       loop: "{{ currentStsData.resources }}"
+    #####       tags:
+    #####         - always
     ##
     ## Perform the oc logout
     - name: Logout of the command line client
