@@ -40,16 +40,16 @@ backupDatabases:
 backupDirectories:
   - name: "/opt/app/upload"
     backupFile: "damFiles"
-  - name: "/etc/config"
-    backupFile: "damConfigFiles"
+#####   - name: "/etc/config"
+#####     backupFile: "damConfigFiles"
 ##
 ## Restore file(s) and directories.
 ## Note: The 'backupFile' must be located in the director {{ targetDirectoryForBackupFiles }}
 restoreDirectories:
   - name: "/opt/app/upload"
     backupFile: "damFiles_20220210T171855.tar.gz"
-  - name: "/etc/config"
-    backupFile: "damConfigFiles_20220210T171855.tar.gz"
+#####   - name: "/etc/config"
+#####     backupFile: "damConfigFiles_20220210T171855.tar.gz"
 ##
 ## Database backup files to be restored
 ## Note: The 'backupFile' must be located in the director {{ targetDirectoryForBackupFiles }}
