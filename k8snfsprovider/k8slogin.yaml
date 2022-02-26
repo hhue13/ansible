@@ -67,11 +67,12 @@
 ##
 ## Login
 - name: Log in (obtain access token)
-  community.okd.openshift_auth:.okd.openshift_auth:
+  community.okd.openshift_auth:
     host: "{{ k8s_host }}"
     state: present
     username: "{{ k8s_user }}"
     password: "{{ k8s_password }}"
+    validate_certs: "no"
   register: k8s_auth_results
   when: (( k8s_api_token is not defined ) or
     ( k8s_api_token == '' ))
