@@ -1,0 +1,226 @@
+---
+#######################################################################################################
+## Requires the following collections and python modules:
+##
+## See README.md for required software dependencies
+##
+## ansible-playbook -e @globalVars setupNexusRegistry.yaml
+## ansible-playbook --vault-id k8s@~/ansible_password -e @globalVars setupNexusRegistry.yaml
+##
+## Note: Make sure you setup visudo correctly so that "sudo -i -u <become_user>" works
+#######################################################################################################
+- name: Setup OCP to use nexus registry
+  hosts: crchosts
+  become: yes
+  become_user: "{{ oscpOsUser }}"
+  gather_facts: true
+  force_handlers: true
+  module_defaults:
+    kubernetes.core.k8s:
+      validate_certs: "no"
+    kubernetes.core.k8s_info:
+      validate_certs: "no"
+    kubernetes.core.k8s_exec:
+      validate_certs: "no"
+    kubernetes.core.k8s_cp:
+      validate_certs: "no"
+    community.okd.openshift_auth:
+      validate_certs: "no"
+    community.okd.openshift_process:
+      validate_certs: "no"
+    community.okd.openshift_route:
+      validate_certs: "no"
+  #########################
+  ## Tasks of the play-book
+  #########################
+  tasks:
+    ##
+    ## Set login facts
+    - name: Set K8S login facts
+      include_tasks: k8slogin.yaml
+    ##
+    ## Retrieving the current timestamp
+    - name: Retrieving the current timestamp
+      ansible.builtin.set_fact:
+        backup_timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
+    ##
+    ## Checking for env variable K8S_NAMESPACE
+    - name: Checking for env variable K8S_NAMESPACE
+      ansible.builtin.set_fact:
+        k8s_ns: "{{ lookup('env', 'K8S_NAMESPACE') }}"
+    ##
+    ## Get the namespace from the variables file of no ENV variable set
+    - name: Get backup namespace
+      ansible.builtin.set_fact:
+        k8s_ns: "{{ oscpNameSpace }}"
+      when: (( k8s_ns is not defined) or
+        (k8s_ns == ''))
+    ##
+    ## Dump API Key
+    - name: Dump API Key in MAIN
+      ansible.builtin.debug:
+        msg:
+          - "API Key is {{ kube_api_key  }}"
+    ##
+    ## Run oc login using the api key
+    - name: Login to the oc client using the API key
+      ansible.builtin.command:
+        argv:
+          - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+          - "login"
+          - "--token={{ kube_api_key }}"
+          - "--server={{ k8s_host }}"
+      register: cmdResult
+      ##### failed_when: (cmdResult.rc != 0)
+    ##
+    ## Run oc login using the api key
+    - name: Debug the command result of 'oc login'
+      ansible.builtin.debug:
+        msg:
+          - "cmdResult is {{ cmdResult }}"
+    ##
+    ## Debug the result of the 'oc login'
+    - name: Debug the command result of 'oc login'
+      ansible.builtin.debug:
+        msg:
+          - "cmdResult is {{ cmdResult }}"
+
+    ############################################################################################################################
+    ### Setup external registry for OCP
+    ### http://uncontained.io/articles/external-container-registry-integration/#_deploying_images_from_an_authenticated_registry
+    ### https://docs.openshift.com/container-platform/4.9/networking/configuring-a-custom-pki.html
+    ############################################################################################################################
+    ##
+    ## Retrieve the configmap user-ca-bundle in NS openshift-config
+    - name: Retrieve the configmap user-ca-bundle in namespace openshift-config
+      kubernetes.core.k8s_info:
+        host: "{{ k8s_host }}"
+        api_key: "{{ kube_api_key }}"
+        namespace: "openshift-config"
+        api_version: "v1"
+        kind: "ConfigMap"
+        name: "user-ca-bundle"
+      register: currentUserCaCm
+    ##
+    ## Debug the result of the 'oc login'
+    - name: Debug ConfigMap user-ca-bundle before update
+      ansible.builtin.debug:
+        msg:
+          - "currentUserCaCm is {{ currentUserCaCm }}"
+      when: (currentUserCaCm is defined)
+    ##
+    ## Create / update the ConfigMap user-ca-bundle
+    - name: Create / update the ConfigMap user-ca-bundle
+      kubernetes.core.k8s:
+        state: "present"
+        host: "{{ k8s_host }}"
+        api_key: "{{ kube_api_key }}"
+        namespace: "openshift-config"
+        name: "user-ca-bundle"
+        definition:
+          api_version: "v1"
+          kind: "ConfigMap"
+          data:
+            ca-bundle.crt: "{{ oscpNexusSignerChain }}"
+    ##
+    ## Update proxies.config.openshift.io/cluster to use the user-ca-bundle as trustedCA
+    - name: Update proxies.config.openshift.io/cluster to use the user-ca-bundle as trustedCA
+      ansible.builtin.command:
+        argv:
+          - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+          - "patch"
+          - "proxies.config.openshift.io/cluster"
+          - "--type=merge"
+          - "-p"
+          - '{"spec":{"trustedCA":{"name":"user-ca-bundle"}}}'
+      register: cmdResult
+      failed_when: (cmdResult.rc != 0)
+    ##
+    ## Create the secret for the Docker registry in namespace {{ oscpNameSpace }}
+    - name: Create the secret for the Docker registry
+      kubernetes.core.k8s:
+        state: "present"
+        host: "{{ k8s_host }}"
+        api_key: "{{ kube_api_key }}"
+        definition:
+          api_version: "v1"
+          kind: "Secret"
+          metadata:
+            name: "{{ oscpRegistryName }}"
+            namespace: "{{ oscpNameSpace }}"
+          type: kubernetes.io/dockerconfigjson
+          data:
+            .dockerconfigjson: "{{ lookup('template', './registrySecretData.json' ) | b64encode }}"
+    #####       ansible.builtin.command:
+    #####         argv:
+    #####           - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+    #####           - "-n"
+    #####           - "{{ oscpNameSpace }}"
+    #####           - "create"
+    #####           - "secret"
+    #####           - "docker-registry"
+    #####           - "{{ oscpRegistryName }}"
+    #####           - "--docker-username={{ oscpRegistryUserName }}"
+    #####           - "--docker-password={{ oscpRegistryPassword }}"
+    #####           - "--docker-server={{ oscpRegistryUrl }}"
+    #####           - "--docker-email={{ oscpRegistryEMail }}"
+    #####       register: cmdResult
+    #####       failed_when: (cmdResult.rc != 0)
+    ##
+    ## Link the secret to the service account
+    - name: Link the secret to the service account
+      ansible.builtin.command:
+        argv:
+          - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+          - "-n"
+          - "{{ oscpNameSpace }}"
+          - "secrets"
+          - "link"
+          - "{{ oscpServiceAccount | default('default') }}"
+          - "{{ oscpRegistryName }}"
+          - "--for=pull"
+      register: cmdResult
+      failed_when: (cmdResult.rc != 0)
+    ##
+    ## Check / verify the service account
+    - name: Check / verify the service account
+      ansible.builtin.command:
+        argv:
+          - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+          - "-n"
+          - "{{ oscpNameSpace }}"
+          - "describe"
+          - "serviceaccount"
+          - "{{ oscpServiceAccount | default('default') }}"
+      register: cmdResult
+      failed_when: (cmdResult.rc != 0)
+    ##
+    ## Display current mappings for user {{ oscpServiceAccount | default('default') }}
+    - name: Display current mappings for user {{ oscpServiceAccount | default('default') }}
+      ansible.builtin.debug:
+        msg:
+          - "cmdResult.stdout is {{ cmdResult.stdout }}"
+      when: (cmdResult.stdout is defined)
+    ##
+    ## Perform the oc logout
+    - name: Logout of the command line client
+      ansible.builtin.command:
+        argv:
+          - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+          - "logout"
+      when: ((oscpLogoutOfOc is defined) and
+        (oscpLogoutOfOc | bool))
+    ##
+    ## Logout
+    - name: If login succeeded, try to log out (revoke access token)
+      community.okd.openshift_auth:
+        host: "{{ k8s_host }}"
+        state: absent
+        api_key: "{{ kube_api_key }}"
+        validate_certs: "no"
+      when: kube_api_key is defined
+
+    ##
+    ## Test debug
+    - name: Test handler debug
+      shell: 'echo "Test-1: Current date is: $(date)" >> /dev/shm/hhue.txt'
