@@ -38,29 +38,40 @@
     ## Set login facts
     - name: Set K8S login facts
       include_tasks: k8slogin.yaml
+      tags:
+        - always
     ##
     ## Retrieving the current timestamp
     - name: Retrieving the current timestamp
       ansible.builtin.set_fact:
         backup_timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
+      tags:
+        - always
     ##
     ## Checking for env variable K8S_NAMESPACE
     - name: Checking for env variable K8S_NAMESPACE
       ansible.builtin.set_fact:
         k8s_ns: "{{ lookup('env', 'K8S_NAMESPACE') }}"
+      tags:
+        - always
     ##
     ## Get the namespace from the variables file of no ENV variable set
-    - name: Get backup namespace
+    - name: Get the namespace from variable oscpNameSpace
       ansible.builtin.set_fact:
         k8s_ns: "{{ oscpNameSpace }}"
       when: (( k8s_ns is not defined) or
         (k8s_ns == ''))
+      tags:
+        - always
     ##
     ## Dump API Key
     - name: Dump API Key in MAIN
       ansible.builtin.debug:
         msg:
           - "API Key is {{ kube_api_key  }}"
+      no_log: true
+      tags:
+        - never
     ##
     ## Run oc login using the api key
     - name: Login to the oc client using the API key
@@ -71,6 +82,9 @@
           - "--token={{ kube_api_key }}"
           - "--server={{ k8s_host }}"
       register: cmdResult
+      no_log: true
+      tags:
+        - always
       ##### failed_when: (cmdResult.rc != 0)
     ##
     ## Run oc login using the api key
@@ -78,13 +92,16 @@
       ansible.builtin.debug:
         msg:
           - "cmdResult is {{ cmdResult }}"
+      tags:
+        - always
     ##
     ## Debug the result of the 'oc login'
     - name: Debug the command result of 'oc login'
       ansible.builtin.debug:
         msg:
           - "cmdResult is {{ cmdResult }}"
-
+      tags:
+        - always
     ############################################################################################################################
     ### Setup external registry for OCP
     ### http://uncontained.io/articles/external-container-registry-integration/#_deploying_images_from_an_authenticated_registry
@@ -101,6 +118,8 @@
         kind: "ConfigMap"
         name: "user-ca-bundle"
       register: currentUserCaCm
+      tags:
+        - installNexusCa
     ##
     ## Debug the result of the 'oc login'
     - name: Debug ConfigMap user-ca-bundle before update
@@ -108,6 +127,8 @@
         msg:
           - "currentUserCaCm is {{ currentUserCaCm }}"
       when: (currentUserCaCm is defined)
+      tags:
+        - installNexusCa
     ##
     ## Create / update the ConfigMap user-ca-bundle
     - name: Create / update the ConfigMap user-ca-bundle
@@ -122,6 +143,8 @@
           kind: "ConfigMap"
           data:
             ca-bundle.crt: "{{ oscpNexusSignerChain }}"
+      tags:
+        - installNexusCa
     ##
     ## Update proxies.config.openshift.io/cluster to use the user-ca-bundle as trustedCA
     - name: Update proxies.config.openshift.io/cluster to use the user-ca-bundle as trustedCA
@@ -135,6 +158,8 @@
           - '{"spec":{"trustedCA":{"name":"user-ca-bundle"}}}'
       register: cmdResult
       failed_when: (cmdResult.rc != 0)
+      tags:
+        - installNexusCa
     ##
     ## Create the secret for the Docker registry in namespace {{ oscpNameSpace }}
     - name: Create the secret for the Docker registry
@@ -151,6 +176,8 @@
           type: kubernetes.io/dockerconfigjson
           data:
             .dockerconfigjson: "{{ lookup('template', './registrySecretData.json' ) | b64encode }}"
+      tags:
+        - setupNsCredentials
     #####       ansible.builtin.command:
     #####         argv:
     #####           - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
@@ -181,6 +208,8 @@
           - "--for=pull"
       register: cmdResult
       failed_when: (cmdResult.rc != 0)
+      tags:
+        - setupNsCredentials
     ##
     ## Check / verify the service account
     - name: Check / verify the service account
@@ -194,6 +223,8 @@
           - "{{ oscpServiceAccount | default('default') }}"
       register: cmdResult
       failed_when: (cmdResult.rc != 0)
+      tags:
+        - setupNsCredentials
     ##
     ## Display current mappings for user {{ oscpServiceAccount | default('default') }}
     - name: Display current mappings for user {{ oscpServiceAccount | default('default') }}
@@ -201,6 +232,8 @@
         msg:
           - "cmdResult.stdout is {{ cmdResult.stdout }}"
       when: (cmdResult.stdout is defined)
+      tags:
+        - setupNsCredentials
     ##
     ## Perform the oc logout
     - name: Logout of the command line client
@@ -210,6 +243,8 @@
           - "logout"
       when: ((oscpLogoutOfOc is defined) and
         (oscpLogoutOfOc | bool))
+      tags:
+        - always
     ##
     ## Logout
     - name: If login succeeded, try to log out (revoke access token)
@@ -219,8 +254,11 @@
         api_key: "{{ kube_api_key }}"
         validate_certs: "no"
       when: kube_api_key is defined
-
+      tags:
+        - always
     ##
     ## Test debug
     - name: Test handler debug
       shell: 'echo "Test-1: Current date is: $(date)" >> /dev/shm/hhue.txt'
+      tags:
+        - always
