@@ -62,6 +62,7 @@
       - "K8S_API_TOKEN: '{{ k8s_api_token }}'"
       - "K8S_HOST_URL: '{{ k8s_host }}'"
       - "K8S_USER: '{{ k8s_user }}'"
+  no_log: true
   tags:
     - never
 ##
@@ -76,6 +77,7 @@
   register: k8s_auth_results
   when: (( k8s_api_token is not defined ) or
     ( k8s_api_token == '' ))
+  no_log: true
   tags:
     - always
 ##
@@ -85,6 +87,7 @@
     kube_api_key: "{{ k8s_auth_results.k8s_auth.api_key }}"
   when: (( k8s_api_token is not defined ) or
     ( k8s_api_token == '' ))
+  no_log: true
   tags:
     - always
 ##
@@ -94,6 +97,7 @@
     kube_api_key: "{{ k8s_api_token }}"
   when: (( k8s_api_token is defined ) and
     ( k8s_api_token != '' ))
+  no_log: true
   tags:
     - always
 ##### ##
