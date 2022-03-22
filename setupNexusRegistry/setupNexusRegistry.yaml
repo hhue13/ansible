@@ -81,6 +81,7 @@
           - "login"
           - "--token={{ kube_api_key }}"
           - "--server={{ k8s_host }}"
+          - "--insecure-skip-tls-verify=true"
       register: cmdResult
       no_log: true
       tags:
@@ -175,7 +176,7 @@
             namespace: "{{ oscpNameSpace }}"
           type: kubernetes.io/dockerconfigjson
           data:
-            .dockerconfigjson: "{{ lookup('template', './registrySecretData.json' ) | b64encode }}"
+            .dockerconfigjson: "{{ lookup('template', './registrySecretData.json' ) | to_json | b64encode }}"
       tags:
         - setupNsCredentials
     #####       ansible.builtin.command:
