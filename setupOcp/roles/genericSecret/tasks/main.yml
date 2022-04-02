@@ -1,0 +1,25 @@
+---
+# tasks file for genericSecret
+# All tasks are tagged with "tags: always" as the invocation should be tagged to decide if the tasks should be executed
+#####################################################################################
+## RoleVariables
+## roleGenericSecretSecrets: List of Dictionaries with the secrets data to be created
+## roleKey: K8S Api Key
+## roleHost: K8S Api Host
+#####################################################################################
+##
+## Loop over the secrets list and invoke task createOneSecret
+- name: Loop over the secrets list
+  ansible.builtin.include_tasks: createOneSecret.yaml
+  vars:
+    secretApiKey: "{{ roleKey }}"
+    secretApiHost: "{{ roleHost }}"
+    secretName: "{{ item.secretName }}"
+    secretNs: "{{ item.secretNs }}"
+    secretType: "{{ item.secretType | default('Opaque') }}"
+    secretState: "{{ item.secretState | default('present') }}"
+    secretFiles: "{{ item.secretFiles }}"
+  loop: "{{ roleGenericSecretSecrets }}"
+  no_log: true
+  tags:
+    - always
