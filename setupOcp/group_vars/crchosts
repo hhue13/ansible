@@ -27,7 +27,7 @@ oscpDomain: cloud1.2i.at
 oscpClusterName: epyc
 ##
 ## Namespace
-oscpNameSpace: "hhue"
+oscpNameSpace: "dxb"
 ##
 ## Docker CLI command (docker | podman)
 dockerCliCommand: "podman"
@@ -37,6 +37,32 @@ oscpClientBin: "/usr/local/bin/oc"
 ##
 ## Logout of the OC command shell at the end?
 oscpLogoutOfOc: true
+##
+## Signer certificate chain for Nexus user registry
+oscpNexusSignerChain: |
+  -----BEGIN CERTIFICATE-----
+  MIIDzzCCAregAwIBAgIUZif53VznDDZmMezOgEUiyxxuZpwwDQYJKoZIhvcNAQEL
+  BQAwdzELMAkGA1UEBhMCQVQxDzANBgNVBAgMBlZpZW5uYTEPMA0GA1UEBwwGVmll
+  bm5hMRIwEAYDVQQKDAkyaW5ub3ZhdGUxCzAJBgNVBAsMAklUMSUwIwYDVQQDDBwy
+  aW5ub3ZhdGUgSVQgQ29uc3VsdGluZyBHbWJoMB4XDTIxMDkwNzE2NTc1OVoXDTMx
+  MDkwNTE2NTc1OVowdzELMAkGA1UEBhMCQVQxDzANBgNVBAgMBlZpZW5uYTEPMA0G
+  A1UEBwwGVmllbm5hMRIwEAYDVQQKDAkyaW5ub3ZhdGUxCzAJBgNVBAsMAklUMSUw
+  IwYDVQQDDBwyaW5ub3ZhdGUgSVQgQ29uc3VsdGluZyBHbWJoMIIBIjANBgkqhkiG
+  9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzC+4thcYPXI+1Zk94+77HTCvIgcQ2mz+BaJz
+  AFl72UjdyWZ+M5IsqchcuVC7CBKrUC00jyycZrWP2pkDdzSlT2kHPk/k5BkaRry7
+  9Hcj4Bkk7RoKA0h8yus4hCcwEtWYB2ts6q/W92e3yYMaqiLp2y6R5u90kXW/iIyG
+  5RibcuOYFo+PoifAKhl9UYirgH+YPeImSvW7uIO4NXklG9fjLbKdH6f6Msv1J75/
+  +k1gcYeWl+asbbGvuo1BcR+rWRpbUhaIjcyRKaXRFfQnuZ3hpS0d2/Nji116KfVd
+  dtWdGYrrhznDieScp4vmflUTN+UVmOSKxapj5Vkf/0GnnQqL1wIDAQABo1MwUTAd
+  BgNVHQ4EFgQUczf0wuYVJguRSzMtlStRIne2Td4wHwYDVR0jBBgwFoAUczf0wuYV
+  JguRSzMtlStRIne2Td4wDwYDVR0TAQH/BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOC
+  AQEAyIbXkTKtDMjByfL6YbbObTiQmvtU7DWFWcKIM00vulg95XWNMtVG5t/6zRXV
+  FmyydJOJAhBLdE2F1Fp7MfQxMMx0KZlBtaHhlcGlo3OiRl0Ze/wv3RNM1ueXX9xZ
+  QtwZrSrUg5SlAw194bqSNEkzdTohH3e8eBff/eLhs2QsopThXqYAR66uRTYKLqIl
+  ZOYRyNlrrc017e9wPO8OhHY1iH/ZPZ8KW1t7FwpDq8oY4s7qkUKFK7FK6bnzV3oU
+  7SP96X8CvKOpQj+jLLUVKD8jaW72tyseDDFy86/Pj7/d50FLxay+TvqI6ffININW
+  KaZJj3v/cvmdA3ylL3QlJm3/kA==
+  -----END CERTIFICATE-----
 oscpNginxNameSpace: dxp
 oscpNginxCertificateName: dxp-tls-cert
 ##
