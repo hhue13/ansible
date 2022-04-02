@@ -103,6 +103,35 @@
           - "cmdResult is {{ cmdResult }}"
       tags:
         - always
+    ##############
+    ## Debug Vars
+    ##############
+    - name: Print some debug information
+      vars:
+        msg: |
+          Module Variables ("vars"):
+          --------------------------------
+          {{ vars | to_nice_json }}
+
+          Environment Variables ("environment"):
+          --------------------------------
+          {{ environment | to_nice_json }}
+
+          GROUP NAMES Variables ("group_names"):
+          --------------------------------
+          {{ group_names | to_nice_json }}
+
+          GROUPS Variables ("groups"):
+          --------------------------------
+          {{ groups | to_nice_json }}
+
+          HOST Variables ("hostvars"):
+          --------------------------------
+          {{ hostvars | to_nice_json }}
+      debug:
+        msg: "{{ msg.split('\n') }}"
+      tags:
+        - hhueOnly
     ############################################################################################################################
     ### Setup external registry for OCP
     ### http://uncontained.io/articles/external-container-registry-integration/#_deploying_images_from_an_authenticated_registry
@@ -121,6 +150,7 @@
       register: currentUserCaCm
       tags:
         - installNexusCa
+        - installTrustedCa
     ##
     ## Debug the result of the 'oc login'
     - name: Debug ConfigMap user-ca-bundle before update
@@ -130,6 +160,7 @@
       when: (currentUserCaCm is defined)
       tags:
         - installNexusCa
+        - installTrustedCa
     ##
     ## Create / update the ConfigMap user-ca-bundle
     - name: Create / update the ConfigMap user-ca-bundle
@@ -146,6 +177,7 @@
             ca-bundle.crt: "{{ oscpNexusSignerChain }}"
       tags:
         - installNexusCa
+        - installTrustedCa
     ##
     ## Update proxies.config.openshift.io/cluster to use the user-ca-bundle as trustedCA
     - name: Update proxies.config.openshift.io/cluster to use the user-ca-bundle as trustedCA
@@ -161,6 +193,7 @@
       failed_when: (cmdResult.rc != 0)
       tags:
         - installNexusCa
+        - installTrustedCa
     ##
     ## Create the secret for the Docker registry in namespace {{ oscpNameSpace }}
     - name: Create the secret for the Docker registry
@@ -179,6 +212,7 @@
             .dockerconfigjson: "{{ lookup('template', './registrySecretData.json' ) | to_json | b64encode }}"
       tags:
         - setupNsCredentials
+        - setupNsRegistryCredentials
     #####       ansible.builtin.command:
     #####         argv:
     #####           - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
@@ -211,6 +245,7 @@
       failed_when: (cmdResult.rc != 0)
       tags:
         - setupNsCredentials
+        - setupNsRegistryCredentials
     ##
     ## Check / verify the service account
     - name: Check / verify the service account
@@ -226,6 +261,7 @@
       failed_when: (cmdResult.rc != 0)
       tags:
         - setupNsCredentials
+        - setupNsRegistryCredentials
     ##
     ## Display current mappings for user {{ oscpServiceAccount | default('default') }}
     - name: Display current mappings for user {{ oscpServiceAccount | default('default') }}
@@ -235,6 +271,19 @@
       when: (cmdResult.stdout is defined)
       tags:
         - setupNsCredentials
+        - setupNsRegistryCredentials
+    ##
+    ## Run the creation of the secrets
+    - name: Run role genericSecrets
+      ansible.builtin.include_role:
+        name: genericSecret
+      vars:
+        roleKey: "{{ kube_api_key }}"
+        roleHost: "{{ k8s_host }}"
+        roleGenericSecretSecrets: "{{ oscpSecrets.oscpGenericSecrets }}"
+      when: (oscpSecrets.oscpGenericSecrets is defined)
+      tags:
+        - createSecrets
     ##
     ## Perform the oc logout
     - name: Logout of the command line client

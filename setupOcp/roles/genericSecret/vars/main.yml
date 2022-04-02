@@ -1,0 +1,4 @@
+---
+# vars file for genericSecret
+secretState: "present"
+secretType: "Opaque"
