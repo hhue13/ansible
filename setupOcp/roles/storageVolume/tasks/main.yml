@@ -1,0 +1,29 @@
+---
+# tasks file for storageVolume
+# All tasks are tagged with "tags: always" as the invocation should be tagged to decide if the tasks should be executed
+#####################################################################################
+## RoleVariables
+## roleStgVolumes: List of Dictionaries with the storage volumes to be created
+## roleKey: K8S Api Key
+## roleHost: K8S Api Host
+#####################################################################################
+##
+## Loop over the secrets list and invoke task createOneSecret
+- name: Loop over the storage volumes list
+  ansible.builtin.include_tasks: createOneStorageVolume.yml
+  vars:
+    storageVolumeApiKey: "{{ roleKey }}"
+    storageVolumeApiHost: "{{ roleHost }}"
+    storageVolumeName: "{{ item.stgVolumeName }}"
+    storageVolumeCapacity: "{{ item.stgVolumeCapacity }}"
+    storageVolumeNFSServer: "{{ item.stgVolumeNFSServer }}"
+    storageVolumeNFSPath: "{{ item.stgVolumeNFSPath }}"
+    storageVolumeAccessMode: "{{ item.stgVolAccessMode }}"
+    storageVolumeReclaimPolicy: "{{ item.stgVolReclaimPolicy }}"
+    storageVolumeStgClassName: "{{ item.stgVolStgClassName }}"
+    storageVolumeMode: "{{ item.stgVolMode }}"
+    storageVolumeState: "{{ item.stgVolState }}"
+  loop: "{{ roleStgVolumes }}"
+  no_log: false
+  tags:
+    - always

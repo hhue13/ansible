@@ -1,0 +1,23 @@
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: "{{ storageVolumeName }}"
+spec:
+  capacity:
+    storage: "{{ storageVolumeCapacity }}"
+  nfs:
+    server: "{{ storageVolumeNFSServer }}"
+    path: "{{ storageVolumeNFSPath }}/{{ storageVolumeName }}"
+  accessModes:
+    - "{{ storageVolumeAccessMode }}"
+  persistentVolumeReclaimPolicy: "{{ storageVolumeReclaimPolicy }}"
+  storageClassName: "{{ storageVolumeStgClassName }}"
+  mountOptions:
+    - hard
+    - nfsvers=4.1
+    - rsize=8388608
+    - wsize=8388608
+    - timeo=600
+    - retrans=2
+    - noresvport
+  volumeMode: "{{ storageVolumeMode }}"

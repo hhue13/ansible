@@ -1,0 +1,17 @@
+---
+# tasks file for prepareNfs
+# All tasks are tagged with "tags: always" as the invocation should be tagged to decide if the tasks should be executed
+####################################################################################################
+## RoleVariables
+## roleStgDirectories: List of Dictionaries with the directories to be created on the NFS Server
+####################################################################################################
+##
+## Loop over the secrets list and invoke task createOneSecret
+- name: Loop over the NFS server directory list
+  ansible.builtin.include_tasks: prepareOneNfsDirectory.yml
+  vars:
+    storageVolumeNFSPath: "{{ item }}"
+  loop: "{{ roleStgDirectories }}"
+  no_log: false
+  tags:
+    - always

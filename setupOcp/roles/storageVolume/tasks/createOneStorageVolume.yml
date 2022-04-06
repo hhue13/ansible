@@ -1,0 +1,94 @@
+---
+# Task to create one storage class.
+#####################################################################################
+## Variables which must be set when invoking:
+## storageVolumeApiKey: K8S API key
+## storageVolumeApiHost: K8S API Host
+## storageVolumeName: Storage volume name
+## storageVolumeCapacity: Storage volumen Capacity
+## storageVolumeNFSServer: NFS Server Name
+## storageVolumeNFSPath: NFS Server directory (needs the volumen name appended!)
+## storageVolumeAccessMode: Access mode like ReadWriteMany
+## storageVolumeReclaimPolicy: Reclaim policy (Retain etc.)
+## storageVolumeStgClassName: Storage class
+## storageVolumeMode: Volume mode (filesystem)
+## storageVolumeState: State of the volume (present / absent)
+#####################################################################################
+
+- name: Check existence of PV {{ storageVolumeName }}
+  kubernetes.core.k8s_info:
+    api_key: "{{ storageVolumeApiKey }}"
+    host: "{{ storageVolumeApiHost }}"
+    api_version: "v1"
+    kind: "PersistentVolume"
+    name: "{{ storageVolumeName }}"
+    validate_certs: "no"
+  register: storageVolumePvData
+  tags:
+    - always
+
+- name: Debug retrieved K8S definition for storage volume {{ storageVolumeName }}
+  ansible.builtin.debug:
+    msg: "Retreieved PV information is:\n\n{{ storageVolumePvData }}"
+  tags:
+    - hhueOnly
+
+- name: Notify user that storage volume {{ storageVolumeName }} exists
+  ansible.builtin.debug:
+    msg: "NOTE: Storage volume {{ storageVolumeName }} exists and is immutable hence can not be changed!"
+  when: (storageVolumePvData.resources[0] is defined)
+  tags:
+    - always
+
+- name: Create new volume
+  block:
+    - name: Create temporary file for templating YAML to apply for storage volume {{ storageVolumeName }}
+      ansible.builtin.tempfile:
+        state: file
+        suffix: temp
+      register: template_out
+
+    - name: Create J2 template for storage volume {{ storageVolumeName }}
+      ansible.builtin.template:
+        src: ./storageVolumeData.j2
+        dest: "{{ template_out.path }}"
+
+    - name: Get remote template for storage volume {{ storageVolumeName }} using slurp
+      ansible.builtin.slurp:
+        src: "{{ template_out.path }}"
+      register: slurpedFile
+      tags:
+        - hhueOnly
+
+    - name: Display decoded slurp'ed data for storage volume {{ storageVolumeName }}
+      ansible.builtin.debug:
+        msg: "Slurped data decoded:\n\n{{ slurpedFile['content'] | b64decode }}"
+      tags:
+        - hhueOnly
+
+    - name: Create the storage volume {{ storageVolumeName }}
+      kubernetes.core.k8s:
+        state: "{{ storageVolumeState | default('present') }}"
+        host: "{{ storageVolumeApiHost }}"
+        api_key: "{{ storageVolumeApiKey }}"
+        validate_certs: "no"
+        src: "{{ template_out.path }}"
+
+    - name: Update facts to include the directory being created
+      ansible.builtin.set_fact:
+        nfsServerDirectoryList: "{{ nfsServerDirectoryList }}  + [ '{{ storageVolumeNFSPath }}/{{ storageVolumeName }}' ]"
+
+    - name: Debug current nfsServerDirectoryList
+      ansible.builtin.debug:
+        var: nfsServerDirectoryList
+      tags:
+        - hhueOnly
+
+    - name: Cleanup generated template file for storage volume {{ storageVolumeName }}
+      ansible.builtin.file:
+        state: "absent"
+        path: "{{ template_out.path }}"
+
+  when: (storageVolumePvData.resources[0] is not defined)
+  tags:
+    - always
