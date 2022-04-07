@@ -342,15 +342,6 @@
       tags:
         - always
 
-    ##
-    ## Log the list of the nfsServerDirectoryList to a tmp file
-    - name: Log the list of the nfsServerDirectoryList to a tmp file
-      ansible.builtin.shell:
-        cmd: "echo {{ nfsServerDirectoryList }} > /tmp/nfsServerDirectoryList.txt"
-      when: ((oscpStgVolumes is defined) and
-        (oscpStgVolumes != '' ))
-      tags:
-        - always
 ##
 ## NFS Server tasks
 - name: Prepare NFS servers for new volumes
@@ -365,24 +356,33 @@
     - name: Create directories on the NFS server
       block:
         ##
+        ## Extract the directory list of the directories to be created on the NFS server from hostvars
+        - name: Create temporary file for templating YAML to get hostvars[host]['nfsServerDirectoryList']
+          ansible.builtin.tempfile:
+            state: file
+            suffix: temp
+          register: nfsServerDirectoryList_template_out
+
+        - name: Create J2 template for hostvars[host]['nfsServerDirectoryList']
+          ansible.builtin.template:
+            src: ./nfsServerDirectoryList.j2
+            dest: "{{ nfsServerDirectoryList_template_out.path }}"
+        ##
         ## Read the list of the nfsServerDirectoryList from tmp file
         - name: Read the list of the nfsServerDirectoryList from tmp file vlia slurp
           ansible.builtin.slurp:
-            src: /tmp/nfsServerDirectoryList.txt
+            src: "{{ nfsServerDirectoryList_template_out.path }}"
           register: slurpedFile
-          ignore_errors: yes
 
         - name: Register nfsServerDirectoryList as Ansible fact again
           ansible.builtin.set_fact:
             nfsServerDirectoryList: "{{ slurpedFile['content'] | b64decode | from_yaml }}"
-          when: (slurpedFile['content'] is defined)
-
         ##
-        ## Try to read the nfsServerDirectoryList from tmp file using file lookup if slurp did not work
-        - name: Read the list of the nfsServerDirectoryList from tmp file
-          ansible.builtin.set_fact:
-            nfsServerDirectoryList: "{{ lookup('file', '/tmp/nfsServerDirectoryList.txt') | from_yaml }}"
-          when: (slurpedFile['content'] is not defined)
+        ## Cleanup temp. file
+        - name: Cleanup generated template file for hostvars[host]['nfsServerDirectoryList']
+          ansible.builtin.file:
+            state: "absent"
+            path: "{{ nfsServerDirectoryList_template_out.path }}"
 
         - name: Debug imported nfsServerDirectoryList
           ansible.builtin.debug:

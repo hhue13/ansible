@@ -1,0 +1,5 @@
+{% for host in groups['crchosts'] %}
+  {% if 'nfsServerDirectoryList' in hostvars[host] %}
+    {{ hostvars[host]['nfsServerDirectoryList'] }}
+  {% endif %}
+{% endfor %}
