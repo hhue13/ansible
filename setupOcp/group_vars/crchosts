@@ -762,3 +762,14 @@ dxgStgVolumes:
     stgVolStgClassName: "dx-deploy-stg"
     stgVolMode: "Filesystem"
     stgVolState: "present"
+## predefined storage Volumes
+dxtStgVolumes:
+  - stgVolumeName: "dxt-dx-profile-pv"
+    stgVolumeCapacity: "10Gi"
+    stgVolumeNFSServer: "192.168.50.1"
+    stgVolumeNFSPath: "/var/lib/libvirt/images/epyc-pv-user-pvs"
+    stgVolAccessMode: "ReadWriteMany"
+    stgVolReclaimPolicy: "Retain"
+    stgVolStgClassName: "managed-nfs-dx-deploy-stg"
+    stgVolMode: "Filesystem"
+    stgVolState: "present"
