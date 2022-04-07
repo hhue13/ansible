@@ -1,3 +1,5 @@
 [crchosts]
 hhuelinux.hhue.at
-#####hhuelinux
+
+[nfshosts]
+epyc.2i.at

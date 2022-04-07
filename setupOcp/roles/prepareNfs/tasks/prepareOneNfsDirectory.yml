@@ -1,0 +1,22 @@
+---
+# Task to create Directories on NFS Servers
+#####################################################################################
+## Variables which must be set when invoking:
+## storageVolumeNFSPath: NFS Server directory to be created
+#####################################################################################
+##
+## Dump API Key
+- name: Debug directory name
+  ansible.builtin.debug:
+    msg:
+      - "Directory being created: {{ storageVolumeNFSPath  }}"
+  tags:
+    - hhueOnly
+
+- name: Create the directory on the NFS server for the volume
+  ansible.builtin.file:
+    path: "{{ storageVolumeNFSPath }}"
+    state: directory
+    mode: "777"
+  tags:
+    - always

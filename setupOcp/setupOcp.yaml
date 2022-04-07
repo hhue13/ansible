@@ -9,12 +9,14 @@
 ##
 ## Note: Make sure you setup visudo correctly so that "sudo -i -u <become_user>" works
 #######################################################################################################
-- name: Setup OCP to use nexus registry
+- name: Setup OCP environment
   hosts: crchosts
   become: yes
   become_user: "{{ oscpOsUser }}"
   gather_facts: true
   force_handlers: true
+  vars_files:
+    - group_vars/crchosts
   module_defaults:
     kubernetes.core.k8s:
       validate_certs: "no"
@@ -285,6 +287,39 @@
       tags:
         - createSecrets
     ##
+    ## Run the creation of the storage classes
+    - name: Run role storageClass
+      ansible.builtin.include_role:
+        name: storageClass
+      vars:
+        roleKey: "{{ kube_api_key }}"
+        roleHost: "{{ k8s_host }}"
+        roleStgClasses: "{{ oscpStgClasses }}"
+      when: ((oscpStgClasses is defined) and
+        (oscpStgClasses != ''))
+      tags:
+        - createStorage
+    ##
+    ## Initialize the fact for the directories to be created on the NFS servers
+    - name: Init list of NFS-Server directories being created
+      ansible.builtin.set_fact:
+        nfsServerDirectoryList: "[]"
+      tags:
+        - createStorage
+    ##
+    ## Run the creation of the storage volumes
+    - name: Run role storageVolume
+      ansible.builtin.include_role:
+        name: storageVolume
+      vars:
+        roleKey: "{{ kube_api_key }}"
+        roleHost: "{{ k8s_host }}"
+        roleStgVolumes: "{{ oscpStgVolumes }}"
+      when: ((oscpStgVolumes is defined) and
+        (oscpStgVolumes != '' ))
+      tags:
+        - createStorage
+    ##
     ## Perform the oc logout
     - name: Logout of the command line client
       ansible.builtin.command:
@@ -306,3 +341,69 @@
       when: kube_api_key is defined
       tags:
         - always
+
+##
+## NFS Server tasks
+- name: Prepare NFS servers for new volumes
+  hosts: nfshosts
+  become: yes
+  become_user: root
+  gather_facts: true
+  force_handlers: true
+  vars_files:
+    - group_vars/crchosts
+  tasks:
+    - name: Create directories on the NFS server
+      block:
+        ##
+        ## Extract the directory list of the directories to be created on the NFS server from hostvars
+        - name: Create temporary file for templating YAML to get hostvars[host]['nfsServerDirectoryList']
+          ansible.builtin.tempfile:
+            state: file
+            suffix: temp
+          register: nfsServerDirectoryList_template_out
+
+        - name: Create J2 template for hostvars[host]['nfsServerDirectoryList']
+          ansible.builtin.template:
+            src: ./nfsServerDirectoryList.j2
+            dest: "{{ nfsServerDirectoryList_template_out.path }}"
+        ##
+        ## Read the list of the nfsServerDirectoryList from tmp file
+        - name: Read the list of the nfsServerDirectoryList from tmp file vlia slurp
+          ansible.builtin.slurp:
+            src: "{{ nfsServerDirectoryList_template_out.path }}"
+          register: slurpedFile
+
+        - name: Register nfsServerDirectoryList as Ansible fact again
+          ansible.builtin.set_fact:
+            nfsServerDirectoryList: "{{ slurpedFile['content'] | b64decode | from_yaml }}"
+        ##
+        ## Cleanup temp. file
+        - name: Cleanup generated template file for hostvars[host]['nfsServerDirectoryList']
+          ansible.builtin.file:
+            state: "absent"
+            path: "{{ nfsServerDirectoryList_template_out.path }}"
+
+        - name: Debug imported nfsServerDirectoryList
+          ansible.builtin.debug:
+            msg:
+              - "Directories to be created: {{ nfsServerDirectoryList  }}"
+          tags:
+            - hhueOnly
+        ##
+        ## Run the creation of the directory structure on the NFS server
+        - name: Run role prepareNfs
+          ansible.builtin.include_role:
+            name: prepareNfs
+          vars:
+            roleStgDirectories: "{{ nfsServerDirectoryList }}"
+
+        - name: Cleanup temp. file /tmp/nfsServerDirectoryList.txt
+          ansible.builtin.file:
+            state: "absent"
+            path: "/tmp/nfsServerDirectoryList.txt"
+
+      when: ((oscpStgVolumes is defined) and
+        (oscpStgVolumes != '' ))
+      tags:
+        - createStorage

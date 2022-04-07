@@ -1,0 +1,26 @@
+---
+# tasks file for storageClass
+# All tasks are tagged with "tags: always" as the invocation should be tagged to decide if the tasks should be executed
+#####################################################################################
+## RoleVariables
+## roleStgClasses: List of Dictionaries with the storage classes to be created
+## roleKey: K8S Api Key
+## roleHost: K8S Api Host
+#####################################################################################
+##
+## Loop over the secrets list and invoke task createOneSecret
+- name: Loop over the storage classes list
+  ansible.builtin.include_tasks: createOneStorageClass.yml
+  vars:
+    storageClassApiKey: "{{ roleKey }}"
+    storageClassApiHost: "{{ roleHost }}"
+    storageClassName: "{{ item.stgClassName }}"
+    storageClassProvisioner: "{{ item.stgClassProvisioner }}"
+    storageClassReclaimPolicy: "{{ item.stgClassReclaimPolicy | default('Retain') }}"
+    storageClassVolBindingMode: "{{ item.stgClassVolumeBindingMode | default('WaitForFirstConsumer') }}"
+    storageClassState: "{{ item.stgClassState | default('present') }}"
+    storageClassOverwrite: "{{ item.stgClassOverwrite | default(false) }}"
+  loop: "{{ roleStgClasses }}"
+  no_log: false
+  tags:
+    - always

@@ -1,0 +1,78 @@
+---
+# Task to create one storage class.
+#####################################################################################
+## Variables which must be set when invoking:
+## storageClassApiKey: K8S API key
+## storageClassApiHost: K8S API Host
+## storageClassName: name of the storage class
+## storageClassProvisioner: Storage class provisioner
+## storageClassReclaimPolicy: Reclaim policy
+## storageClassVolBindingMode: Storage class Binding mode
+## storageClassState: State of the storage class object. Default to 'present'
+## storageClassOverwrite: Replace / update existing storage class
+#####################################################################################
+##
+## Check if storage class exists
+- name: Check existence of storage class {{ storageClassName }}
+  kubernetes.core.k8s_info:
+    api_key: "{{ storageClassApiKey }}"
+    host: "{{ storageClassApiHost }}"
+    api_version: "storage.k8s.io/v1"
+    kind: "StorageClass"
+    name: "{{ storageClassName }}"
+    validate_certs: "no"
+  register: storageClassData
+  tags:
+    - always
+
+- name: Update user that K8S definition for storage class {{ storageClassName }} exists
+  ansible.builtin.debug:
+    msg: "NOTE: Storage class {{ storageClassName }} exists and stgClassOverwrite was set to {{ storageClassOverwrite | string }}"
+  when: ((storageClassData is defined) and
+    (storageClassOverwrite != true))
+  tags:
+    - always
+
+- name: Debug retrieved K8S definition for storage class {{ storageClassName }}
+  ansible.builtin.debug:
+    msg: "Retreieved SC information is:\n\n{{ storageClassData }}"
+  when: (storageClassData is defined)
+  tags:
+    - hhueOnly
+
+- name: Create or replace storage class {{ storageClassName }}
+  block:
+    - name: Create temporary file for templating YAML to apply for storage class {{ storageClassName }}
+      ansible.builtin.tempfile:
+        state: file
+        suffix: temp
+      register: template_out
+
+    - name: Create J2 template for storage class {{ storageClassName }}
+      ansible.builtin.template:
+        src: ./storageClassData.j2
+        dest: "{{ template_out.path }}"
+
+    - name: Display created template for storage class {{ storageClassName }}
+      ansible.builtin.debug:
+        msg: "Generated template is:\n\n{{ lookup('file', template_out.path) }}"
+      tags:
+        - hhueOnly
+
+    - name: Create the storage class {{ storageClassName }}
+      kubernetes.core.k8s:
+        state: "{{ storageClassState | default('present') }}"
+        host: "{{ storageClassApiHost }}"
+        api_key: "{{ storageClassApiKey }}"
+        validate_certs: "no"
+        src: "{{ template_out.path }}"
+
+    - name: Cleanup generated template file for storage class {{ storageClassName }}
+      ansible.builtin.file:
+        state: "absent"
+        path: "{{ template_out.path }}"
+
+  when: ((storageClassData is not defined) or
+    (storageClassOverwrite == true))
+  tags:
+    - always
