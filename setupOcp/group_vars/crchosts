@@ -67,7 +67,7 @@ oscpNginxNameSpace: dxp
 oscpNginxCertificateName: dxp-tls-cert
 ##
 ## Secrets for dxp
-dxpOscpSecrets:
+oscpSecrets:
   oscpGenericSecrets:
     - secretName: "2i-ca-cert"
       secretNs: dxp
@@ -452,9 +452,7 @@ dxpOscpSecrets:
             66633432323833393264383538653165666232373236373264393239383831623761663262316339
             64626632656463373839323761643333666364623134323833343539613330353330333232393432
             65326466326435336639653534633530343633383064323839626534356630653531
-## Secrets for dxb
-dxbOscpSecrets:
-  oscpGenericSecrets:
+    ## Secrets for dxb
     ##
     ## TLS certificate for DX ambassador
     - secretName: "dx-tls-cert"
@@ -579,9 +577,7 @@ dxbOscpSecrets:
             66633432323833393264383538653165666232373236373264393239383831623761663262316339
             64626632656463373839323761643333666364623134323833343539613330353330333232393432
             65326466326435336639653534633530343633383064323839626534356630653531
-## Secrets for dxg
-dxgOscpSecrets:
-  oscpGenericSecrets:
+    ## Secrets for dxg
     ##
     ## TLS certificate for DX ambassador
     - secretName: "dx-tls-cert"
