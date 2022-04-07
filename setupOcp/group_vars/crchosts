@@ -1,7 +1,7 @@
 ---
 ##
 ## OSCP Authenticaton data used to login to K8S
-## ansible-vault encrypt_string --vault-id dev@~/ansible_password '<plain-text-password>' --name 'oscpKubeAdminPassword'
+## ansible-vault encrypt_string --vault-id ks8@~/ansible_password '<plain-text-password>' --name 'oscpKubeAdminPassword'
 oscpKubeAdminUserName: hhue
 oscpKubeAdminPassword: !vault |
   $ANSIBLE_VAULT;1.2;AES256;k8s
@@ -101,7 +101,7 @@ dxpOscpSecrets:
             -----END CERTIFICATE-----
     ##
     ## nginx-private key
-    ## ansible-vault encrypt_string --vault-id dev@~/ansible_password "$(cat 2i_portal.key)" --name 'fileValue'
+    ## ansible-vault encrypt_string --vault-id k8s@~/ansible_password "$(cat 2i_portal.key)" --name 'fileValue'
     - secretName: "2i-portal-key"
       secretNs: dxp
       secretType: "Opaque"
@@ -359,7 +359,7 @@ dxpOscpSecrets:
             BiWC0jW3AYIVQBnt6ON4Q8HhbQ==
             -----END CERTIFICATE-----
         ##
-        ## ansible-vault encrypt_string --vault-id dev@~/ansible_password "$(cat dx.apps.epyc.cloud1.2i.at.key)" --name 'fileValue'
+        ## ansible-vault encrypt_string --vault-id k8s@~/ansible_password "$(cat dx.apps.epyc.cloud1.2i.at.key)" --name 'fileValue'
         - secretFile: tls.key
           fileValue: !vault |
             $ANSIBLE_VAULT;1.2;AES256;dev
@@ -486,7 +486,7 @@ dxbOscpSecrets:
             BiWC0jW3AYIVQBnt6ON4Q8HhbQ==
             -----END CERTIFICATE-----
         ##
-        ## ansible-vault encrypt_string --vault-id dev@~/ansible_password "$(cat dx.apps.epyc.cloud1.2i.at.key)" --name 'fileValue'
+        ## ansible-vault encrypt_string --vault-id k8s@~/ansible_password "$(cat dx.apps.epyc.cloud1.2i.at.key)" --name 'fileValue'
         - secretFile: tls.key
           fileValue: !vault |
             $ANSIBLE_VAULT;1.2;AES256;dev
@@ -613,7 +613,7 @@ dxgOscpSecrets:
             BiWC0jW3AYIVQBnt6ON4Q8HhbQ==
             -----END CERTIFICATE-----
         ##
-        ## ansible-vault encrypt_string --vault-id dev@~/ansible_password "$(cat dx.apps.epyc.cloud1.2i.at.key)" --name 'fileValue'
+        ## ansible-vault encrypt_string --vault-id k8s@~/ansible_password "$(cat dx.apps.epyc.cloud1.2i.at.key)" --name 'fileValue'
         - secretFile: tls.key
           fileValue: !vault |
             $ANSIBLE_VAULT;1.2;AES256;dev
