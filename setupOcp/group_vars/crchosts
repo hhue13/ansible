@@ -1,7 +1,7 @@
 ---
 ##
 ## OSCP Authenticaton data used to login to K8S
-## ansible-vault encrypt_string --vault-id dev@~/ansible_password '<plain-text-password>' --name 'oscpKubeAdminPassword'
+## ansible-vault encrypt_string --vault-id ks8@~/ansible_password '<plain-text-password>' --name 'oscpKubeAdminPassword'
 oscpKubeAdminUserName: hhue
 oscpKubeAdminPassword: !vault |
   $ANSIBLE_VAULT;1.2;AES256;k8s
@@ -67,7 +67,7 @@ oscpNginxNameSpace: dxp
 oscpNginxCertificateName: dxp-tls-cert
 ##
 ## Secrets for dxp
-dxpOscpSecrets:
+oscpSecrets:
   oscpGenericSecrets:
     - secretName: "2i-ca-cert"
       secretNs: dxp
@@ -101,7 +101,7 @@ dxpOscpSecrets:
             -----END CERTIFICATE-----
     ##
     ## nginx-private key
-    ## ansible-vault encrypt_string --vault-id dev@~/ansible_password "$(cat 2i_portal.key)" --name 'fileValue'
+    ## ansible-vault encrypt_string --vault-id k8s@~/ansible_password "$(cat 2i_portal.key)" --name 'fileValue'
     - secretName: "2i-portal-key"
       secretNs: dxp
       secretType: "Opaque"
@@ -359,7 +359,7 @@ dxpOscpSecrets:
             BiWC0jW3AYIVQBnt6ON4Q8HhbQ==
             -----END CERTIFICATE-----
         ##
-        ## ansible-vault encrypt_string --vault-id dev@~/ansible_password "$(cat dx.apps.epyc.cloud1.2i.at.key)" --name 'fileValue'
+        ## ansible-vault encrypt_string --vault-id k8s@~/ansible_password "$(cat dx.apps.epyc.cloud1.2i.at.key)" --name 'fileValue'
         - secretFile: tls.key
           fileValue: !vault |
             $ANSIBLE_VAULT;1.2;AES256;dev
@@ -452,9 +452,7 @@ dxpOscpSecrets:
             66633432323833393264383538653165666232373236373264393239383831623761663262316339
             64626632656463373839323761643333666364623134323833343539613330353330333232393432
             65326466326435336639653534633530343633383064323839626534356630653531
-## Secrets for dxb
-dxbOscpSecrets:
-  oscpGenericSecrets:
+    ## Secrets for dxb
     ##
     ## TLS certificate for DX ambassador
     - secretName: "dx-tls-cert"
@@ -486,7 +484,7 @@ dxbOscpSecrets:
             BiWC0jW3AYIVQBnt6ON4Q8HhbQ==
             -----END CERTIFICATE-----
         ##
-        ## ansible-vault encrypt_string --vault-id dev@~/ansible_password "$(cat dx.apps.epyc.cloud1.2i.at.key)" --name 'fileValue'
+        ## ansible-vault encrypt_string --vault-id k8s@~/ansible_password "$(cat dx.apps.epyc.cloud1.2i.at.key)" --name 'fileValue'
         - secretFile: tls.key
           fileValue: !vault |
             $ANSIBLE_VAULT;1.2;AES256;dev
@@ -579,9 +577,7 @@ dxbOscpSecrets:
             66633432323833393264383538653165666232373236373264393239383831623761663262316339
             64626632656463373839323761643333666364623134323833343539613330353330333232393432
             65326466326435336639653534633530343633383064323839626534356630653531
-## Secrets for dxg
-dxgOscpSecrets:
-  oscpGenericSecrets:
+    ## Secrets for dxg
     ##
     ## TLS certificate for DX ambassador
     - secretName: "dx-tls-cert"
@@ -613,7 +609,7 @@ dxgOscpSecrets:
             BiWC0jW3AYIVQBnt6ON4Q8HhbQ==
             -----END CERTIFICATE-----
         ##
-        ## ansible-vault encrypt_string --vault-id dev@~/ansible_password "$(cat dx.apps.epyc.cloud1.2i.at.key)" --name 'fileValue'
+        ## ansible-vault encrypt_string --vault-id k8s@~/ansible_password "$(cat dx.apps.epyc.cloud1.2i.at.key)" --name 'fileValue'
         - secretFile: tls.key
           fileValue: !vault |
             $ANSIBLE_VAULT;1.2;AES256;dev
@@ -760,5 +756,16 @@ dxgStgVolumes:
     stgVolAccessMode: "ReadWriteMany"
     stgVolReclaimPolicy: "Retain"
     stgVolStgClassName: "dx-deploy-stg"
+    stgVolMode: "Filesystem"
+    stgVolState: "present"
+## predefined storage Volumes
+dxtStgVolumes:
+  - stgVolumeName: "dxt-dx-profile-pv"
+    stgVolumeCapacity: "10Gi"
+    stgVolumeNFSServer: "192.168.50.1"
+    stgVolumeNFSPath: "/var/lib/libvirt/images/epyc-pv-user-pvs"
+    stgVolAccessMode: "ReadWriteMany"
+    stgVolReclaimPolicy: "Retain"
+    stgVolStgClassName: "managed-nfs-dx-deploy-stg"
     stgVolMode: "Filesystem"
     stgVolState: "present"
