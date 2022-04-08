@@ -57,8 +57,6 @@
       ansible.builtin.slurp:
         src: "{{ template_out.path }}"
       register: slurpedFile
-      tags:
-        - hhueOnly
 
     - name: Display decoded slurp'ed data for storage volume {{ storageVolumeName }}
       ansible.builtin.debug:
