@@ -133,7 +133,13 @@
       debug:
         msg: "{{ msg.split('\n') }}"
       tags:
-        - hhueOnly
+        - debugHostVars
+
+    - name: Display hostvars
+      ansible.builtin.debug:
+        msg: "hostvars:\n\n{{ hostvars | to_yaml}}\n\n"
+      tags:
+        - debugHostVars
     ############################################################################################################################
     ### Setup external registry for OCP
     ### http://uncontained.io/articles/external-container-registry-integration/#_deploying_images_from_an_authenticated_registry
@@ -215,21 +221,6 @@
       tags:
         - setupNsCredentials
         - setupNsRegistryCredentials
-    #####       ansible.builtin.command:
-    #####         argv:
-    #####           - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
-    #####           - "-n"
-    #####           - "{{ oscpNameSpace }}"
-    #####           - "create"
-    #####           - "secret"
-    #####           - "docker-registry"
-    #####           - "{{ oscpRegistryName }}"
-    #####           - "--docker-username={{ oscpRegistryUserName }}"
-    #####           - "--docker-password={{ oscpRegistryPassword }}"
-    #####           - "--docker-server={{ oscpRegistryUrl }}"
-    #####           - "--docker-email={{ oscpRegistryEMail }}"
-    #####       register: cmdResult
-    #####       failed_when: (cmdResult.rc != 0)
     ##
     ## Link the secret to the service account
     - name: Link the secret to the service account
@@ -276,13 +267,29 @@
         - setupNsRegistryCredentials
     ##
     ## Run the creation of the secrets
-    - name: Run role genericSecrets
-      ansible.builtin.include_role:
-        name: genericSecret
-      vars:
-        roleKey: "{{ kube_api_key }}"
-        roleHost: "{{ k8s_host }}"
-        roleGenericSecretSecrets: "{{ oscpSecrets.oscpGenericSecrets }}"
+    - name: Block - Run role genericSecrets - if oscpSecrets is a list
+      block:
+        - name: Run role genericSecrets - if oscpSecrets is a list
+          ansible.builtin.include_role:
+            name: genericSecret
+          vars:
+            roleKey: "{{ kube_api_key }}"
+            roleHost: "{{ k8s_host }}"
+            roleGenericSecretSecrets: "{{ hostvars[inventory_hostname][item].oscpGenericSecrets }}"
+          loop: "{{ oscpSecrets if oscpSecrets is iterable and (oscpSecrets is not string and oscpSecrets is not mapping) else [] }}"
+      when: (oscpSecrets is iterable)
+      tags:
+        - createSecrets
+
+    - name: Block - Run role genericSecrets - if oscpSecrets.oscpGenericSecrets is defined
+      block:
+        - name: Run role genericSecrets - if oscpSecrets.oscpGenericSecrets is defined
+          ansible.builtin.include_role:
+            name: genericSecret
+          vars:
+            roleKey: "{{ kube_api_key }}"
+            roleHost: "{{ k8s_host }}"
+            roleGenericSecretSecrets: "{{ oscpSecrets.oscpGenericSecrets }}"
       when: (oscpSecrets.oscpGenericSecrets is defined)
       tags:
         - createSecrets
