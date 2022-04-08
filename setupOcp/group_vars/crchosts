@@ -846,7 +846,7 @@ stgClasses:
     stgClassReclaimPolicy: "Retain"
     stgClassVolumeBindingMode: "WaitForFirstConsumer"
     stgClassState: "present"
-    stgClassOverwrite: false
+    stgClassOverwrite: true
 ## predefined storage Volumes
 dxgStgVolumes:
   - stgVolumeName: "hhue-test-pv-01"
