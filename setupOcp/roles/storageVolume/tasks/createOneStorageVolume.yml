@@ -50,13 +50,15 @@
 
     - name: Create J2 template for storage volume {{ storageVolumeName }}
       ansible.builtin.template:
-        src: ./storageVolumeData.j2
+        src: "{{ storageVolumesTemplate }}"
         dest: "{{ template_out.path }}"
 
     - name: Get remote template for storage volume {{ storageVolumeName }} using slurp
       ansible.builtin.slurp:
         src: "{{ template_out.path }}"
       register: slurpedFile
+      tags:
+        - hhueOnly
 
     - name: Display decoded slurp'ed data for storage volume {{ storageVolumeName }}
       ansible.builtin.debug:

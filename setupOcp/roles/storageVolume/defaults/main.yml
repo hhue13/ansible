@@ -1,2 +1,3 @@
 ---
 # defaults file for storageVolume
+storageVolumesTemplate: "./storageVolumeData.j2"
