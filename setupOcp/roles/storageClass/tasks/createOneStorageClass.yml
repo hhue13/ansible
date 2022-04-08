@@ -50,12 +50,19 @@
 
     - name: Create J2 template for storage class {{ storageClassName }}
       ansible.builtin.template:
-        src: ./storageClassData.j2
+        src: "{{ storageClassTemplate }}"
         dest: "{{ template_out.path }}"
 
-    - name: Display created template for storage class {{ storageClassName }}
+    - name: Get remote template for storage class {{ storageClassName }} using slurp
+      ansible.builtin.slurp:
+        src: "{{ template_out.path }}"
+      register: slurpedFile
+      tags:
+        - hhueOnly
+
+    - name: Display decoded slurp'ed data for storage class {{ storageClassName }}
       ansible.builtin.debug:
-        msg: "Generated template is:\n\n{{ lookup('file', template_out.path) }}"
+        msg: "Slurped data decoded:\n\n{{ slurpedFile['content'] | b64decode }}"
       tags:
         - hhueOnly
 
