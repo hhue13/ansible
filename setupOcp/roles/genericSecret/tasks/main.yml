@@ -14,12 +14,14 @@
   vars:
     secretApiKey: "{{ roleKey }}"
     secretApiHost: "{{ roleHost }}"
-    secretName: "{{ item.secretName }}"
-    secretNs: "{{ item.secretNs }}"
-    secretType: "{{ item.secretType | default('Opaque') }}"
-    secretState: "{{ item.secretState | default('present') }}"
-    secretFiles: "{{ item.secretFiles }}"
+    secretName: "{{ secret_item.secretName }}"
+    secretNs: "{{ secret_item.secretNs }}"
+    secretType: "{{ secret_item.secretType | default('Opaque') }}"
+    secretState: "{{ secret_item.secretState | default('present') }}"
+    secretFiles: "{{ secret_item.secretFiles }}"
   loop: "{{ roleGenericSecretSecrets }}"
+  loop_control:
+    loop_var: secret_item
   no_log: true
   tags:
     - always
