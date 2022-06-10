@@ -1,0 +1,14 @@
+########################################################################
+## Replace one placeholder
+## Params:
+## - itemPath: File in which strings will be replaced
+## - itemPlaceholder: Placeholder string
+## - itemValue: value with which the placeholder will be replaced
+##########################################################################
+##
+## Replace placeholders with values
+- name: Replace placeholder with value
+  ansible.builtin.replace:
+    path: "{{ itemPath }}"
+    regexp: "{{ itemPlaceholder }}"
+    replace: '"{{ itemValue }}"'

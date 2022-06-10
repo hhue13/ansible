@@ -1,0 +1,103 @@
+---
+#######################################################################################################
+## Requires the following collections and python modules:
+##
+## See README.md for required software dependencies
+##
+## Checkout the branch from git and create the values file based on the variables set
+##
+## Note: Make sure you setup visudo correctly so that "sudo -i -u <become_user>" works
+##
+## ansible-playbook  --vault-id k8s@~/ansible_password ./replaceTokens.yaml
+## ansible-playbook  --vault-id k8s@~/ansible_password -e gitBranch=master ./replaceTokens.yaml
+#######################################################################################################
+- name: Checkout from Git and replace Tokens in files
+  hosts: crchosts
+  #####   become: yes
+  #####   become_user: "{{ oscpOsUser }}"
+  gather_facts: false
+  #####   force_handlers: true
+  #########################
+  ## Tasks of the play-book
+  #########################
+  tasks:
+    - name: Send notification message via Slack
+      community.general.slack:
+        token: "{{ slackAuthenticationToken }}"
+        msg: "Checkout from Git and replace Tokens in files started for {{ gitRepositoryUrl }}"
+      when: ((sendSlackNotifications is defined) and (sendSlackNotifications == true))
+    ##
+    ## If no gitBranch defined we use master
+    - name: Set branch to Master if not set
+      ansible.builtin.set_fact:
+        gitVersion: "master"
+      when: (( gitBranch is not defined) or
+        (gitBranch == ''))
+    ##
+    ## If branch is defined use set branch
+    - name: Use configured gitVersion
+      ansible.builtin.set_fact:
+        gitVersion: "{{ gitBranch }}"
+      when: (( gitBranch is defined) and
+        (gitBranch != ''))
+    ##
+    ## Cleanup leftover target directory for gitClone
+    - name: Cleanup leftover target directory for gitClone
+      ansible.builtin.file:
+        state: absent
+        path: "{{ gitCheckoutToDir }}"
+    ##
+    ## Checking for env variable K8S_USER
+    - name: Get the value of SSH_AUTH_SOCK
+      set_fact:
+        ssh_auth_sock: "{{ lookup('env', 'SSH_AUTH_SOCK') }}"
+    ##
+    ## Clone the repo
+    - name: Clone the repository
+      ansible.builtin.git:
+        repo: "{{ gitRepositoryUrl }}"
+        dest: "{{ gitCheckoutToDir }}"
+        umask: "{{ gitCheckoutUmask | default('022') }}"
+        version: "{{ gitVersion }}"
+        remote: "{{ gitRemote | default('origin') }}"
+        single_branch: yes
+        depth: 1
+        recursive: yes
+        key_file: "{{ gitPrivateKey }}"
+      environment:
+        GIT_TERMINAL_PROMPT: 0 # reports "terminal prompts disabled" on missing password
+        SSH_AUTH_SOCK: "{{ ssh_auth_sock }}"
+    ##
+    ## Create temporary file for templating
+    - name: Create temporary file for templating
+      ansible.builtin.tempfile:
+        state: file
+        suffix: temp
+      register: template_out
+    ##
+    ## Replace token in one file
+    - name: Replace token in one file
+      ansible.builtin.include_tasks: processOneFile.yaml
+      vars:
+        fileTempPath: "{{ template_out.path }}"
+        fileReplaceItems: "{{ replaceItems }}"
+        fileGitCheckoutToDir: "{{ gitCheckoutToDir }}"
+        fileFile: "{{ file_item.file }}"
+        fileDir: "{{ file_item.dir }}"
+        fileGitVersion: "{{ gitVersion }}"
+      loop: "{{ fileList }}"
+      loop_control:
+        loop_var: file_item
+
+    ##
+    ## Cleanup generated template file
+    - name: Cleanup generated template file
+      ansible.builtin.file:
+        state: "absent"
+        path: "{{ template_out.path }}"
+    ##
+    ## Cleanup target directory for gitClone
+    - name: Cleanup target directory for gitClone
+      ansible.builtin.file:
+        state: absent
+        path: "{{ gitCheckoutToDir }}"
