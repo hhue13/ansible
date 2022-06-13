@@ -1,0 +1,55 @@
+########################################################################################################## Process one file to replace tokens
+## Params:
+##   fileTempPath: Temp file to use
+##   fileReplaceItems: List of dictionaries with Tokens and replacement values
+##   fileGitCheckoutToDir: Directory to which git repo has been checked out
+##   fileDir: Name fo the file directory in the git repo to process
+##   fileFile: Name fo the file in the git repo to process
+##   fileGitVersion: Name of the branch, tag being checked out (used to create output directory structure)
+##########################################################################################################
+##
+## Copy source file to tempfile to resolve variables
+- name: Copy source file to tempfile to resolve variables
+  ansible.builtin.copy:
+    src: "{{ fileGitCheckoutToDir }}/{{ fileDir }}/{{ fileFile }}"
+    dest: "{{ fileTempPath }}"
+##
+## Wait until the number of pods is down to 1
+- name: Replace all placeholders with values
+  ansible.builtin.include_tasks: replaceOnePlaceholder.yaml
+  vars:
+    itemPath: "{{ fileTempPath }}"
+    itemPlaceholder: "{{ replace_item.placeHolder }}"
+    itemValue: "{{ replace_item.value }}"
+  loop: "{{ fileReplaceItems }}"
+  no_log: true
+  loop_control:
+    loop_var: replace_item
+##
+## Get created values file
+- name: Get created values file
+  ansible.builtin.slurp:
+    src: "{{ fileTempPath }}"
+  register: slurpedFile
+
+- name: Display decoded slurp'ed data for secret {{ secretName }}
+  ansible.builtin.debug:
+    msg: "Slurped data decoded:\n\n{{ slurpedFile['content'] | b64decode }}\n\n"
+##
+## Create directory structure for the output file
+- name: Create directory structure for the output file
+  ansible.builtin.file:
+    state: directory
+    path: "{{ localFileDirectory }}/{{ fileGitVersion }}/{{ fileDir }}"
+##
+## Cleanup leftover result file
+- name: Cleanup leftover result file
+  ansible.builtin.file:
+    state: absent
+    path: "{{ localFileDirectory }}/{{ fileGitVersion }}/{{ fileDir }}/{{ fileFile }}"
+##
+## Copy the file to local file
+- name: Copy the file to local file
+  ansible.builtin.copy:
+    content: "{{ slurpedFile['content'] | b64decode }}"
+    dest: "{{ localFileDirectory }}/{{ fileGitVersion }}/{{ fileDir }}/{{ fileFile }}"

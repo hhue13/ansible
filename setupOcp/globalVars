@@ -3,6 +3,6 @@
 #######################################################
 oscpHostApiUrl: https://api.epyc.cloud1.2i.at:6443
 oscpOsUser: hhuebler
-oscpSecrets: "{{ dxpOscpSecrets }}"
+##### oscpSecrets: "{{ dxpOscpSecrets }}"
 oscpStgVolumes: "{{ dxgStgVolumes | default('') }}"
 oscpStgClasses: "{{ stgClasses | default('') }}"

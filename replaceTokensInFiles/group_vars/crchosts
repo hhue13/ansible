@@ -1,0 +1,66 @@
+---
+##
+##
+sendSlackNotifications: true
+## Slack authentication token
+## ansible-vault encrypt_string --vault-id dev@~ansible_password '<plain-text-password>' --name 'slackAuthenticationToken'
+slackAuthenticationToken: !vault |
+  $ANSIBLE_VAULT;1.2;AES256;ks8
+  62663330373062393833343462646333636262393535643564303232346232363931303036386363
+  6166333237383730383633626633626234386463656239330a376334366631353333396233363064
+  62373638326433643034653039316263333431383766343662623065373435376630393936333764
+  3532623135623431650a323564326162396331613235366531393737636131353837383732663832
+  31626239646531653162366233363264313539646438633664393630363135303830333465386236
+  3835373762646335316537633830383933616439356161613933
+##
+## Git data
+# Private key to be used to checkout from Git
+gitPrivateKey: "/home/hhuebler/.ssh/github_deploy_key"
+# Git repository URL to check out
+gitRepositoryUrl: "git@github.com:hhue13/dx-helm-values.git"
+# Branch, version, tag to checkout (defaults to master)
+gitBranch: "main"
+# Target directory to check the Git repo will be checked out (will be removed again afterwards)
+gitCheckoutToDir: "/dev/shm/myRepo"
+# Umask of the checked out repo (defaults to 022)
+#gitCheckoutUmask: "022"
+# Git remote to be used (defaults to origin)
+#gitRemote: "origin"
+##
+## List of files INSIDE the repository in which the placeholders will be replaced
+fileList:
+  - dir: "epyc/dxb"
+    file: "values_dxb.yaml"
+  - dir: "epyc/dxg"
+    file: "values_dxg.yaml"
+
+##
+## Named placeholders which can be used in {{ replaceItems }}
+wasPasswordPlaceholder: "##WASPASSORD##"
+wpsPasswordPlaceholder: "##WPSPASSORD##"
+##
+## Passwords to replace
+## ansible-vault encrypt_string --vault-id dev@~ansible_password '<plain-text-password>' --name 'wasPassword'
+wasPassword: !vault |
+  $ANSIBLE_VAULT;1.2;AES256;dev
+  31653835313161373436376135666633373235383230653738306235363562376437613262626331
+  3834353739323066653432313331663939633064333533320a633865373163386531613134666266
+  64323737306166316462613736373131613131626232306538366533336130613362653236306530
+  3862373238633663320a666136643163636636373065323139316364393964386637373365323539
+  3234
+wpsPassword: !vault |
+  $ANSIBLE_VAULT;1.2;AES256;dev
+  64346461306632646633363037396637303934666663343363393064336433646265663736613966
+  3563353433386133356564333632656465326564373838630a373132316266393636333135633663
+  61303938626236356639616261393737623764393061656335616363303839343934633330303130
+  3233623765623433370a323334333534373463353762353339356533396539636136323463653633
+  3534
+## List of directories with Placeholders and values to replace them with
+replaceItems:
+  - placeHolder: "{{ wasPasswordPlaceholder }}"
+    value: "{{ wasPassword }}"
+  - placeHolder: "{{ wpsPasswordPlaceholder }}"
+    value: "{{ wpsPassword }}"
+##
+## Local parent directory where we store the files with the replaced passwords
+localFileDirectory: "/tmp"
