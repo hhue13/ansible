@@ -45,12 +45,12 @@ oscpLogoutOfOc: true
 ## Databases to backup !!
 backupDatabases:
   - name: "dxmediadb"
-    backupFile: "dxmediadb"
+    backupFile: "{{ oscpDamDeployment }}-dxmediadb"
 ##
 ## DAM Direcories to backup
 backupDirectories:
   - name: "/opt/app/upload"
-    backupFile: "damFiles"
+    backupFile: "{{ oscpDamDeployment }}-damFiles"
 corePodName: "{{ oscpDamDeployment }}-core-0"
 coreContainerName: "core"
 ##
@@ -110,7 +110,7 @@ wpsPassword: !vault |
 xmlAccessInputFile: "/opt/HCL/PortalServer/doc/xml-samples/ExportAllDAMCollections.xml"
 ##
 ## xmlaccess base output file for backup
-xmlAccessExportPattern: "damExport_{{ timestampPattern }}.xml"
+xmlAccessExportPattern: "{{ oscpDamDeployment }}-damExport_{{ timestampPattern }}.xml"
 ##
 ## xmlaccess base output file for backup
-xmlAccessImportPattern: "damImport_{{ timestampPattern }}.xml"
+xmlAccessImportPattern: "{{ oscpDamDeployment }}-damImport_{{ timestampPattern }}.xml"
