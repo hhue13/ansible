@@ -1,4 +1,15 @@
 ---
+sendSlackNotifications: false
+## Slack authentication token
+## ansible-vault encrypt_string --vault-id dev@~ansible_password '<plain-text-password>' --name 'slackAuthenticationToken'
+slackAuthenticationToken: !vault |
+  $ANSIBLE_VAULT;1.2;AES256;ks8
+  62663330373062393833343462646333636262393535643564303232346232363931303036386363
+  6166333237383730383633626633626234386463656239330a376334366631353333396233363064
+  62373638326433643034653039316263333431383766343662623065373435376630393936333764
+  3532623135623431650a323564326162396331613235366531393737636131353837383732663832
+  31626239646531653162366233363264313539646438633664393630363135303830333465386236
+  3835373762646335316537633830383933616439356161613933
 ##
 ## OSCP Authenticaton data used to login to K8S
 ## ansible-vault encrypt_string --vault-id dev@~ansible_password '<plain-text-password>' --name 'oscpKubeAdminPassword'
@@ -12,12 +23,12 @@ oscpKubeAdminPassword: !vault |
   3032
 ##
 ## OSCP installation details
-oscpDomain: cloud.2i.at
-oscpClusterName: ocp00
+oscpDomain: cloud1.2i.at
+oscpClusterName: epyc
 ##
 ## Namespace and deployment name
-oscpDamNameSpace: "dxd"
-oscpDamDeployment: "dx-native"
+oscpDamNameSpace: "dxb"
+oscpDamDeployment: "dx-blue"
 ##
 ## Docker CLI command (docker | podman)
 dockerCliCommand: "podman"
@@ -27,9 +38,9 @@ oscpClientBin: "/usr/local/bin/oc"
 ##
 ## Logout of the OC command shell at the end?
 oscpLogoutOfOc: true
-##
-## Target directory for backups. This is also the locations for the files to restore!
-targetDirectoryForBackupFiles: "/2tmp/damBackup"
+##################################################################
+## playbook specifics
+##################################################################
 ##
 ## Databases to backup !!
 backupDatabases:
@@ -40,31 +51,66 @@ backupDatabases:
 backupDirectories:
   - name: "/opt/app/upload"
     backupFile: "damFiles"
-#####   - name: "/etc/config"
-#####     backupFile: "damConfigFiles"
+corePodName: "{{ oscpDamDeployment }}-core-0"
+coreContainerName: "core"
+##
+## app=<tag> for the DAM application
+damAppTag: "{{ oscpDamDeployment }}-digital-asset-management"
+##
+## DAM pod name to be backed up
+damPodName: "{{ oscpDamDeployment }}-digital-asset-management-0"
+##
+## Database pod to be backed up
+persistencePodContainerName: "persistence-node"
+##
+## Database pod to check for the active node
+persistencePodName: "{{ oscpDamDeployment }}-persistence-node-0"
 ##
 ## Restore file(s) and directories.
-## Note: The 'backupFile' must be located in the director {{ targetDirectoryForBackupFiles }}
-restoreDirectories:
-  - name: "/opt/app/upload"
-    backupFile: "damFiles_20220210T171855.tar.gz"
-#####   - name: "/etc/config"
-#####     backupFile: "damConfigFiles_20220210T171855.tar.gz"
 ##
 ## Database backup files to be restored
 ## Note: The 'backupFile' must be located in the director {{ targetDirectoryForBackupFiles }}
 restoreDatabases:
   - name: "dxmediadb"
-    backupFile: "dxmediadb_20220210T171855.dmp.gz"
+    backupFile: "dxmediadb_20220620T182149.dmp.gz"
     connLimitToSet: 500
     dbrole: "dxuser"
 ##
-## Database pod to be backed up
-persistencePodName: "{{ oscpDamDeployment }}-persistence-node-0"
-persistencePodContainerName: "persistence-node"
-persistenceStsName: "{{ oscpDamDeployment }}-persistence-node"
+## DAM pod directory backup
+## Note: The 'backupFile' must be located in the director {{ targetDirectoryForBackupFiles }}
+restoreDirectories:
+  - name: "/opt/app/upload"
+    backupFile: "damFiles_20220620T182149.tar.gz"
 ##
-## DAM pod name to be backed up
+## Name of the xml file to import in the restore case
+## Note: The 'restoreXmlFile' must be located in the director {{ targetDirectoryForBackupFiles }}
+restoreXmlFiles:
+  - name: XMLCollections
+    backupFile: "damExport_20220620T182149.xml"
 ##
-## D A M
-damPodName: "{{ oscpDamDeployment }}-digital-asset-management-0"
+## Target directory for backups. This is also the locations for the files to restore!
+targetDirectoryForBackupFiles: "/2tmp/damBackup"
+##
+## Pattern to be replaced with the backup timestamp during the run
+timestampPattern: "##TIMESTAMP##"
+##
+## DX Admin user to run xmlaccess
+wpsUser: "wpadmin"
+##
+## DX Admin user's password to run xmlaccess
+wpsPassword: !vault |
+  $ANSIBLE_VAULT;1.2;AES256;dev
+  64346461306632646633363037396637303934666663343363393064336433646265663736613966
+  3563353433386133356564333632656465326564373838630a373132316266393636333135633663
+  61303938626236356639616261393737623764393061656335616363303839343934633330303130
+  3233623765623433370a323334333534373463353762353339356533396539636136323463653633
+  3534
+##
+## xmlaccess input file
+xmlAccessInputFile: "/opt/HCL/PortalServer/doc/xml-samples/ExportAllDAMCollections.xml"
+##
+## xmlaccess base output file for backup
+xmlAccessExportPattern: "damExport_{{ timestampPattern }}.xml"
+##
+## xmlaccess base output file for backup
+xmlAccessImportPattern: "damImport_{{ timestampPattern }}.xml"

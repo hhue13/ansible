@@ -127,3 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Omit collections
+*/collections/*
+
+# Omit ansible.cfg (as it contains sensitive data)
+**/ansible.cfg
