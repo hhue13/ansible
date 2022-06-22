@@ -1,5 +1,12 @@
 ---
 ##
+## Determine the currently active postgress pod
+- name: Run role to determine the active postgress database node
+  ansible.builtin.include_role:
+    name: getActiveDbPod
+  tags:
+    - always
+##
 ## Copy DB backup files to the target pod
 - name: Copy DB backup files to target pod {{ rolePersistentPodName }}
   ansible.builtin.include_tasks: copyOneBackupFileToPod.yaml

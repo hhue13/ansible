@@ -20,12 +20,29 @@
   module_defaults:
     kubernetes.core.k8s:
       validate_certs: "no"
-    community.okd:
+    kubernetes.core.k8s_info:
+      validate_certs: "no"
+    kubernetes.core.k8s_exec:
+      validate_certs: "no"
+    kubernetes.core.k8s_cp:
+      validate_certs: "no"
+    community.okd.openshift_auth:
+      validate_certs: "no"
+    community.okd.openshift_process:
+      validate_certs: "no"
+    community.okd.openshift_route:
       validate_certs: "no"
   #########################
   ## Tasks of the play-book
   #########################
   tasks:
+    - name: Send notification message via Slack
+      community.general.slack:
+        token: "{{ slackAuthenticationToken }}"
+        msg: "DAM Backup on host: {{ inventory_hostname }} started"
+      when: ((sendSlackNotifications is defined) and (sendSlackNotifications == true))
+      tags:
+        - always
     ##
     ## Set login facts
     - name: Set K8S login facts
@@ -95,6 +112,13 @@
     ########################################################################################
     ### Restore of DAM Data - part #1
     ########################################################################################
+    - name: Verify that the XML files to import exist
+      ansible.builtin.include_tasks: checkFilesExistence.yaml
+      vars:
+        fileToCheck: "{{ item }}"
+      loop: "{{ restoreXmlFiles }}"
+      tags:
+        - restore
     - name: Verify that the DAM files to restore exist
       ansible.builtin.include_tasks: checkFilesExistence.yaml
       vars:
@@ -110,56 +134,6 @@
       tags:
         - restore
     ##
-    ## Retrieve the current STS definition
-    - name: Retrieve the current STS definition for sts {{ persistenceStsName }}
-      kubernetes.core.k8s_info:
-        host: "{{ k8s_host }}"
-        api_key: "{{ kube_api_key }}"
-        namespace: "{{ k8s_ns }}"
-        api_version: "apps/v1"
-        kind: "StatefulSet"
-        name: "{{ persistenceStsName }}"
-        validate_certs: "no"
-      register: currentStsData
-      tags:
-        - always
-    ##
-    ## Debug the number of replicas
-    - name: Debug the number of replicas for sts {{ persistenceStsName }}
-      ansible.builtin.debug:
-        msg:
-          - "Current number of replicas of {{ item.kind }}/{{ item.metadata.name }} is: {{ item.spec.replicas }}"
-      loop: "{{ currentStsData.resources }}"
-      tags:
-        - always
-    ##
-    ## Need to scale down the StatefulSet to 1
-    ## Not needed anymore as per:
-    ## https://help.hcltechsw.com/digital-experience/9.5/containerization/operator_backup_and_recovery_procedures.html
-    #####     - name: Update Replicas to 1 as per https://help.hcltechsw.com/digital-experience/9.5/digital_asset_mgmt/helm_dam_backup_restore_image.html
-    #####       ansible.builtin.command:
-    #####         argv:
-    #####           - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
-    #####           - "-n"
-    #####           - "{{ k8s_ns }}"
-    #####           - "scale"
-    #####           - "sts/{{ persistenceStsName }}"
-    #####           - "--replicas=1"
-    #####       register: cmdResult
-    #####       failed_when: (cmdResult.rc != 0)
-    #####       tags:
-    #####         - always
-    ##
-    ## Wait until the number of pods is down to 1
-    #####     - name: Wait for the number of replicas being scaled down to 1
-    #####       ansible.builtin.include_tasks: waitForAllStsToScaleDown.yaml
-    #####       vars:
-    #####         stsResourceItem: "{{ item }}"
-    #####       when: (item.spec.replicas != 1)
-    #####       loop: "{{ currentStsData.resources }}"
-    #####       tags:
-    #####         - always
-    ##
     ## Test debug
     - name: Test handler debug
       shell: 'echo "Test-0: Current date is: $(date)" >> /dev/shm/hhue.txt'
@@ -169,34 +143,53 @@
     ### Backup of DAM Data
     ########################################################################################
     ##
-    - name: Backup DAM data
-      block:
-        ## Run the backup of the database pod
-        - name: Run role backupPostgress
-          ansible.builtin.include_role:
-            name: backupPostgress
-          vars:
-            roleKey: "{{ kube_api_key }}"
-            roleNs: "{{ k8s_ns }}"
-            roleHost: "{{ k8s_host }}"
-            roleDatabases: "{{ backupDatabases }}"
-            roleBackupTimestamp: "{{ backup_timestamp }}"
-            rolePersistentPodName: "{{ persistencePodName }}"
-            rolePersistentPodContainerName: "{{ persistencePodContainerName | default('persistence-node') }}"
-            roleTargetDirectoryForBackupFiles: "{{ targetDirectoryForBackupFiles }}"
-        ##
-        ## Run the backup of the DAM pod
-        - name: Run role backupDam
-          ansible.builtin.include_role:
-            name: backupDam
-          vars:
-            roleKey: "{{ kube_api_key }}"
-            roleNs: "{{ k8s_ns }}"
-            roleHost: "{{ k8s_host }}"
-            roleDirectories: "{{ backupDirectories }}"
-            roleBackupTimestamp: "{{ backup_timestamp }}"
-            roleDamPodName: "{{ damPodName }}"
-            roleTargetDirectoryForBackupFiles: "{{ targetDirectoryForBackupFiles }}"
+    ## Run the xmlaccess export from core
+    - name: Run role runXmlAccess to export collections
+      ansible.builtin.include_role:
+        name: runXmlAccess
+      vars:
+        roleKey: "{{ kube_api_key }}"
+        roleNs: "{{ k8s_ns }}"
+        roleHost: "{{ k8s_host }}"
+        roleWpsAdminUser: "{{ wpsUser }}"
+        roleWpsAdminPassword: "{{ wpsPassword }}"
+        roleXmlInputFile: "{{ xmlAccessInputFile }}"
+        roleCorePodName: "{{ corePodName }}"
+        roleCoreContainerName: "{{ coreContainerName }}"
+        roleTargetDirectoryForXmlFiles: "{{ targetDirectoryForBackupFiles }}"
+        roleXmlAccessOutputPatterm: "{{ xmlAccessExportPattern }}"
+        roleBackupTimestamp: "{{ backup_timestamp }}"
+        roleTimestampPattern: "{{ timestampPattern }}"
+      tags:
+        - backup
+    ## Run the backup of the database pod
+    - name: Run role backupPostgress
+      ansible.builtin.include_role:
+        name: backupPostgress
+      vars:
+        roleKey: "{{ kube_api_key }}"
+        roleNs: "{{ k8s_ns }}"
+        roleHost: "{{ k8s_host }}"
+        roleDatabases: "{{ backupDatabases }}"
+        roleBackupTimestamp: "{{ backup_timestamp }}"
+        rolePersistentPodName: "{{ persistencePodName }}"
+        rolePersistentPodContainerName: "{{ persistencePodContainerName | default('persistence-node') }}"
+        roleTargetDirectoryForBackupFiles: "{{ targetDirectoryForBackupFiles }}"
+      tags:
+        - backup
+    ##
+    ## Run the backup of the DAM pod
+    - name: Run role backupDam
+      ansible.builtin.include_role:
+        name: backupDam
+      vars:
+        roleKey: "{{ kube_api_key }}"
+        roleNs: "{{ k8s_ns }}"
+        roleHost: "{{ k8s_host }}"
+        roleDirectories: "{{ backupDirectories }}"
+        roleBackupTimestamp: "{{ backup_timestamp }}"
+        roleDamPodName: "{{ damPodName }}"
+        roleTargetDirectoryForBackupFiles: "{{ targetDirectoryForBackupFiles }}"
       tags:
         - backup
     ########################################################################################
@@ -204,48 +197,69 @@
     ########################################################################################
     ##
     ## Restore the DAM directories
-    - name: Restore DAM data
-      block:
-        - name: Restore DAM data
-          ansible.builtin.include_role:
-            name: restoreDam
-          vars:
-            roleKey: "{{ kube_api_key }}"
-            roleNs: "{{ k8s_ns }}"
-            roleHost: "{{ k8s_host }}"
-            roleDirectories: "{{ restoreDirectories }}"
-            roleDamPodName: "{{ damPodName }}"
-            roleTargetDirectoryForBackupFiles: "{{ targetDirectoryForBackupFiles }}"
-        ##
-        ## Restore Postgress database
-        - name: Restore Postgress data
-          ansible.builtin.include_role:
-            name: restorePostgress
-          vars:
-            roleKey: "{{ kube_api_key }}"
-            roleNs: "{{ k8s_ns }}"
-            roleHost: "{{ k8s_host }}"
-            roleDatabases: "{{ restoreDatabases }}"
-            rolePersistentPodName: "{{ persistencePodName }}"
-            rolePersistentPodContainerName: "{{ persistencePodContainerName | default('persistence-node') }}"
-            roleTargetDirectoryForBackupFiles: "{{ targetDirectoryForBackupFiles }}"
+    ## Run the xmlaccess export from core
+    - name: Run role runXmlAccess to import collections
+      ansible.builtin.include_role:
+        name: runXmlAccess
+      vars:
+        roleKey: "{{ kube_api_key }}"
+        roleNs: "{{ k8s_ns }}"
+        roleHost: "{{ k8s_host }}"
+        roleInputFile: "{{ xmlAccessInputFile }}"
+        roleWpsAdminUser: "{{ wpsUser }}"
+        roleWpsAdminPassword: "{{ wpsPassword }}"
+        roleXmlInputFile: "{{ item.backupFile }}"
+        roleCorePodName: "{{ corePodName }}"
+        roleCoreContainerName: "{{ coreContainerName }}"
+        roleTargetDirectoryForXmlFiles: "{{ targetDirectoryForBackupFiles }}"
+        roleXmlAccessOutputPatterm: "{{ xmlAccessImportPattern }}"
+        roleBackupTimestamp: "{{ backup_timestamp }}"
+        roleTimestampPattern: "{{ timestampPattern }}"
+      loop: "{{ restoreXmlFiles }}"
       tags:
         - restore
     ##
-    ## Scale up the StatefuleSet to the values before
-    #####     - name: Update Replicas to the configured value(s)
-    #####       ansible.builtin.command:
-    #####         argv:
-    #####           - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
-    #####           - "-n"
-    #####           - "{{ k8s_ns }}"
-    #####           - "scale"
-    #####           - "sts/{{ persistenceStsName }}"
-    #####           - "--replicas={{ item.spec.replicas }}"
-    #####       when: (item.spec.replicas != 1)
-    #####       loop: "{{ currentStsData.resources }}"
-    #####       tags:
-    #####         - always
+    ## Restore the filesystem data
+    - name: Restore DAM data
+      ansible.builtin.include_role:
+        name: restoreDam
+      vars:
+        roleKey: "{{ kube_api_key }}"
+        roleNs: "{{ k8s_ns }}"
+        roleHost: "{{ k8s_host }}"
+        roleDirectories: "{{ restoreDirectories }}"
+        roleDamPodName: "{{ damPodName }}"
+        rolePersistentPodContainerName: "{{ persistencePodContainerName | default('persistence-node') }}"
+        roleTargetDirectoryForBackupFiles: "{{ targetDirectoryForBackupFiles }}"
+      tags:
+        - restore
+    ##
+    ## Restore Postgress database
+    - name: Restore Postgress data
+      ansible.builtin.include_role:
+        name: restorePostgress
+      vars:
+        roleKey: "{{ kube_api_key }}"
+        roleNs: "{{ k8s_ns }}"
+        roleHost: "{{ k8s_host }}"
+        roleDatabases: "{{ restoreDatabases }}"
+        rolePersistentPodName: "{{ persistencePodName }}"
+        rolePersistentPodContainerName: "{{ persistencePodContainerName | default('persistence-node') }}"
+        roleTargetDirectoryForBackupFiles: "{{ targetDirectoryForBackupFiles }}"
+      tags:
+        - restore
+    ##
+    ## Recreate the DAM PODs after the restore
+    - name: Recreate the DAM PODs after the restore
+      ansible.builtin.include_role:
+        name: deletePodsforApp
+      vars:
+        roleKey: "{{ kube_api_key }}"
+        roleNs: "{{ k8s_ns }}"
+        roleHost: "{{ k8s_host }}"
+        roleAppTag: "{{ damAppTag }}"
+      tags:
+        - restore
     ##
     ## Perform the oc logout
     - name: Logout of the command line client
