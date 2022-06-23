@@ -2,7 +2,7 @@
 # tasks file for getActiveDbPod to determine the active postgress database pod.
 #
 # Sets the following fact:
-# -rolePersistentPodName
+# -activePersistentPodName
 ###############################################################################
 ##
 ## Determine the currently active postgress pod
@@ -12,7 +12,7 @@
     host: "{{ roleHost }}"
     api_key: "{{ roleKey }}"
     command: "repmgr cluster show --compact --terse"
-    pod: "{{ rolePersistentPodName }}"
+    pod: "{{ roleInitialPersistentPodName }}"
     container: "{{ rolePersistentPodContainerName }}"
   register: podResult
   failed_when: (podResult.rc != 0)
@@ -21,12 +21,14 @@
 ##
 ## Get the name of the primary pod from the registered output as k8s_exec seems to have issues with cascaded commands
 - name: Extract the name of the primary pod from the registered output
-  shell: 'echo {{ podResult.stdout }} | grep " primary " | awk ''{split($0,a,"|"); print a[2]}'' | xargs'
+  shell: 'echo "{{ podResult.stdout }}" | grep " primary " | awk ''{split($0,a,"|"); print a[2]}'' | xargs'
   register: cmdResult
-  ##
-  ## Retrieve the name of the active database pod
+  tags:
+    - always
+##
+## Retrieve the name of the active database pod
 - name: Retrieve the name of the active database pod
   ansible.builtin.set_fact:
-    rolePersistentPodName: "{{ cmdResult.stdout }}"
+    activePersistentPodName: "{{ cmdResult.stdout }}"
   tags:
     - always

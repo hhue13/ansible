@@ -1,12 +1,4 @@
 ---
-# tasks file for backupPostgress
-##
-## Determine the currently active postgress pod
-- name: Run role to determine the active postgress database node
-  ansible.builtin.include_role:
-    name: getActiveDbPod
-  tags:
-    - always
 ##
 ## Run backup command on POD
 - name: Create postgress backup file

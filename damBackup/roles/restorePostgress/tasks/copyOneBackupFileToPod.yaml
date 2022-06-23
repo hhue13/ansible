@@ -8,6 +8,8 @@
       - "-n"
       - "{{ roleNs }}"
       - "cp"
+      - "-c"
+      - "{{ rolePersistentPodContainerName }}"
       - "{{ roleTargetDirectoryForBackupFiles }}/{{ backupFileDict['backupFile'] }}"
       - "{{ rolePersistentPodName }}:/tmp/{{ backupFileDict['backupFile'] }}"
   register: cmdResult

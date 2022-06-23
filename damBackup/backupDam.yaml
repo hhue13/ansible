@@ -139,6 +139,27 @@
       shell: 'echo "Test-0: Current date is: $(date)" >> /dev/shm/hhue.txt'
       tags:
         - always
+    # tasks file for backupPostgress
+    ##
+    ## Determine the currently active postgress pod
+    - name: Run tasks to determine the active postgress database node
+      ansible.builtin.include_tasks: getActiveDbPod.yml
+      vars:
+        roleKey: "{{ kube_api_key }}"
+        roleNs: "{{ k8s_ns }}"
+        roleHost: "{{ k8s_host }}"
+        roleInitialPersistentPodName: "{{ persistencePodName }}"
+        rolePersistentPodContainerName: "{{ persistencePodContainerName | default('persistence-node') }}"
+      tags:
+        - always
+    ##
+    ## Test debug
+    - name: Debug activePersistentPodName
+      ansible.builtin.debug:
+        msg:
+          - "Debug: Currently active DB pod is: {{ activePersistentPodName }}"
+      tags:
+        - always
     ########################################################################################
     ### Backup of DAM Data
     ########################################################################################
@@ -172,7 +193,7 @@
         roleHost: "{{ k8s_host }}"
         roleDatabases: "{{ backupDatabases }}"
         roleBackupTimestamp: "{{ backup_timestamp }}"
-        rolePersistentPodName: "{{ persistencePodName }}"
+        rolePersistentPodName: "{{ activePersistentPodName }}"
         rolePersistentPodContainerName: "{{ persistencePodContainerName | default('persistence-node') }}"
         roleTargetDirectoryForBackupFiles: "{{ targetDirectoryForBackupFiles }}"
       tags:
@@ -229,7 +250,6 @@
         roleHost: "{{ k8s_host }}"
         roleDirectories: "{{ restoreDirectories }}"
         roleDamPodName: "{{ damPodName }}"
-        rolePersistentPodContainerName: "{{ persistencePodContainerName | default('persistence-node') }}"
         roleTargetDirectoryForBackupFiles: "{{ targetDirectoryForBackupFiles }}"
       tags:
         - restore
@@ -243,7 +263,7 @@
         roleNs: "{{ k8s_ns }}"
         roleHost: "{{ k8s_host }}"
         roleDatabases: "{{ restoreDatabases }}"
-        rolePersistentPodName: "{{ persistencePodName }}"
+        rolePersistentPodName: "{{ activePersistentPodName }}"
         rolePersistentPodContainerName: "{{ persistencePodContainerName | default('persistence-node') }}"
         roleTargetDirectoryForBackupFiles: "{{ targetDirectoryForBackupFiles }}"
       tags:
@@ -260,6 +280,33 @@
         roleAppTag: "{{ damAppTag }}"
       tags:
         - restore
+    ##
+    ## Housekeeping - cleanup old backups
+    - name: Housekeeping - cleanup old backups
+      ansible.builtin.shell: |
+        find {{ targetDirectoryForBackupFiles }} -mtime +{{ backupRetentionPeriod | default('90') }} -exec rm -rf {} \;
+      register: cmdResult
+      failed_when: (cmdResult.rc != 0)
+      tags:
+        - backup
+    ##
+    ## List the Backup files taken with the timestamp to Slack
+    - name: List the backup files taken
+      ansible.builtin.shell: |
+        ls -altr {{ targetDirectoryForBackupFiles }}/*{{ backup_timestamp }}*
+      register: cmdResult
+      failed_when: (cmdResult.rc != 0)
+      tags:
+        - backup
+    ##
+    ## Send the list of files to Slack
+    - name: Send the list of files to Slack
+      community.general.slack:
+        token: "{{ slackAuthenticationToken }}"
+        msg: "List of  backup files created:\n ```{{ cmdResult.stdout }}```"
+      when: ((sendSlackNotifications is defined) and (sendSlackNotifications == true))
+      tags:
+        - backup
     ##
     ## Perform the oc logout
     - name: Logout of the command line client
@@ -280,12 +327,5 @@
         api_key: "{{ kube_api_key }}"
         validate_certs: "no"
       when: kube_api_key is defined
-      tags:
-        - always
-
-    ##
-    ## Test debug
-    - name: Test handler debug
-      shell: 'echo "Test-1: Current date is: $(date)" >> /dev/shm/hhue.txt'
       tags:
         - always

@@ -67,6 +67,8 @@
 - name: Create uncompressed dump files name
   shell: "echo /tmp/{{ backupFileDict['backupFile'] }} | sed s#\\.gz##g"
   register: cmdResult
+  tags:
+    - always
 ##
 ## Delete unzipped backup file if it exists
 - name: Delete file {{ cmdResult.stdout }} in case it exists
