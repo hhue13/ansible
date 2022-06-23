@@ -1,5 +1,5 @@
 ---
-sendSlackNotifications: false
+sendSlackNotifications: true
 ## Slack authentication token
 ## ansible-vault encrypt_string --vault-id dev@~ansible_password '<plain-text-password>' --name 'slackAuthenticationToken'
 slackAuthenticationToken: !vault |
@@ -51,6 +51,11 @@ backupDatabases:
 backupDirectories:
   - name: "/opt/app/upload"
     backupFile: "{{ oscpDamDeployment }}-damFiles"
+##
+## How long too keep old backups (in days)
+backupRetentionPeriod: 30
+##
+## Name of the core pod
 corePodName: "{{ oscpDamDeployment }}-core-0"
 coreContainerName: "core"
 ##
