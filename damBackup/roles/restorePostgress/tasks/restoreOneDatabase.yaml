@@ -9,7 +9,6 @@
     command: 'psql -c "ALTER DATABASE {{ backupFileDict[''name''] }} CONNECTION LIMIT 0;"'
     pod: "{{ rolePersistentPodName }}"
     container: "{{ rolePersistentPodContainerName }}"
-    validate_certs: "no"
   register: podResult
   failed_when: (podResult.rc != 0)
   tags:
@@ -24,7 +23,6 @@
     command: 'psql -c "SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = ''{{ backupFileDict[''name''] }}'' AND pid <> pg_backend_pid();"'
     pod: "{{ rolePersistentPodName }}"
     container: "{{ rolePersistentPodContainerName }}"
-    validate_certs: "no"
   register: podResult
   failed_when: (podResult.rc != 0)
   tags:
@@ -46,7 +44,6 @@
     command: "dropdb {{ backupFileDict['name'] }}"
     pod: "{{ rolePersistentPodName }}"
     container: "{{ rolePersistentPodContainerName }}"
-    validate_certs: "no"
   register: podResult
   failed_when: (podResult.rc != 0)
   tags:
@@ -61,7 +58,6 @@
     command: "createdb -O {{ backupFileDict['dbrole'] }} {{ backupFileDict['name'] }}"
     pod: "{{ rolePersistentPodName }}"
     container: "{{ rolePersistentPodContainerName }}"
-    validate_certs: "no"
   register: podResult
   failed_when: (podResult.rc != 0)
   tags:
@@ -71,6 +67,8 @@
 - name: Create uncompressed dump files name
   shell: "echo /tmp/{{ backupFileDict['backupFile'] }} | sed s#\\.gz##g"
   register: cmdResult
+  tags:
+    - always
 ##
 ## Delete unzipped backup file if it exists
 - name: Delete file {{ cmdResult.stdout }} in case it exists
@@ -81,7 +79,6 @@
     command: "rm -f {{ cmdResult.stdout }}"
     pod: "{{ rolePersistentPodName }}"
     container: "{{ rolePersistentPodContainerName }}"
-    validate_certs: "no"
   register: podResult
   failed_when: (podResult.rc != 0)
   tags:
@@ -96,7 +93,6 @@
     command: "gunzip -d {{ cmdResult.stdout }}.gz"
     pod: "{{ rolePersistentPodName }}"
     container: "{{ rolePersistentPodContainerName }}"
-    validate_certs: "no"
   register: podResult
   failed_when: (podResult.rc != 0)
   tags:
@@ -111,7 +107,6 @@
     command: "ls -altr /tmp"
     pod: "{{ rolePersistentPodName }}"
     container: "{{ rolePersistentPodContainerName }}"
-    validate_certs: "no"
   register: podResult
   failed_when: (podResult.rc != 0)
   tags:

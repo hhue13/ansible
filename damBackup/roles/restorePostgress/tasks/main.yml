@@ -7,26 +7,14 @@
     backupFileDict: "{{ item }}"
   loop: "{{ roleDatabases }}"
   tags:
-    - always##
+    - always
+##
 ## Restore databases to target pod
 - name: Restore databases to target pod {{ rolePersistentPodName }}
   ansible.builtin.include_tasks: restoreOneDatabase.yaml
   vars:
     backupFileDict: "{{ item }}"
   loop: "{{ roleDatabases }}"
-  tags:
-    - always##
-## Delete the DAM pod
-- name: Delete DAM pod
-  ansible.builtin.command:
-    argv:
-      - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
-      - "-n"
-      - "{{ roleNs }}"
-      - "delete"
-      - "pod/{{ damPodName }}"
-  register: cmdResult
-  failed_when: (cmdResult.rc != 0)
   tags:
     - always
 ##

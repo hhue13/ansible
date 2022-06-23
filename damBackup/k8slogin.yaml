@@ -73,11 +73,10 @@
     state: present
     username: "{{ k8s_user }}"
     password: "{{ k8s_password }}"
-    validate_certs: "no"
   register: k8s_auth_results
   when: (( k8s_api_token is not defined ) or
     ( k8s_api_token == '' ))
-  no_log: true
+  no_log: false
   tags:
     - always
 ##

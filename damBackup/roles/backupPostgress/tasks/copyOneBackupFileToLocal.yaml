@@ -6,7 +6,9 @@
       - "-n"
       - "{{ roleNs }}"
       - "cp"
-      - "{{ rolePersistentPodName }}:/tmp/{{ backupFileDict['name'] }}_{{ roleBackupTimestamp }}.dmp.gz"
+      - "-c"
+      - "{{ rolePersistentPodContainerName }}"
+      - "{{ rolePersistentPodName }}:/tmp/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.dmp.gz"
       - "{{ roleTargetDirectoryForBackupFiles }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.dmp.gz"
   register: cmdResult
   failed_when: (cmdResult.rc != 0)

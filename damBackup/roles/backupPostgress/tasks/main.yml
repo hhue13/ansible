@@ -1,6 +1,5 @@
 ---
-# tasks file for backupPostgress
-## backupOnePostgressDatabase.yaml
+##
 ## Run backup command on POD
 - name: Create postgress backup file
   ansible.builtin.include_tasks: backupOnePostgressDatabase.yaml

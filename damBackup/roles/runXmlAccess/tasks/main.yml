@@ -1,0 +1,86 @@
+---
+#####################################################################################
+## Role to run xmlaccess.sh on the pod
+##
+## Role Vars:
+## roleKey: API key for OCP
+## roleNs: OCP Namespace
+## roleHost: OCP Host URL
+## roleWpsAdminUser: Portal admin user
+## roleWpsAdminPassword: Portal admin password
+## roleXmlInputFile: xmlaccess input filename (in the pod!)
+## roleCorePodName: Name of the core pod on which the xmlaccess will run
+## roleCoreContainerName: Name of the core container
+## roleTargetDirectoryForXmlFiles: Directory where the backup files will be saved
+## roleXmlAccessOutputPatterm: Pattern for the xmlaccess output file
+## roleBackupTimestamp: Timestamp of the backup
+## roleTimestampPattern: Placeholder to be replaced with the backup timestamp
+#####################################################################################
+## Run tar command for directories on POD
+##
+## Set the xmlaccess output filename for the backup to replace the pattern with the timestamp
+- name: Set the xmlaccess output filename
+  ansible.builtin.set_fact:
+    xmlAccessOutputFile: "{{ roleXmlAccessOutputPatterm | replace(roleTimestampPattern, roleBackupTimestamp) }}"
+  tags:
+    - always
+##
+## The input file for the backup is an fqdn of the xml file in the pod so this becomes the input file
+- name: Set the absolut xmlaccess input filename for backup
+  ansible.builtin.set_fact:
+    xmlInputFile: "{{ roleXmlInputFile }}"
+  tags:
+    - backup
+##
+## The input file for the restore in the pod must be constructed
+- name: Set the absolut xmlaccess input filenamefor restore
+  ansible.builtin.set_fact:
+    xmlInputFile: "/tmp/{{ roleXmlInputFile }}"
+  tags:
+    - restore
+
+- name: Copy xml input file from the backup directory to the pod
+  ansible.builtin.command:
+    argv:
+      - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+      - "-n"
+      - "{{ roleNs }}"
+      - "cp"
+      - "-c"
+      - "{{ roleCoreContainerName }}"
+      - "{{ roleTargetDirectoryForXmlFiles }}/{{ roleXmlInputFile }}"
+      - "{{ roleCorePodName }}:{{ xmlInputFile }}"
+  register: cmdResult
+  failed_when: (cmdResult.rc != 0)
+  tags:
+    - restore
+
+- name: Run xmlaccess in container {{ roleCoreContainerName }} of pod  {{ roleCorePodName }}
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "/opt/HCL/PortalServer/bin/xmlaccess.sh -user {{ roleWpsAdminUser }} -password {{ roleWpsAdminPassword }} -url http://localhost:10039/wps/config -in {{ xmlInputFile }} -out /tmp/{{ xmlAccessOutputFile }}"
+    pod: "{{ roleCorePodName }}"
+    container: "{{ roleCoreContainerName }}"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+##
+## Copy the backed up data to the target directory
+- name: Copy xml output file to the backup directory
+  ansible.builtin.command:
+    argv:
+      - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+      - "-n"
+      - "{{ roleNs }}"
+      - "cp"
+      - "-c"
+      - "{{ roleCoreContainerName }}"
+      - "{{ roleCorePodName }}:/tmp/{{ xmlAccessOutputFile }}"
+      - "{{ roleTargetDirectoryForXmlFiles }}/{{ xmlAccessOutputFile }}"
+  register: cmdResult
+  failed_when: (cmdResult.rc != 0)
+  tags:
+    - always

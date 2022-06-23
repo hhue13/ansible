@@ -1,0 +1,44 @@
+---
+# tasks file for deletePodsforApp
+################################################################
+# this role deletes all pods for a specific app label
+#
+# roleKey: K8S API  key
+# roleNs: K8S namespace
+# roleHost: K8S API Host
+# roleAppTag: app=<label> to delete the pods
+################################################################
+##
+## Check if the PV exists
+- name: List pods matching the app label in the namespace
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    namespace: "{{ roleNs }}"
+    api_key: "{{ roleKey }}"
+    label_selectors:
+      - "app={{ roleAppTag }}"
+  register: podData
+  tags:
+    - always
+##
+## Debug the pod names
+- name: Debug pod names to delete
+  ansible.builtin.debug:
+    msg:
+      - "PODs being deleted: {{ podData | json_query('resources[*].metadata.name') }} "
+  tags:
+    - always
+##
+## Delete the pods (K8S should recreate them!!)
+- name: Delete the pods (K8S should recreate them!!)
+  kubernetes.core.k8s:
+    state: absent
+    api_version: v1
+    kind: Pod
+    namespace: "{{ roleNs }}"
+    api_key: "{{ roleKey }}"
+    name: "{{ item }}"
+  loop: "{{ podData | json_query('resources[*].metadata.name') }}"
+  tags:
+    - always
