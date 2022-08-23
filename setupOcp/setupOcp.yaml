@@ -16,7 +16,7 @@
   gather_facts: true
   force_handlers: true
   vars_files:
-    - group_vars/crchosts
+    - "{{ includedVars | default('group_vars/crchosts') }}"
   module_defaults:
     kubernetes.core.k8s:
       validate_certs: "no"
