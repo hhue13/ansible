@@ -1,0 +1,43 @@
+---
+# tasks file for ensureWpProperties
+- name: Copy script to control node
+  ansible.builtin.copy:
+    src: "files/addPropIfMissing.sh"
+    dest: "/tmp/addPropIfMissing.sh"
+  tags:
+    - always
+
+- name: Copy the script to the pod
+  ansible.builtin.command:
+    argv:
+      - "{{ roleClientBin | default('/usr/local/bin/oc') }}"
+      - "-n"
+      - "{{ roleNs }}"
+      - "cp"
+      - "-c"
+      - "{{ roleCoreContainerName }}"
+      - "/tmp/addPropIfMissing.sh"
+      - "{{ rolePodName }}:/tmp/addPropIfMissing.sh"
+  register: cmdResult
+  failed_when: (cmdResult.rc != 0)
+  tags:
+    - always
+
+- name: Set all properties set in {{ roleWpsProps }}
+  ansible.builtin.include_tasks: setAProperty.yml
+  vars:
+    itemPropFile: "{{ roleProfileHome }}/{{ propsItem.propertyFile }}"
+    itemPropKey: "{{ propsItem.propertyKey }}"
+    itemPropValue: "{{ propsItem.propertyValue }}"
+  loop: "{{ roleWpsProps }}"
+  loop_control:
+    loop_var: propsItem
+  tags:
+    - always
+
+- name: Cleanup script from control node
+  ansible.builtin.file:
+    path: "/tmp/addPropIfMissing.sh"
+    state: absent
+  tags:
+    - always

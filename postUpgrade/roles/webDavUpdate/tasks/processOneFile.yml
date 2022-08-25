@@ -1,0 +1,146 @@
+---
+- name: Update WebDav Files
+  block:
+    - name: Create temporary directory for git checkout
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: git
+      register: gitCheckout
+      tags:
+        - always
+
+    - name: Get the value of SSH_AUTH_SOCK
+      set_fact:
+        ssh_auth_sock: "{{ lookup('env', 'SSH_AUTH_SOCK') }}"
+      tags:
+        - always
+
+    - name: Clone the repository
+      ansible.builtin.git:
+        repo: "{{ webDavItem.gitRepositoryUrl }}"
+        dest: "{{ gitCheckout.path }}"
+        umask: "{{ roleGitCheckoutUmask }}"
+        version: "{{ webDavItem.gitBranchOrVersion }}"
+        remote: "{{ webDavItem.gitRemote }}"
+        key_file: "{{ webDavItem.gitPrivateKey }}"
+        single_branch: yes
+        depth: 1
+        recursive: yes
+      environment:
+        GIT_TERMINAL_PROMPT: 0 # reports "terminal prompts disabled" on missing password
+        SSH_AUTH_SOCK: "{{ ssh_auth_sock }}"
+      tags:
+        - always
+
+    - name: Check what we've got from git to {{ gitCheckout.path }}
+      become_user: "root"
+      ansible.builtin.shell: |
+        echo "Git director {{ gitCheckout.path }}  ..."
+        cd {{ gitCheckout.path }}
+        find .
+      register: shellOut
+      tags:
+        - never
+
+    - name: Debug files in git directory {{ gitCheckout.path }}
+      ansible.builtin.debug:
+        msg: "Result Shell execution:\n\n: {{ shellOut.stdout }}\n\n\n\n {{ shellOut.stderr }}"
+      tags:
+        - never
+
+    - name: Make sure we have the latest version of the davfs2 package installed
+      become_user: "root"
+      ansible.builtin.yum:
+        name: davfs2
+        state: latest
+      tags:
+        - always
+
+    - name: Create temporary directory as mount point for WebDav
+      become_user: "root"
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: webdav
+      register: mountpoint
+      tags:
+        - always
+
+    - name: Add credentials to /etc/davfs2/secrets
+      become_user: "root"
+      ansible.builtin.blockinfile:
+        path: "/etc/davfs2/secrets"
+        block: |
+          {{ mountpoint.path }} {{ roleWpsAdminUser }} {{ roleWpsAdminPassword }}
+        marker: "# {mark} ANSIBLE MANAGED BLOCK {{ roleWpsAdminUser }}"
+        state: present
+      tags:
+        - always
+
+    - name: Mount the WebDav filesystem
+      become_user: "root"
+      ansible.builtin.command:
+        argv:
+          - "mount"
+          - "-t"
+          - "davfs"
+          - "-o"
+          - "noexec"
+          - "{{ roleWebDavHostUrl }}/wps/mycontenthandler/dav/fs-type1/"
+          - "{{ mountpoint.path }}"
+      register: cmdResult
+      tags:
+        - always
+
+    - name: Copy file {{ webDavItem.file }} to {{ webDavItem.webDavPath }}
+      become_user: "root"
+      ansible.builtin.shell: |
+        echo "Target directory before copy  ..."
+        ls -altr {{ mountpoint.path }}/{{ webDavItem.webDavPath }}
+        cp {{ gitCheckout.path }}/{{ webDavItem.dir }}/{{ webDavItem.file }} {{ mountpoint.path }}/{{ webDavItem.webDavPath }}/{{ webDavItem.file }} || exit 1
+        sync
+        echo "Target directory after copy  ..."
+        ls -altr {{ mountpoint.path }}/{{ webDavItem.webDavPath }}
+      register: shellOut
+      failed_when: (shellOut.rc != 0)
+      tags:
+        - always
+
+    - name: Debug shells output
+      ansible.builtin.debug:
+        msg: "Result Shell execution:\n\n: {{ shellOut.stdout }}\n\n\n\n {{ shellOut.stderr }}\n\n\n"
+      when: (shellOut.rc != 0)
+      tags:
+        - always
+
+  always:
+    - name: Unmout WebDav filesystem
+      become_user: "root"
+      ansible.builtin.command:
+        argv:
+          - "umount"
+          - "{{ mountpoint.path }}"
+      register: cmdResult
+      tags:
+        - always
+
+    - name: Remove credentials from /etc/davfs2/secrets
+      become_user: "root"
+      ansible.builtin.blockinfile:
+        path: "/etc/davfs2/secrets"
+        block: |
+          {{ mountpoint.path }} {{ roleWpsAdminUser }} {{ roleWpsAdminPassword }}
+        marker: "# {mark} ANSIBLE MANAGED BLOCK {{ roleWpsAdminUser }}"
+        state: absent
+      tags:
+        - always
+
+    - name: Cleanup target directory for gitClone
+      ansible.builtin.file:
+        state: absent
+        path: "{{ gitCheckout.path }}"
+
+    - name: Cleanup WebDav mount point
+      become_user: "root"
+      ansible.builtin.file:
+        state: absent
+        path: "{{ mountpoint.path }}"

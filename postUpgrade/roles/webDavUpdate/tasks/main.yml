@@ -1,0 +1,9 @@
+---
+# tasks file for addProfilesToTheme
+- name: Update all WebDav Files
+  ansible.builtin.include_tasks: processOneFile.yml
+  loop: "{{ roleWebDavFileToBeAdded }}"
+  loop_control:
+    loop_var: webDavItem
+  tags:
+    - always

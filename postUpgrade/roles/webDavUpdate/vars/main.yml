@@ -1,0 +1,16 @@
+---
+# vars file for addProfilesToTheme
+roleWebDavHostUrl: "dummy"
+roleWpsAdminUser: "dummy"
+roleWpsAdminPassword: "dummy"
+roleWebDavFileToBeAdded:
+  - file: "profile_toolbar_gbg.json"
+    dir: "goteborg-theme-toolbar/src/main/webdav/profiles"
+    webDavPath: "/themes/Toolbar8.5/profiles"
+    gitPrivateKey: "/home/hhuebler/.ssh/github_deploy_key"
+    gitRepositoryUrl: "git@s008aa39r.staden.gotheborg.net:7999/got/goteborg-theme-toolbar.git"
+    gitBranchOrVersion: "main"
+    gitRemote: "origin"
+
+#
+roleGitCheckoutUmask: "022"

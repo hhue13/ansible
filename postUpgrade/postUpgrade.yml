@@ -4,12 +4,12 @@
 ##
 ## See README.md for required software dependencies
 ##
-## ansible-playbook -e @globalVars setupNexusRegistry.yaml
-## ansible-playbook --vault-id k8s@~/ansible_password -e @globalVars setupNexusRegistry.yaml
+## ansible-playbook -e @globalVars postUpgrade.yaml
+## ansible-playbook --vault-id k8s@~/ansible_password -e @globalVars postUpgrade.yaml
 ##
 ## Note: Make sure you setup visudo correctly so that "sudo -i -u <become_user>" works
 #######################################################################################################
-- name: Setup OCP environment
+- name: Run the postUpgrade tasks after a CF upgrade
   hosts: crchosts
   become: yes
   become_user: "{{ oscpOsUser }}"
@@ -36,6 +36,11 @@
   ## Tasks of the play-book
   #########################
   tasks:
+    - name: Send notification message via Slack
+      community.general.slack:
+        token: "{{ slackAuthenticationToken }}"
+        msg: "Checkout from Git and replace Tokens in files started for {{ gitRepositoryUrl }}"
+      when: ((sendSlackNotifications is defined) and (sendSlackNotifications == true))
     ##
     ## Set login facts
     - name: Set K8S login facts
@@ -88,7 +93,6 @@
       no_log: true
       tags:
         - always
-      ##### failed_when: (cmdResult.rc != 0)
     ##
     ## Run oc login using the api key
     - name: Debug the command result of 'oc login'
@@ -133,199 +137,74 @@
       debug:
         msg: "{{ msg.split('\n') }}"
       tags:
-        - debugHostVars
+        - never
 
     - name: Display hostvars
       ansible.builtin.debug:
         msg: "hostvars:\n\n{{ hostvars | to_yaml}}\n\n"
       tags:
-        - debugHostVars
-    ############################################################################################################################
-    ### Setup external registry for OCP
-    ### http://uncontained.io/articles/external-container-registry-integration/#_deploying_images_from_an_authenticated_registry
-    ### https://docs.openshift.com/container-platform/4.9/networking/configuring-a-custom-pki.html
-    ############################################################################################################################
-    ##
-    ## Retrieve the configmap user-ca-bundle in NS openshift-config
-    - name: Retrieve the configmap user-ca-bundle in namespace openshift-config
-      kubernetes.core.k8s_info:
-        host: "{{ k8s_host }}"
-        api_key: "{{ kube_api_key }}"
-        namespace: "openshift-config"
-        api_version: "v1"
-        kind: "ConfigMap"
-        name: "user-ca-bundle"
-      register: currentUserCaCm
-      tags:
-        - installNexusCa
-        - installTrustedCa
-    ##
-    ## Debug the result of the 'oc login'
-    - name: Debug ConfigMap user-ca-bundle before update
-      ansible.builtin.debug:
-        msg:
-          - "currentUserCaCm is {{ currentUserCaCm }}"
-      when: (currentUserCaCm is defined)
-      tags:
-        - installNexusCa
-        - installTrustedCa
-    ##
-    ## Create / update the ConfigMap user-ca-bundle
-    - name: Create / update the ConfigMap user-ca-bundle
-      kubernetes.core.k8s:
-        state: "present"
-        host: "{{ k8s_host }}"
-        api_key: "{{ kube_api_key }}"
-        namespace: "openshift-config"
-        name: "user-ca-bundle"
-        definition:
-          api_version: "v1"
-          kind: "ConfigMap"
-          data:
-            ca-bundle.crt: "{{ oscpNexusSignerChain }}"
-      tags:
-        - installNexusCa
-        - installTrustedCa
-    ##
-    ## Update proxies.config.openshift.io/cluster to use the user-ca-bundle as trustedCA
-    - name: Update proxies.config.openshift.io/cluster to use the user-ca-bundle as trustedCA
-      ansible.builtin.command:
-        argv:
-          - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
-          - "patch"
-          - "proxies.config.openshift.io/cluster"
-          - "--type=merge"
-          - "-p"
-          - '{"spec":{"trustedCA":{"name":"user-ca-bundle"}}}'
-      register: cmdResult
-      failed_when: (cmdResult.rc != 0)
-      tags:
-        - installNexusCa
-        - installTrustedCa
-    ##
-    ## Create the secret for the Docker registry in namespace {{ oscpNameSpace }}
-    - name: Create the secret for the Docker registry
-      kubernetes.core.k8s:
-        state: "present"
-        host: "{{ k8s_host }}"
-        api_key: "{{ kube_api_key }}"
-        definition:
-          api_version: "v1"
-          kind: "Secret"
-          metadata:
-            name: "{{ oscpRegistryName }}"
-            namespace: "{{ oscpNameSpace }}"
-          type: kubernetes.io/dockerconfigjson
-          data:
-            .dockerconfigjson: "{{ lookup('template', './registrySecretData.json' ) | to_json | b64encode }}"
-      tags:
-        - setupNsCredentials
-        - setupNsRegistryCredentials
-    ##
-    ## Link the secret to the service account
-    - name: Link the secret to the service account
-      ansible.builtin.command:
-        argv:
-          - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
-          - "-n"
-          - "{{ oscpNameSpace }}"
-          - "secrets"
-          - "link"
-          - "{{ oscpServiceAccount | default('default') }}"
-          - "{{ oscpRegistryName }}"
-          - "--for=pull"
-      register: cmdResult
-      failed_when: (cmdResult.rc != 0)
-      tags:
-        - setupNsCredentials
-        - setupNsRegistryCredentials
-    ##
-    ## Check / verify the service account
-    - name: Check / verify the service account
-      ansible.builtin.command:
-        argv:
-          - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
-          - "-n"
-          - "{{ oscpNameSpace }}"
-          - "describe"
-          - "serviceaccount"
-          - "{{ oscpServiceAccount | default('default') }}"
-      register: cmdResult
-      failed_when: (cmdResult.rc != 0)
-      tags:
-        - setupNsCredentials
-        - setupNsRegistryCredentials
-    ##
-    ## Display current mappings for user {{ oscpServiceAccount | default('default') }}
-    - name: Display current mappings for user {{ oscpServiceAccount | default('default') }}
-      ansible.builtin.debug:
-        msg:
-          - "cmdResult.stdout is {{ cmdResult.stdout }}"
-      when: (cmdResult.stdout is defined)
-      tags:
-        - setupNsCredentials
-        - setupNsRegistryCredentials
-    ##
-    ## Run the creation of the secrets
-    - name: Block - Run role genericSecrets - if oscpSecrets is a list
-      block:
-        - name: Run role genericSecrets - if oscpSecrets is a list
-          ansible.builtin.include_role:
-            name: genericSecret
-          vars:
-            roleKey: "{{ kube_api_key }}"
-            roleHost: "{{ k8s_host }}"
-            roleGenericSecretSecrets: "{{ hostvars[inventory_hostname][item].oscpGenericSecrets }}"
-          loop: "{{ oscpSecrets if oscpSecrets is iterable and (oscpSecrets is not string and oscpSecrets is not mapping) else [] }}"
-      when: (oscpSecrets is iterable)
-      tags:
-        - createSecrets
+        - never
 
-    - name: Block - Run role genericSecrets - if oscpSecrets.oscpGenericSecrets is defined
-      block:
-        - name: Run role genericSecrets - if oscpSecrets.oscpGenericSecrets is defined
-          ansible.builtin.include_role:
-            name: genericSecret
-          vars:
-            roleKey: "{{ kube_api_key }}"
-            roleHost: "{{ k8s_host }}"
-            roleGenericSecretSecrets: "{{ oscpSecrets.oscpGenericSecrets }}"
-      when: (oscpSecrets.oscpGenericSecrets is defined)
-      tags:
-        - createSecrets
-    ##
-    ## Run the creation of the storage classes
-    - name: Run role storageClass
+    - name: Update wps.ear with GBG specific language filter via role setWpsLanguageFilter
       ansible.builtin.include_role:
-        name: storageClass
+        name: setWpsLanguageFilter
       vars:
-        roleKey: "{{ kube_api_key }}"
+        roleDeployment: "{{ oscpDxDeploymentName }}"
         roleHost: "{{ k8s_host }}"
-        roleStgClasses: "{{ oscpStgClasses }}"
-      when: ((oscpStgClasses is defined) and
-        (oscpStgClasses != ''))
+        roleKey: "{{ kube_api_key }}"
+        roleNs: "{{ k8s_ns }}"
+        roleWasUser: "{{ wasUser }}"
+        roleWasPassword: "{{ wasPassword }}"
+        roleFilterClassToReplace: "{{ wpsFilterClassToReplace }}"
+        roleNewFilterClass: "{{ wpsNewFilterClass }}"
       tags:
-        - createStorage
-    ##
-    ## Initialize the fact for the directories to be created on the NFS servers
-    - name: Init list of NFS-Server directories being created
+        - always
+
+    - name: Set required properties in properties files
+      ansible.builtin.include_role:
+        name: ensureWpProperties
+      vars:
+        roleDeployment: "{{ oscpDxDeploymentName }}"
+        roleHost: "{{ k8s_host }}"
+        roleKey: "{{ kube_api_key }}"
+        roleNs: "{{ k8s_ns }}"
+        roleWpsProps: "{{ wpsProps }}"
+        roleClientBin: "{{ oscpClientBin }}"
+      tags:
+        - always
+
+    - name: Create a timestamp for the XMLACCESS runs
       ansible.builtin.set_fact:
-        nfsServerDirectoryList: "[]"
+        backupTimeStamp: "{{ ansible_date_time.iso8601_basic_short }}"
       tags:
-        - createStorage
-    ##
-    ## Run the creation of the storage volumes
-    - name: Run role storageVolume
+        - always
+
+    - name: Run the xmlaccess imports to adjust page settings
       ansible.builtin.include_role:
-        name: storageVolume
+        name: runXmlAccess
       vars:
-        roleKey: "{{ kube_api_key }}"
+        roleDeployment: "{{ oscpDxDeploymentName }}"
         roleHost: "{{ k8s_host }}"
-        roleStgVolumes: "{{ oscpStgVolumes }}"
-      when: ((oscpStgVolumes is defined) and
-        (oscpStgVolumes != '' ))
+        roleKey: "{{ kube_api_key }}"
+        roleNs: "{{ k8s_ns }}"
+        roleWpsAdminUser: "{{ wpsUser }}"
+        roleWpsAdminPassword: "{{ wpsPassword }}"
+        roleBackupTimeStamp: "{{ backupTimeStamp }}"
+        roleClientBin: "{{ oscpClientBin }}"
       tags:
-        - createStorage
+        - always
+
+    - name: Update WebDav content
+      ansible.builtin.include_role:
+        name: webDavUpdate
+      vars:
+        roleWebDavHostUrl: "{{ webDavHostUrl }}"
+        roleWpsAdminUser: "{{ wpsUser }}"
+        roleWpsAdminPassword: "{{ wpsPassword }}"
+        roleWebDavFileToBeAdded: "{{ webDavFilesToBeAdded }}"
+      tags:
+        - always
+
     ##
     ## Perform the oc logout
     - name: Logout of the command line client
@@ -348,69 +227,3 @@
       when: kube_api_key is defined
       tags:
         - always
-
-##
-## NFS Server tasks
-- name: Prepare NFS servers for new volumes
-  hosts: nfshosts
-  become: yes
-  become_user: root
-  gather_facts: true
-  force_handlers: true
-  vars_files:
-    - group_vars/crchosts
-  tasks:
-    - name: Create directories on the NFS server
-      block:
-        ##
-        ## Extract the directory list of the directories to be created on the NFS server from hostvars
-        - name: Create temporary file for templating YAML to get hostvars[host]['nfsServerDirectoryList']
-          ansible.builtin.tempfile:
-            state: file
-            suffix: temp
-          register: nfsServerDirectoryList_template_out
-
-        - name: Create J2 template for hostvars[host]['nfsServerDirectoryList']
-          ansible.builtin.template:
-            src: ./nfsServerDirectoryList.j2
-            dest: "{{ nfsServerDirectoryList_template_out.path }}"
-        ##
-        ## Read the list of the nfsServerDirectoryList from tmp file
-        - name: Read the list of the nfsServerDirectoryList from tmp file vlia slurp
-          ansible.builtin.slurp:
-            src: "{{ nfsServerDirectoryList_template_out.path }}"
-          register: slurpedFile
-
-        - name: Register nfsServerDirectoryList as Ansible fact again
-          ansible.builtin.set_fact:
-            nfsServerDirectoryList: "{{ slurpedFile['content'] | b64decode | from_yaml }}"
-        ##
-        ## Cleanup temp. file
-        - name: Cleanup generated template file for hostvars[host]['nfsServerDirectoryList']
-          ansible.builtin.file:
-            state: "absent"
-            path: "{{ nfsServerDirectoryList_template_out.path }}"
-
-        - name: Debug imported nfsServerDirectoryList
-          ansible.builtin.debug:
-            msg:
-              - "Directories to be created: {{ nfsServerDirectoryList  }}"
-          tags:
-            - hhueOnly
-        ##
-        ## Run the creation of the directory structure on the NFS server
-        - name: Run role prepareNfs
-          ansible.builtin.include_role:
-            name: prepareNfs
-          vars:
-            roleStgDirectories: "{{ nfsServerDirectoryList }}"
-
-        - name: Cleanup temp. file /tmp/nfsServerDirectoryList.txt
-          ansible.builtin.file:
-            state: "absent"
-            path: "/tmp/nfsServerDirectoryList.txt"
-
-      when: ((oscpStgVolumes is defined) and
-        (oscpStgVolumes != '' ))
-      tags:
-        - createStorage
