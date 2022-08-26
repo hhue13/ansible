@@ -21,17 +21,6 @@ oscpKubeAdminPassword: !vault |
   66633030356533616631643333313137386132343962653764653335613263316639306266643731
   3537613466653462640a333531656263383639313236613137313837626232326261306339356531
   3032
-oscpRegistryName: epyc
-oscpRegistryUserName: admin
-oscpRegistryPassword: !vault |
-  $ANSIBLE_VAULT;1.2;AES256;k8s
-  62653237323139336339386534323366373364653838643135663439613130653966303435396166
-  3537386532303163363066306635336465653565633638620a666433643939653330383437396430
-  38653838633261633435313137356430336439613338656165653766386531306235316238333936
-  3438616439626133390a363961636433333336336432376235303061656434323365313339613761
-  6162
-oscpRegistryUrl: epyc.2i.at:18444
-oscpRegistryEMail: hhuebler@2innovate.at
 ##
 ## OSCP installation details
 oscpDomain: cloud1.2i.at
@@ -75,6 +64,12 @@ wpsProps:
   - propertyFile: "ConfigEngine/properties/wkplc.properties"
     propertyKey: "skipWoodburnUpdate"
     propertyValue: "true"
+  - propertyFile: "ConfigEngine/properties/wkplc.properties"
+    propertyKey: "PWordDelete"
+    propertyValue: "false"
+  - propertyFile: "ConfigEngine/properties/wkplc_dbdomain.properties"
+    propertyKey: "PWordDelete"
+    propertyValue: "false"
 ##
 ## wps.ear filters to update
 wpsFilterClassToReplace: "com.ibm.wps.engine.ExtendedLocaleFilter"
