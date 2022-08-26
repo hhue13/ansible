@@ -17,6 +17,7 @@
 
     - name: Clone the repository
       ansible.builtin.git:
+        accept_hostkey: yes
         repo: "{{ webDavItem.gitRepositoryUrl }}"
         dest: "{{ gitCheckout.path }}"
         umask: "{{ roleGitCheckoutUmask }}"
