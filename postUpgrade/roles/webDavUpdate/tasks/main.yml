@@ -1,8 +1,16 @@
 ---
 # tasks file for addProfilesToTheme
 - name: Update all WebDav Files
-  ansible.builtin.include_tasks: processOneFile.yml
+  ansible.builtin.include_tasks: copyOneFileToWebdav.yml
   loop: "{{ roleWebDavFileToBeAdded }}"
+  loop_control:
+    loop_var: webDavItem
+  tags:
+    - always
+# tasks file for addProfilesToTheme
+- name: Edit WebDav Files
+  ansible.builtin.include_tasks: editOneFileInWebdav.yml
+  loop: "{{ roleWebDavFileToBeEdited }}"
   loop_control:
     loop_var: webDavItem
   tags:

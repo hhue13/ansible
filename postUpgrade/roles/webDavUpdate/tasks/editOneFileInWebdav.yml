@@ -1,0 +1,67 @@
+---
+- name: Update WebDav Files
+  block:
+    - name: Create temporary directory as mount point for WebDav
+      become_user: "root"
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: webdav
+      register: mountpoint
+      tags:
+        - always
+
+    - name: Mount WebDav filesystem {{ roleWebDavHostUrl }}/{{ webDavItem.webDavMountDir }}
+      become_user: "root"
+      ansible.builtin.import_tasks: mountWebDav.yml
+      tags:
+        - always
+
+    - name: Edit the WebDav file {{ webDavItem.webDavMountDir }}/{{ webDavItem.webDavPath }}/{{ webDavItem.file }}
+      become_user: "root"
+      ansible.builtin.blockinfile:
+        path: "{{ mountpoint.path }}/{{ webDavItem.webDavPath }}/{{ webDavItem.file }}"
+        block: "{{ webDavItem.textBlock }}"
+        marker: "{{ webDavItem.textMarker }}"
+        state: "{{ webDavItem.state }}"
+      tags:
+        - always
+
+    - name: Sync filesystem changes
+      become_user: "root"
+      ansible.builtin.command:
+        argv:
+          - "sync"
+      register: cmdResult
+      failed_when: (cmdResult.rc != 0)
+      tags:
+        - always
+
+    - name: Display {{ mountpoint.path }}/{{ webDavItem.webDavPath }}/{{ webDavItem.file }}
+      become_user: "root"
+      ansible.builtin.command:
+        argv:
+          - "cat"
+          - "{{ mountpoint.path }}/{{ webDavItem.webDavPath }}/{{ webDavItem.file }}"
+      register: cmdResult
+      failed_when: (cmdResult.rc != 0)
+      tags:
+        - always
+
+    - name: Debug file content of {{ mountpoint.path }}/{{ webDavItem.webDavPath }}/{{ webDavItem.file }}
+      ansible.builtin.debug:
+        msg: "File {{ webDavItem.file }} is:\n {{ cmdResult.stdout }}"
+      tags:
+        - always
+
+  always:
+    - name: UnMount WebDav filesystem {{ roleWebDavHostUrl }}/{{ webDavItem.webDavMountDir }}
+      become_user: "root"
+      ansible.builtin.import_tasks: unMountWebDav.yml
+      tags:
+        - always
+
+    - name: Cleanup WebDav mount point
+      become_user: "root"
+      ansible.builtin.file:
+        state: absent
+        path: "{{ mountpoint.path }}"

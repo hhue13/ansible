@@ -49,14 +49,6 @@
       tags:
         - never
 
-    - name: Make sure we have the latest version of the davfs2 package installed
-      become_user: "root"
-      ansible.builtin.yum:
-        name: davfs2
-        state: latest
-      tags:
-        - always
-
     - name: Create temporary directory as mount point for WebDav
       become_user: "root"
       ansible.builtin.tempfile:
@@ -66,29 +58,9 @@
       tags:
         - always
 
-    - name: Add credentials to /etc/davfs2/secrets
+    - name: Mount WebDav filesystem {{ roleWebDavHostUrl }}/{{ webDavItem.webDavMountDir }}
       become_user: "root"
-      ansible.builtin.blockinfile:
-        path: "/etc/davfs2/secrets"
-        block: |
-          {{ mountpoint.path }} {{ roleWpsAdminUser }} {{ roleWpsAdminPassword }}
-        marker: "# {mark} ANSIBLE MANAGED BLOCK {{ roleWpsAdminUser }}"
-        state: present
-      tags:
-        - always
-
-    - name: Mount the WebDav filesystem
-      become_user: "root"
-      ansible.builtin.command:
-        argv:
-          - "mount"
-          - "-t"
-          - "davfs"
-          - "-o"
-          - "noexec"
-          - "{{ roleWebDavHostUrl }}/wps/mycontenthandler/dav/fs-type1/"
-          - "{{ mountpoint.path }}"
-      register: cmdResult
+      ansible.builtin.import_tasks: mountWebDav.yml
       tags:
         - always
 
@@ -97,7 +69,7 @@
       ansible.builtin.shell: |
         echo "Target directory before copy  ..."
         ls -altr {{ mountpoint.path }}/{{ webDavItem.webDavPath }}
-        cp {{ gitCheckout.path }}/{{ webDavItem.dir }}/{{ webDavItem.file }} {{ mountpoint.path }}/{{ webDavItem.webDavPath }}/{{ webDavItem.file }} || exit 1
+        cp {{ gitCheckout.path }}/{{ webDavItem.dirInRepo }}/{{ webDavItem.file }} {{ mountpoint.path }}/{{ webDavItem.webDavPath }}/{{ webDavItem.file }} || exit 1
         sync
         echo "Target directory after copy  ..."
         ls -altr {{ mountpoint.path }}/{{ webDavItem.webDavPath }}
@@ -114,24 +86,9 @@
         - always
 
   always:
-    - name: Unmout WebDav filesystem
+    - name: UnMount WebDav filesystem {{ roleWebDavHostUrl }}/{{ webDavItem.webDavMountDir }}
       become_user: "root"
-      ansible.builtin.command:
-        argv:
-          - "umount"
-          - "{{ mountpoint.path }}"
-      register: cmdResult
-      tags:
-        - always
-
-    - name: Remove credentials from /etc/davfs2/secrets
-      become_user: "root"
-      ansible.builtin.blockinfile:
-        path: "/etc/davfs2/secrets"
-        block: |
-          {{ mountpoint.path }} {{ roleWpsAdminUser }} {{ roleWpsAdminPassword }}
-        marker: "# {mark} ANSIBLE MANAGED BLOCK {{ roleWpsAdminUser }}"
-        state: absent
+      ansible.builtin.import_tasks: unMountWebDav.yml
       tags:
         - always
 

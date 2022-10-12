@@ -1,2 +1,27 @@
 ---
 # defaults file for runXmlAccess
+roleDeployment: "dummy"
+roleKey: "dummy"
+roleNs: "dummy"
+roleHost: "dummy"
+roleWpsAdminUser: "dummy"
+roleWpsAdminPassword: "dummy"
+roleXmlInputFile: "dummy"
+
+roleTargetDirectoryForXmlFiles: "/tmp"
+roleCoreContainerName: "core"
+roleCorePodName: "{{ roleDeployment }}-core-0"
+roleProfileHome: "/opt/HCL/wp_profile"
+roleBackupTimeStamp: "{{ ansible_date_time.iso8601_basic_short }}"
+roleClientBin: "/usr/local/bin/oc"
+##
+## xmlaccess base output file for backup
+roleXmlAccessOutputFile: "{{ roleDeployment }}-xmlaccess-{{ roleBackupTimeStamp }}.xml"
+##
+## List of xmlaccess files to import
+roleXmlAccessImports:
+  - ibm.portal.toolbar.ContentRoot_pageExport.xml
+  - ibm.portal.Toolbar_pageExport.xml
+##
+## roleResourceAggregationProfile
+roleResourceAggregationProfile: "profiles/profile_toolbar_gbg.json"

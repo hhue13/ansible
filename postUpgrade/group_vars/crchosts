@@ -88,16 +88,37 @@ webDavHostUrl: "https://dx-blue-passthrough-dxb.apps.epyc.cloud1.2i.at"
 ## Profiles to be added to the themes via WebDav
 webDavFilesToBeAdded:
   - file: "profile_toolbar_gbg.json"
-    dir: "src/main/webdav/profiles"
+    dirInRepo: "src/main/webdav/profiles"
     webDavPath: "themes/Toolbar8.5/profiles"
+    webDavMountDir: "wps/mycontenthandler/dav/fs-type1"
     gitPrivateKey: "/home/hhuebler/.ssh/hhue_id_ed25519"
     gitRepositoryUrl: "ssh://git@s008aa39r.staden.gotheborg.net:7999/got/goteborg-theme-toolbar.git"
     gitBranchOrVersion: "master"
     gitRemote: "origin"
   - file: "profile_lightweight_gbg.json"
-    dir: "src/main/webdav/profiles"
+    dirInRepo: "src/main/webdav/profiles"
     webDavPath: "themes/Toolbar8.5/profiles"
+    webDavMountDir: "wps/mycontenthandler/dav/fs-type1"
     gitPrivateKey: "/home/hhuebler/.ssh/hhue_id_ed25519"
     gitRepositoryUrl: "ssh://git@s008aa39r.staden.gotheborg.net:7999/got/goteborg-theme-toolbar.git"
     gitBranchOrVersion: "master"
     gitRemote: "origin"
+#####   - file: "metadata.properties"
+#####     dirInRepo: "src/main/webdav"
+#####     webDavPath: "GbgTheme"
+#####     webDavMountDir: "wps/mycontenthandler/dav/themelist"
+#####     gitPrivateKey: "/home/hhuebler/.ssh/hhue_id_ed25519"
+#####     gitRepositoryUrl: "ssh://git@s008aa39r.staden.gotheborg.net:7999/got/goteborg-theme-metadata-properties.git"
+#####     gitBranchOrVersion: "master"
+#####     gitRemote: "origin"
+##
+## Profiles to be added to the themes via WebDav
+##### webDavFilesToBeEdited:
+#####   - file: "metadata.properties"
+#####     webDavPath: "ibm.portal.SimpleTheme"
+#####     webDavMountDir: "wps/mycontenthandler/dav/themelist"
+#####     textBlock: |
+#####       resourceaggregation.autoLoadPortletCapabilities=true
+#####     textMarker: "# {mark} ANSIBLE MANAGED BLOCK"
+#####     state: "present"
+webDavFilesToBeEdited: []
