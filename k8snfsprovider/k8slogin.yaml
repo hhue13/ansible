@@ -25,6 +25,7 @@
 - name: Checking for env variable K8S_PASSWORD
   set_fact:
     k8s_password: "{{ lookup('env', 'K8S_PASSWORD') }}"
+  no_log: true
   tags:
     - always
 ##
@@ -52,6 +53,7 @@
     k8s_password: "{{ oscpKubeAdminPassword }}"
   when: (( k8s_password is not defined) or
     (k8s_password == ''))
+  no_log: true
   tags:
     - always
 ##
@@ -76,6 +78,7 @@
   register: k8s_auth_results
   when: (( k8s_api_token is not defined ) or
     ( k8s_api_token == '' ))
+  no_log: true
   tags:
     - always
 ##
