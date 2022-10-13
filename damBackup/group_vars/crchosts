@@ -68,6 +68,9 @@ damAppTag: "{{ oscpDamDeployment }}-digital-asset-management"
 ## DAM pod name to be backed up
 damPodName: "{{ oscpDamDeployment }}-digital-asset-management-0"
 ##
+## Latest link suffic
+latestLinkSuffix: "latest"
+##
 ## Database pod to be backed up
 persistencePodContainerName: "persistence-node"
 ##
