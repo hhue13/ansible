@@ -46,11 +46,14 @@ oscpLogoutOfOc: true
 backupDatabases:
   - name: "dxmediadb"
     backupFile: "{{ oscpDamDeployment }}-dxmediadb"
+    tmpDir: "/tmp"
 ##
 ## DAM Direcories to backup
 backupDirectories:
   - name: "/opt/app/upload"
     backupFile: "{{ oscpDamDeployment }}-damFiles"
+    tmpDir: "/tmp"
+    verbose: false
 ##
 ## How long too keep old backups (in days)
 backupRetentionPeriod: 30
