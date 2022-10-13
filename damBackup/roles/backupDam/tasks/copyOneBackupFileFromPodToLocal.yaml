@@ -6,7 +6,7 @@
       - "-n"
       - "{{ roleNs }}"
       - "cp"
-      - "{{ roleDamPodName }}:/tmp/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.tar.gz"
+      - "{{ roleDamPodName }}:{{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.tar.gz"
       - "{{ roleTargetDirectoryForBackupFiles }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.tar.gz"
   register: cmdResult
   failed_when: (cmdResult.rc != 0)
@@ -18,7 +18,7 @@
     namespace: "{{ roleNs }}"
     host: "{{ roleHost }}"
     api_key: "{{ roleKey }}"
-    command: "rm -f /tmp/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.tar.gz"
+    command: "rm -f {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.tar.gz"
     pod: "{{ roleDamPodName }}"
     validate_certs: "no"
   register: podResult

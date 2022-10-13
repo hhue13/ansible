@@ -1,4 +1,16 @@
 ---
+- name: Make sure the tmp directory for the backup ({{ backupFileDict['tmpDir'] | default('/tmp') }}) exists
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "mkdir -p {{ backupFileDict['tmpDir'] | default('/tmp') }}"
+    pod: "{{ roleDamPodName }}"
+    validate_certs: "no"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
 ##
 ## Create the backup of the directory
 - name: Create directory backup file for directory {{ backupFileDict['name'] }}
@@ -6,7 +18,7 @@
     namespace: "{{ roleNs }}"
     host: "{{ roleHost }}"
     api_key: "{{ roleKey }}"
-    command: "tar -cvpzf /tmp/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.tar.gz --exclude=/tmp/{{ backupFileDict['backupFile'] }}.tar.gz --one-file-system --directory {{ backupFileDict['name'] }} ."
+    command: "tar -cvpzf {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.tar.gz --exclude={{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}.tar.gz --one-file-system --directory {{ backupFileDict['name'] }} ."
     pod: "{{ roleDamPodName }}"
     validate_certs: "no"
   register: podResult

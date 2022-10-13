@@ -1,10 +1,23 @@
 ---
+- name: Make sure the tmp directory for the backup ({{ backupFileDict['tmpDir'] | default('/tmp') }}) exists
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "mkdir -p {{ backupFileDict['tmpDir'] | default('/tmp') }}"
+    pod: "{{ rolePersistentPodName }}"
+    container: "{{ rolePersistentPodContainerName }}"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+
 - name: Create postgress backup file for database {{ backupFileDict['name'] }}
   kubernetes.core.k8s_exec:
     namespace: "{{ roleNs }}"
     host: "{{ roleHost }}"
     api_key: "{{ roleKey }}"
-    command: "pg_dump -d {{ backupFileDict['name'] }} -f /tmp/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.dmp"
+    command: "pg_dump -d {{ backupFileDict['name'] }} -f {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.dmp"
     pod: "{{ rolePersistentPodName }}"
     container: "{{ rolePersistentPodContainerName }}"
   register: podResult
@@ -18,7 +31,7 @@
     namespace: "{{ roleNs }}"
     host: "{{ roleHost }}"
     api_key: "{{ roleKey }}"
-    command: "gzip -9 /tmp/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.dmp"
+    command: "gzip -9 {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.dmp"
     pod: "{{ rolePersistentPodName }}"
     container: "{{ rolePersistentPodContainerName }}"
   register: podResult

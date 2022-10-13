@@ -5,7 +5,7 @@
     namespace: "{{ roleNs }}"
     host: "{{ roleHost }}"
     api_key: "{{ roleKey }}"
-    command: "tar -mvpxf /tmp/{{ backupFileDict['backupFile'] }} --directory {{ backupFileDict['name'] }}"
+    command: "tar -mvpxf {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }} --directory {{ backupFileDict['name'] }}"
     pod: "{{ roleDamPodName }}"
     validate_certs: "no"
   register: podResult
@@ -19,7 +19,7 @@
     namespace: "{{ roleNs }}"
     host: "{{ roleHost }}"
     api_key: "{{ roleKey }}"
-    command: "rm -rf /tmp/{{ backupFileDict['backupFile'] }}"
+    command: "rm -rf {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}"
     pod: "{{ roleDamPodName }}"
     validate_certs: "no"
   register: podResult
