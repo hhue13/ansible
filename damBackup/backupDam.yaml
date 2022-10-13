@@ -181,6 +181,7 @@
         roleXmlAccessOutputPatterm: "{{ xmlAccessExportPattern }}"
         roleBackupTimestamp: "{{ backup_timestamp }}"
         roleTimestampPattern: "{{ timestampPattern }}"
+        roleLatestLinkSuffix: "{{ latestLinkSuffix }}"
       tags:
         - backup
     ## Run the backup of the database pod
@@ -196,6 +197,7 @@
         rolePersistentPodName: "{{ activePersistentPodName }}"
         rolePersistentPodContainerName: "{{ persistencePodContainerName | default('persistence-node') }}"
         roleTargetDirectoryForBackupFiles: "{{ targetDirectoryForBackupFiles }}"
+        roleLatestLinkSuffix: "{{ latestLinkSuffix }}"
       tags:
         - backup
     ##
@@ -211,6 +213,7 @@
         roleBackupTimestamp: "{{ backup_timestamp }}"
         roleDamPodName: "{{ damPodName }}"
         roleTargetDirectoryForBackupFiles: "{{ targetDirectoryForBackupFiles }}"
+        roleLatestLinkSuffix: "{{ latestLinkSuffix }}"
       tags:
         - backup
     ########################################################################################

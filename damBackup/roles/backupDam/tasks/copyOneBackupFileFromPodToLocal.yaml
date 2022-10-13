@@ -25,3 +25,12 @@
   failed_when: (podResult.rc != 0)
   tags:
     - always
+
+- name: Link the lastest version to the current backup file
+  ansible.builtin.shell: |
+    rm -rf {{ roleTargetDirectoryForBackupFiles }}/{{ backupFileDict['backupFile'] }}_{{ roleLatestLinkSuffix }}.tar.gz
+    ln {{ roleTargetDirectoryForBackupFiles }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.tar.gz {{ roleTargetDirectoryForBackupFiles }}/{{ backupFileDict['backupFile'] }}_{{ roleLatestLinkSuffix }}.tar.gz
+  register: shellResult
+  failed_when: (shellResult.rc != 0)
+  tags:
+    - always
