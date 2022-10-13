@@ -83,7 +83,7 @@ persistencePodName: "{{ oscpDamDeployment }}-persistence-node-0"
 ## Note: The 'backupFile' must be located in the director {{ targetDirectoryForBackupFiles }}
 restoreDatabases:
   - name: "dxmediadb"
-    backupFile: "dxmediadb_20220620T182149.dmp.gz"
+    backupFile: "{{ oscpDamDeployment }}-dxmediadb_{{ latestLinkSuffix }}.dmp.gz"
     connLimitToSet: 500
     dbrole: "dxuser"
 ##
@@ -91,13 +91,13 @@ restoreDatabases:
 ## Note: The 'backupFile' must be located in the director {{ targetDirectoryForBackupFiles }}
 restoreDirectories:
   - name: "/opt/app/upload"
-    backupFile: "damFiles_20220620T182149.tar.gz"
+    backupFile: "{{ oscpDamDeployment }}-damFiles_{{ latestLinkSuffix }}.tar.gz"
 ##
 ## Name of the xml file to import in the restore case
 ## Note: The 'restoreXmlFile' must be located in the director {{ targetDirectoryForBackupFiles }}
 restoreXmlFiles:
   - name: XMLCollections
-    backupFile: "damExport_20220620T182149.xml"
+    backupFile: "{{ oscpDamDeployment }}-damExport_{{ latestLinkSuffix }}.xml"
 ##
 ## Target directory for backups. This is also the locations for the files to restore!
 targetDirectoryForBackupFiles: "/2tmp/damBackup"
