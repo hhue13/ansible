@@ -1,11 +1,25 @@
 ---
+- name: Set the default tar command to be non-verbose
+  ansible.builtin.set_fact:
+    restore_command: "tar -mpxf"
+  tags:
+    - always
+
+- name: Set the default tar command to be verbose if requested
+  ansible.builtin.set_fact:
+    restore_command: "tar -mvpxf"
+  when: ((backupFileDict['verbose'] is defined) and
+    ( backupFileDict['verbose'] == true))
+  tags:
+    - always
+
 ## Run tar command for directories on POD
 - name: Extract directory backup file {{ backupFileDict['backupFile'] }} to {{ backupFileDict['name'] }}
   kubernetes.core.k8s_exec:
     namespace: "{{ roleNs }}"
     host: "{{ roleHost }}"
     api_key: "{{ roleKey }}"
-    command: "tar -mvpxf {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }} --directory {{ backupFileDict['name'] }}"
+    command: "{{ restore_command }} {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }} --directory {{ backupFileDict['name'] }}"
     pod: "{{ roleDamPodName }}"
     validate_certs: "no"
   register: podResult
