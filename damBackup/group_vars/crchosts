@@ -46,7 +46,7 @@ oscpLogoutOfOc: true
 backupDatabases:
   - name: "dxmediadb"
     backupFile: "{{ oscpDamDeployment }}-dxmediadb"
-    tmpDir: "/tmp"
+    tmpDir: "/var/lib/pgsql/11/data/dx/hhue"
 ##
 ## DAM Direcories to backup
 backupDirectories:
