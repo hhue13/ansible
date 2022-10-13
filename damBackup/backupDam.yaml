@@ -284,7 +284,7 @@
     ## Housekeeping - cleanup old backups
     - name: Housekeeping - cleanup old backups
       ansible.builtin.shell: |
-        find {{ targetDirectoryForBackupFiles }} -mtime +{{ backupRetentionPeriod | default('90') }} -exec rm -rf {} \;
+        find {{ targetDirectoryForBackupFiles }} -name "{{ oscpDamDeployment }}-*" -mtime +{{ backupRetentionPeriod | default('90') }} -exec rm -rf {} \;
       register: cmdResult
       failed_when: (cmdResult.rc != 0)
       tags:
