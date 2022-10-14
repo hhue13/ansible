@@ -100,7 +100,7 @@ restoreXmlFiles:
     backupFile: "{{ oscpDamDeployment }}-damExport_{{ latestLinkSuffix }}.xml"
 ##
 ## Target directory for backups. This is also the locations for the files to restore!
-targetDirectoryForBackupFiles: "/2tmp/damBackup"
+targetDirectoryForBackupFiles: "/2tmp/damBackup/{{ oscpDamNameSpace }}"
 ##
 ## Pattern to be replaced with the backup timestamp during the run
 timestampPattern: "##TIMESTAMP##"
