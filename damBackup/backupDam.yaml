@@ -164,6 +164,18 @@
     ### Backup of DAM Data
     ########################################################################################
     ##
+    ## Make sure that the target directory exists
+    - name: Create target directory for the backup files if it does not exist
+      ansible.builtin.command:
+        argv:
+          - "mkdir"
+          - "-p"
+          - "{{ targetDirectoryForBackupFiles }}"
+      register: cmdResult
+      failed_when: (cmdResult.rc != 0)
+      tags:
+        - backup
+    ##
     ## Run the xmlaccess export from core
     - name: Run role runXmlAccess to export collections
       ansible.builtin.include_role:
