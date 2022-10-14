@@ -84,3 +84,20 @@
   failed_when: (cmdResult.rc != 0)
   tags:
     - always
+
+##
+## Set the xmlaccess output link name for the latest link
+- name: Set the xmlaccess latest link filename
+  ansible.builtin.set_fact:
+    xmlAccessLinkFile: "{{ roleXmlAccessOutputPatterm | replace(roleTimestampPattern, roleLatestLinkSuffix) }}"
+  tags:
+    - backup
+
+- name: Link the lastest version to the current backup file
+  ansible.builtin.shell: |
+    rm -rf {{ roleTargetDirectoryForXmlFiles }}/{{ xmlAccessLinkFile }}
+    ln {{ roleTargetDirectoryForXmlFiles }}/{{ xmlAccessOutputFile }} {{ roleTargetDirectoryForXmlFiles }}/{{ xmlAccessLinkFile }}
+  register: shellResult
+  failed_when: (shellResult.rc != 0)
+  tags:
+    - backup

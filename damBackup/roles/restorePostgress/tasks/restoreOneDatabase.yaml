@@ -65,7 +65,7 @@
 ##
 ## Remove .gz extension
 - name: Create uncompressed dump files name
-  shell: "echo /tmp/{{ backupFileDict['backupFile'] }} | sed s#\\.gz##g"
+  shell: "echo {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }} | sed s#\\.gz##g"
   register: cmdResult
   tags:
     - always
@@ -85,7 +85,7 @@
     - always
 ##
 ## Unzip the file to restore
-- name: Unzip backup file /tmp/{{ backupFileDict['backupFile'] }} to {{ cmdResult.stdout }}
+- name: Unzip backup file {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }} to {{ cmdResult.stdout }}
   kubernetes.core.k8s_exec:
     namespace: "{{ roleNs }}"
     host: "{{ roleHost }}"
@@ -99,12 +99,12 @@
     - always
 ##
 ## List temp directory
-- name: List content of /tmp
+- name: List content of {{ backupFileDict['tmpDir'] | default('/tmp') }}
   kubernetes.core.k8s_exec:
     namespace: "{{ roleNs }}"
     host: "{{ roleHost }}"
     api_key: "{{ roleKey }}"
-    command: "ls -altr /tmp"
+    command: "ls -altr {{ backupFileDict['tmpDir'] | default('/tmp') }}"
     pod: "{{ rolePersistentPodName }}"
     container: "{{ rolePersistentPodContainerName }}"
   register: podResult

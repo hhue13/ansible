@@ -1,0 +1,230 @@
+---
+#######################################################################################################
+## Requires the following collections and python modules:
+##
+## See README.md for required software dependencies
+##
+## ansible-playbook -e @globalVars postUpgrade.yaml
+## ansible-playbook --vault-id k8s@~/ansible_password -e @globalVars postUpgrade.yaml
+##
+## Note: Make sure you setup visudo correctly so that "sudo -i -u <become_user>" works
+#######################################################################################################
+- name: Run the postUpgrade tasks after a CF upgrade
+  hosts: crchosts
+  become: yes
+  become_user: "{{ oscpOsUser }}"
+  gather_facts: true
+  force_handlers: true
+  vars_files:
+    - "{{ includedVars | default('group_vars/crchosts') }}"
+  module_defaults:
+    kubernetes.core.k8s:
+      validate_certs: "no"
+    kubernetes.core.k8s_info:
+      validate_certs: "no"
+    kubernetes.core.k8s_exec:
+      validate_certs: "no"
+    kubernetes.core.k8s_cp:
+      validate_certs: "no"
+    community.okd.openshift_auth:
+      validate_certs: "no"
+    community.okd.openshift_process:
+      validate_certs: "no"
+    community.okd.openshift_route:
+      validate_certs: "no"
+  #########################
+  ## Tasks of the play-book
+  #########################
+  tasks:
+    - name: Send notification message via Slack
+      community.general.slack:
+        token: "{{ slackAuthenticationToken }}"
+        msg: "Checkout from Git and replace Tokens in files started for {{ gitRepositoryUrl }}"
+      when: ((sendSlackNotifications is defined) and (sendSlackNotifications == true))
+    ##
+    ## Set login facts
+    - name: Set K8S login facts
+      include_tasks: k8slogin.yaml
+      tags:
+        - always
+    ##
+    ## Retrieving the current timestamp
+    - name: Retrieving the current timestamp
+      ansible.builtin.set_fact:
+        backup_timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
+      tags:
+        - always
+    ##
+    ## Checking for env variable K8S_NAMESPACE
+    - name: Checking for env variable K8S_NAMESPACE
+      ansible.builtin.set_fact:
+        k8s_ns: "{{ lookup('env', 'K8S_NAMESPACE') }}"
+      tags:
+        - always
+    ##
+    ## Get the namespace from the variables file of no ENV variable set
+    - name: Get the namespace from variable oscpNameSpace
+      ansible.builtin.set_fact:
+        k8s_ns: "{{ oscpNameSpace }}"
+      when: (( k8s_ns is not defined) or
+        (k8s_ns == ''))
+      tags:
+        - always
+    ##
+    ## Dump API Key
+    - name: Dump API Key in MAIN
+      ansible.builtin.debug:
+        msg:
+          - "API Key is {{ kube_api_key  }}"
+      no_log: true
+      tags:
+        - never
+    ##
+    ## Run oc login using the api key
+    - name: Login to the oc client using the API key
+      ansible.builtin.command:
+        argv:
+          - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+          - "login"
+          - "--token={{ kube_api_key }}"
+          - "--server={{ k8s_host }}"
+          - "--insecure-skip-tls-verify=true"
+      register: cmdResult
+      no_log: true
+      tags:
+        - always
+    ##
+    ## Run oc login using the api key
+    - name: Debug the command result of 'oc login'
+      ansible.builtin.debug:
+        msg:
+          - "cmdResult is {{ cmdResult }}"
+      tags:
+        - always
+    ##
+    ## Debug the result of the 'oc login'
+    - name: Debug the command result of 'oc login'
+      ansible.builtin.debug:
+        msg:
+          - "cmdResult is {{ cmdResult }}"
+      tags:
+        - always
+    ##############
+    ## Debug Vars
+    ##############
+    - name: Print some debug information
+      vars:
+        msg: |
+          Module Variables ("vars"):
+          --------------------------------
+          {{ vars | to_nice_json }}
+
+          Environment Variables ("environment"):
+          --------------------------------
+          {{ environment | to_nice_json }}
+
+          GROUP NAMES Variables ("group_names"):
+          --------------------------------
+          {{ group_names | to_nice_json }}
+
+          GROUPS Variables ("groups"):
+          --------------------------------
+          {{ groups | to_nice_json }}
+
+          HOST Variables ("hostvars"):
+          --------------------------------
+          {{ hostvars | to_nice_json }}
+      debug:
+        msg: "{{ msg.split('\n') }}"
+      tags:
+        - never
+
+    - name: Display hostvars
+      ansible.builtin.debug:
+        msg: "hostvars:\n\n{{ hostvars | to_yaml}}\n\n"
+      tags:
+        - never
+
+    - name: Update wps.ear with GBG specific language filter via role setWpsLanguageFilter
+      ansible.builtin.include_role:
+        name: setWpsLanguageFilter
+      vars:
+        roleDeployment: "{{ oscpDxDeploymentName }}"
+        roleHost: "{{ k8s_host }}"
+        roleKey: "{{ kube_api_key }}"
+        roleNs: "{{ k8s_ns }}"
+        roleWasUser: "{{ wasUser }}"
+        roleWasPassword: "{{ wasPassword }}"
+        roleFilterClassToReplace: "{{ wpsFilterClassToReplace }}"
+        roleNewFilterClass: "{{ wpsNewFilterClass }}"
+      tags:
+        - always
+
+    - name: Set required properties in properties files
+      ansible.builtin.include_role:
+        name: ensureWpProperties
+      vars:
+        roleDeployment: "{{ oscpDxDeploymentName }}"
+        roleHost: "{{ k8s_host }}"
+        roleKey: "{{ kube_api_key }}"
+        roleNs: "{{ k8s_ns }}"
+        roleWpsProps: "{{ wpsProps }}"
+        roleClientBin: "{{ oscpClientBin }}"
+      tags:
+        - always
+
+    - name: Create a timestamp for the XMLACCESS runs
+      ansible.builtin.set_fact:
+        backupTimeStamp: "{{ ansible_date_time.iso8601_basic_short }}"
+      tags:
+        - always
+
+    - name: Run the xmlaccess imports to adjust page settings
+      ansible.builtin.include_role:
+        name: runXmlAccess
+      vars:
+        roleDeployment: "{{ oscpDxDeploymentName }}"
+        roleHost: "{{ k8s_host }}"
+        roleKey: "{{ kube_api_key }}"
+        roleNs: "{{ k8s_ns }}"
+        roleWpsAdminUser: "{{ wpsUser }}"
+        roleWpsAdminPassword: "{{ wpsPassword }}"
+        roleBackupTimeStamp: "{{ backupTimeStamp }}"
+        roleClientBin: "{{ oscpClientBin }}"
+      tags:
+        - always
+
+    - name: Update WebDav content
+      ansible.builtin.include_role:
+        name: webDavUpdate
+      vars:
+        roleWebDavHostUrl: "{{ webDavHostUrl }}"
+        roleWpsAdminUser: "{{ wpsUser }}"
+        roleWpsAdminPassword: "{{ wpsPassword }}"
+        roleWebDavFileToBeAdded: "{{ webDavFilesToBeAdded }}"
+        roleWebDavFileToBeEdited: "{{ webDavFilesToBeEdited }}"
+      tags:
+        - always
+
+    ##
+    ## Perform the oc logout
+    - name: Logout of the command line client
+      ansible.builtin.command:
+        argv:
+          - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+          - "logout"
+      when: ((oscpLogoutOfOc is defined) and
+        (oscpLogoutOfOc | bool))
+      tags:
+        - always
+    ##
+    ## Logout
+    - name: If login succeeded, try to log out (revoke access token)
+      community.okd.openshift_auth:
+        host: "{{ k8s_host }}"
+        state: absent
+        api_key: "{{ kube_api_key }}"
+        validate_certs: "no"
+      when: kube_api_key is defined
+      tags:
+        - always

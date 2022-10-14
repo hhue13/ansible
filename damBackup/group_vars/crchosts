@@ -46,11 +46,14 @@ oscpLogoutOfOc: true
 backupDatabases:
   - name: "dxmediadb"
     backupFile: "{{ oscpDamDeployment }}-dxmediadb"
+    tmpDir: "/var/lib/pgsql/11/data/dx/hhue"
 ##
 ## DAM Direcories to backup
 backupDirectories:
   - name: "/opt/app/upload"
     backupFile: "{{ oscpDamDeployment }}-damFiles"
+    tmpDir: "/tmp"
+    verbose: false
 ##
 ## How long too keep old backups (in days)
 backupRetentionPeriod: 30
@@ -65,6 +68,9 @@ damAppTag: "{{ oscpDamDeployment }}-digital-asset-management"
 ## DAM pod name to be backed up
 damPodName: "{{ oscpDamDeployment }}-digital-asset-management-0"
 ##
+## Latest link suffic
+latestLinkSuffix: "latest"
+##
 ## Database pod to be backed up
 persistencePodContainerName: "persistence-node"
 ##
@@ -77,7 +83,7 @@ persistencePodName: "{{ oscpDamDeployment }}-persistence-node-0"
 ## Note: The 'backupFile' must be located in the director {{ targetDirectoryForBackupFiles }}
 restoreDatabases:
   - name: "dxmediadb"
-    backupFile: "dxmediadb_20220620T182149.dmp.gz"
+    backupFile: "{{ oscpDamDeployment }}-dxmediadb_{{ latestLinkSuffix }}.dmp.gz"
     connLimitToSet: 500
     dbrole: "dxuser"
 ##
@@ -85,16 +91,16 @@ restoreDatabases:
 ## Note: The 'backupFile' must be located in the director {{ targetDirectoryForBackupFiles }}
 restoreDirectories:
   - name: "/opt/app/upload"
-    backupFile: "damFiles_20220620T182149.tar.gz"
+    backupFile: "{{ oscpDamDeployment }}-damFiles_{{ latestLinkSuffix }}.tar.gz"
 ##
 ## Name of the xml file to import in the restore case
 ## Note: The 'restoreXmlFile' must be located in the director {{ targetDirectoryForBackupFiles }}
 restoreXmlFiles:
   - name: XMLCollections
-    backupFile: "damExport_20220620T182149.xml"
+    backupFile: "{{ oscpDamDeployment }}-damExport_{{ latestLinkSuffix }}.xml"
 ##
 ## Target directory for backups. This is also the locations for the files to restore!
-targetDirectoryForBackupFiles: "/2tmp/damBackup"
+targetDirectoryForBackupFiles: "/2tmp/damBackup/{{ oscpDamNameSpace }}"
 ##
 ## Pattern to be replaced with the backup timestamp during the run
 timestampPattern: "##TIMESTAMP##"

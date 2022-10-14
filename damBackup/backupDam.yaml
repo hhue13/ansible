@@ -164,6 +164,18 @@
     ### Backup of DAM Data
     ########################################################################################
     ##
+    ## Make sure that the target directory exists
+    - name: Create target directory for the backup files if it does not exist
+      ansible.builtin.command:
+        argv:
+          - "mkdir"
+          - "-p"
+          - "{{ targetDirectoryForBackupFiles }}"
+      register: cmdResult
+      failed_when: (cmdResult.rc != 0)
+      tags:
+        - backup
+    ##
     ## Run the xmlaccess export from core
     - name: Run role runXmlAccess to export collections
       ansible.builtin.include_role:
@@ -181,6 +193,7 @@
         roleXmlAccessOutputPatterm: "{{ xmlAccessExportPattern }}"
         roleBackupTimestamp: "{{ backup_timestamp }}"
         roleTimestampPattern: "{{ timestampPattern }}"
+        roleLatestLinkSuffix: "{{ latestLinkSuffix }}"
       tags:
         - backup
     ## Run the backup of the database pod
@@ -196,6 +209,7 @@
         rolePersistentPodName: "{{ activePersistentPodName }}"
         rolePersistentPodContainerName: "{{ persistencePodContainerName | default('persistence-node') }}"
         roleTargetDirectoryForBackupFiles: "{{ targetDirectoryForBackupFiles }}"
+        roleLatestLinkSuffix: "{{ latestLinkSuffix }}"
       tags:
         - backup
     ##
@@ -211,6 +225,7 @@
         roleBackupTimestamp: "{{ backup_timestamp }}"
         roleDamPodName: "{{ damPodName }}"
         roleTargetDirectoryForBackupFiles: "{{ targetDirectoryForBackupFiles }}"
+        roleLatestLinkSuffix: "{{ latestLinkSuffix }}"
       tags:
         - backup
     ########################################################################################
@@ -284,7 +299,7 @@
     ## Housekeeping - cleanup old backups
     - name: Housekeeping - cleanup old backups
       ansible.builtin.shell: |
-        find {{ targetDirectoryForBackupFiles }} -mtime +{{ backupRetentionPeriod | default('90') }} -exec rm -rf {} \;
+        find {{ targetDirectoryForBackupFiles }} -name "{{ oscpDamDeployment }}-*" -mtime +{{ backupRetentionPeriod | default('90') }} -exec rm -rf {} \;
       register: cmdResult
       failed_when: (cmdResult.rc != 0)
       tags:

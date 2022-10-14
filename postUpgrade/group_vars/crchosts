@@ -1,0 +1,124 @@
+---
+sendSlackNotifications: false
+## Slack authentication token
+## ansible-vault encrypt_string --vault-id dev@~ansible_password '<plain-text-password>' --name 'slackAuthenticationToken'
+slackAuthenticationToken: !vault |
+  $ANSIBLE_VAULT;1.2;AES256;ks8
+  62663330373062393833343462646333636262393535643564303232346232363931303036386363
+  6166333237383730383633626633626234386463656239330a376334366631353333396233363064
+  62373638326433643034653039316263333431383766343662623065373435376630393936333764
+  3532623135623431650a323564326162396331613235366531393737636131353837383732663832
+  31626239646531653162366233363264313539646438633664393630363135303830333465386236
+  3835373762646335316537633830383933616439356161613933
+##
+## OSCP Authenticaton data used to login to K8S
+## ansible-vault encrypt_string --vault-id ks8@~/ansible_password '<plain-text-password>' --name 'oscpKubeAdminPassword'
+oscpKubeAdminUserName: hhue
+oscpKubeAdminPassword: !vault |
+  $ANSIBLE_VAULT;1.2;AES256;k8s
+  30653463636438626431613430343637343231646363346436656634393731356662343133383861
+  3639646239346438323762353733373861356337303631350a346132653638366563643831373532
+  66633030356533616631643333313137386132343962653764653335613263316639306266643731
+  3537613466653462640a333531656263383639313236613137313837626232326261306339356531
+  3032
+##
+## OSCP installation details
+oscpDomain: cloud1.2i.at
+oscpClusterName: epyc
+##
+## Namespace
+oscpNameSpace: "dxb"
+##
+## Deployment name of dx
+oscpDxDeploymentName: dx-blue
+##
+## Docker CLI command (docker | podman)
+dockerCliCommand: "podman"
+##
+## OpenShift client to be used
+oscpClientBin: "/usr/local/bin/oc"
+##
+## Logout of the OC command shell at the end?
+oscpLogoutOfOc: true
+##
+## WAS Admin user to run xmlaccess
+wasUser: "wpadmin"
+##
+## WAS Admin user's password to run xmlaccess
+wasPassword: !vault |
+  $ANSIBLE_VAULT;1.2;AES256;dev
+  64346461306632646633363037396637303934666663343363393064336433646265663736613966
+  3563353433386133356564333632656465326564373838630a373132316266393636333135633663
+  61303938626236356639616261393737623764393061656335616363303839343934633330303130
+  3233623765623433370a323334333534373463353762353339356533396539636136323463653633
+  3534
+##
+## WPS Admin user to run xmlaccess
+wpsUser: "{{ wasUser }}"
+##
+## WPS Admin user's password to run xmlaccess
+wpsPassword: "{{ wasPassword }}"
+##
+## WPS Properties to set
+wpsProps:
+  - propertyFile: "ConfigEngine/properties/wkplc.properties"
+    propertyKey: "skipWoodburnUpdate"
+    propertyValue: "true"
+  - propertyFile: "ConfigEngine/properties/wkplc.properties"
+    propertyKey: "PWordDelete"
+    propertyValue: "false"
+  - propertyFile: "ConfigEngine/properties/wkplc_dbdomain.properties"
+    propertyKey: "PWordDelete"
+    propertyValue: "false"
+##
+## wps.ear filters to update
+wpsFilterClassToReplace: "com.ibm.wps.engine.ExtendedLocaleFilter"
+##### wpsNewFilterClass: "se.goteborg.filters.GbgFixedLocalesFilter"
+wpsNewFilterClass: "com.ibm.wps.engine.ExtendedLocaleFilter"
+##
+## ibm.portal.Toolbar resourceaggregation.profile to set: profiles/profile_toolbar_gbg.json
+ibmPortalToolbarResourceaggregationProfile: "profiles/profile_toolbar_gbg.json"
+##
+## umask for checked out git repos
+gitCheckoutUmask: "022"
+##
+## Host URL for webDav
+webDavHostUrl: "https://dx-blue-passthrough-dxb.apps.epyc.cloud1.2i.at"
+##
+## Profiles to be added to the themes via WebDav
+webDavFilesToBeAdded:
+  - file: "profile_toolbar_gbg.json"
+    dirInRepo: "src/main/webdav/profiles"
+    webDavPath: "themes/Toolbar8.5/profiles"
+    webDavMountDir: "wps/mycontenthandler/dav/fs-type1"
+    gitPrivateKey: "/home/hhuebler/.ssh/hhue_id_ed25519"
+    gitRepositoryUrl: "ssh://git@s008aa39r.staden.gotheborg.net:7999/got/goteborg-theme-toolbar.git"
+    gitBranchOrVersion: "master"
+    gitRemote: "origin"
+  - file: "profile_lightweight_gbg.json"
+    dirInRepo: "src/main/webdav/profiles"
+    webDavPath: "themes/Toolbar8.5/profiles"
+    webDavMountDir: "wps/mycontenthandler/dav/fs-type1"
+    gitPrivateKey: "/home/hhuebler/.ssh/hhue_id_ed25519"
+    gitRepositoryUrl: "ssh://git@s008aa39r.staden.gotheborg.net:7999/got/goteborg-theme-toolbar.git"
+    gitBranchOrVersion: "master"
+    gitRemote: "origin"
+#####   - file: "metadata.properties"
+#####     dirInRepo: "src/main/webdav"
+#####     webDavPath: "GbgTheme"
+#####     webDavMountDir: "wps/mycontenthandler/dav/themelist"
+#####     gitPrivateKey: "/home/hhuebler/.ssh/hhue_id_ed25519"
+#####     gitRepositoryUrl: "ssh://git@s008aa39r.staden.gotheborg.net:7999/got/goteborg-theme-metadata-properties.git"
+#####     gitBranchOrVersion: "master"
+#####     gitRemote: "origin"
+##
+## Profiles to be added to the themes via WebDav
+##### webDavFilesToBeEdited:
+#####   - file: "metadata.properties"
+#####     webDavPath: "ibm.portal.SimpleTheme"
+#####     webDavMountDir: "wps/mycontenthandler/dav/themelist"
+#####     textBlock: |
+#####       resourceaggregation.autoLoadPortletCapabilities=true
+#####     textMarker: "# {mark} ANSIBLE MANAGED BLOCK"
+#####     state: "present"
+webDavFilesToBeEdited: []

@@ -1,0 +1,15 @@
+---
+# defaults file for ensureWpProperties
+roleDeployment: "dummy"
+roleHost: "dummy"
+roleKey: "dummy"
+roleNs: "dummy"
+roleWpsProps:
+  - propertyFile: "dummy"
+    propertyKey: "dummy"
+    propertyValue: "dummy"
+
+#
+roleCoreContainerName: "core"
+rolePodName: "{{ roleDeployment }}-core-0"
+roleProfileHome: "/opt/HCL/wp_profile"

@@ -1,0 +1,195 @@
+---
+# tasks file for setWpsLanguageFilter
+
+- name: Prepare 01 core container {{ rolePodName }}/{{ roleCoreContainerName }} for ear update
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "rm -rf /tmp/wps.ear"
+    pod: "{{ rolePodName }}"
+    container: "{{ roleCoreContainerName }}"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+
+- name: Prepare 02 core container {{ rolePodName }}/{{ roleCoreContainerName }} for ear update
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "mkdir -p /tmp/expand"
+    pod: "{{ rolePodName }}"
+    container: "{{ roleCoreContainerName }}"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+
+- name: Prepare 03 core container {{ rolePodName }}/{{ roleCoreContainerName }} for ear update
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "mkdir -p /tmp/oper"
+    pod: "{{ rolePodName }}"
+    container: "{{ roleCoreContainerName }}"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+
+- name: Export wps.ear in the container {{ rolePodName }}/{{ roleCoreContainerName }}
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: '{{ roleProfileHome }}/bin/wsadmin.sh -lang jython -user {{ roleWasUser }} -password {{ roleWasPassword }} -host localhost -c "AdminApp.export(''wps'', ''/tmp/wps.ear'')"'
+    pod: "{{ rolePodName }}"
+    container: "{{ roleCoreContainerName }}"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+
+- name: Expand the ear file in {{ rolePodName }}/{{ roleCoreContainerName }}
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "{{ roleProfileHome }}/bin/EARExpander.sh -ear /tmp/wps.ear -operation expand -directory /tmp/expand -operationDir /tmp/oper"
+    pod: "{{ rolePodName }}"
+    container: "{{ roleCoreContainerName }}"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+
+- name: Debug stdout of EAR expansion
+  ansible.builtin.debug:
+    msg: "StdOut of ear expansion:\n {{ podResult.stdout }}"
+  tags:
+    - always
+
+- name: Create copy of wps's web.xml files in {{ rolePodName }}/{{ roleCoreContainerName }}
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "cp /tmp/oper/wps.war/WEB-INF/web.xml /tmp/oper/wps.war/WEB-INF/web.xml.old"
+    pod: "{{ rolePodName }}"
+    container: "{{ roleCoreContainerName }}"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+
+- name: Create copy of wps's web_merged.xml files in {{ rolePodName }}/{{ roleCoreContainerName }}
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "cp /tmp/oper/wps.war/WEB-INF/web_merged.xml /tmp/oper/wps.war/WEB-INF/web_merged.xml.old"
+    pod: "{{ rolePodName }}"
+    container: "{{ roleCoreContainerName }}"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+
+- name: Replacing locale filter class in web.xml in {{ rolePodName }}/{{ roleCoreContainerName }}
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "sed -i 's#{{ roleFilterClassToReplace }}#{{ roleNewFilterClass }}#g' /tmp/oper/wps.war/WEB-INF/web.xml"
+    pod: "{{ rolePodName }}"
+    container: "{{ roleCoreContainerName }}"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+
+- name: Replacing locale filter class in web_merged.xml in {{ rolePodName }}/{{ roleCoreContainerName }}
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "sed -i 's#com.ibm.wps.engine.ExtendedLocaleFilter#se.goteborg.filters.GbgFixedLocalesFilter#g' /tmp/oper/wps.war/WEB-INF/web_merged.xml"
+    pod: "{{ rolePodName }}"
+    container: "{{ roleCoreContainerName }}"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+
+- name: Rename old ear file in {{ rolePodName }}/{{ roleCoreContainerName }}
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "mv /tmp/wps.ear /tmp/wps.ear.old"
+    pod: "{{ rolePodName }}"
+    container: "{{ roleCoreContainerName }}"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+
+- name: Collapse the ear file in {{ rolePodName }}/{{ roleCoreContainerName }} again
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "{{ roleProfileHome }}/bin/EARExpander.sh -ear /tmp/wps.ear -operation collapse -directory /tmp/expand -operationDir /tmp/oper"
+    pod: "{{ rolePodName }}"
+    container: "{{ roleCoreContainerName }}"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+
+- name: Debug stdout of EAR collape
+  ansible.builtin.debug:
+    msg: "StdOut of ear collapse:\n {{ podResult.stdout }}"
+  tags:
+    - always
+
+- name: List /tmp of {{ rolePodName }}/{{ roleCoreContainerName }}
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "ls -altr /tmp"
+    pod: "{{ rolePodName }}"
+    container: "{{ roleCoreContainerName }}"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+
+- name: Debug stdout wps listing
+  ansible.builtin.debug:
+    msg: "StdOut of /tmp:\n {{ podResult.stdout }}"
+  tags:
+    - always
+
+- name: Redeploy the updated wps.ear in the container {{ rolePodName }}/{{ roleCoreContainerName }}
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: '{{ roleProfileHome }}/bin/wsadmin.sh -lang jython -user {{ roleWasUser }} -password {{ roleWasPassword }} -host localhost -c "AdminApp.update (''wps'', ''app'', [''-operation'', ''update'', ''-deployejb'', ''-deployejb.classpath'', ''{{ rolePortalHome }}/base/wp.base/shared/app/wp.base.jar'', ''-contents'', ''/tmp/wps.ear'' ]) ; AdminConfig.save()"'
+    pod: "{{ rolePodName }}"
+    container: "{{ roleCoreContainerName }}"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+
+- name: Debug stdout of EAR deployment
+  ansible.builtin.debug:
+    msg: "StdOut of ear deployment:\n {{ podResult.stdout }}"
+  tags:
+    - always

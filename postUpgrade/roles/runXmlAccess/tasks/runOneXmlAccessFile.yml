@@ -1,0 +1,107 @@
+---
+- name: Set the absolut xmlaccess input filenamefor restore
+  ansible.builtin.set_fact:
+    roleXmlInputFile: "/tmp/{{ itemXmlInputFile }}"
+  tags:
+    - always
+
+##### - name: Copy XML input file to control node
+#####   ansible.builtin.copy:
+#####     src: "files/{{ itemXmlInputFile }}"
+#####     dest: "{{ roleXmlInputFile }}"
+#####   tags:
+#####     - always
+
+- name: Create temporary file for templating XML file to apply {{ roleResourceAggregationProfile }}
+  ansible.builtin.tempfile:
+    state: file
+    suffix: temp
+  register: template_out
+  tags:
+    - always
+
+- name: Replace variables in the XML file
+  ansible.builtin.template:
+    src: "files/{{ itemXmlInputFile }}"
+    dest: "{{ template_out.path }}"
+  tags:
+    - always
+
+##### - name: Get remote XML file {{ roleXmlInputFile }} using slurp
+#####   ansible.builtin.slurp:
+#####     src: "{{ roleXmlInputFile }}"
+#####   register: slurpedFile
+#####   tags:
+#####     - always
+#####
+##### - name: Display decoded slurp'ed data for file {{ roleXmlInputFile }}
+#####   ansible.builtin.debug:
+#####     msg: "Copied XML file:\n\n{{ slurpedFile['content'] | b64decode }}"
+#####   tags:
+#####     - always
+
+- name: Get remote templated XML file {{ template_out.path }} using slurp
+  ansible.builtin.slurp:
+    src: "{{ template_out.path }}"
+  register: slurpedFile
+  tags:
+    - always
+
+- name: Display decoded slurp'ed data for storage class {{ storageClassName }}
+  ansible.builtin.debug:
+    msg: "Templated XML file:\n\n{{ slurpedFile['content'] | b64decode }}"
+  tags:
+    - always
+
+- name: Copy xml input file to the pod
+  ansible.builtin.command:
+    argv:
+      - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+      - "-n"
+      - "{{ roleNs }}"
+      - "cp"
+      - "-c"
+      - "{{ roleCoreContainerName }}"
+      - "{{ template_out.path }}"
+      - "{{ roleCorePodName }}:{{ roleXmlInputFile }}"
+  register: cmdResult
+  failed_when: (cmdResult.rc != 0)
+  tags:
+    - always
+
+- name: Run xmlaccess in container {{ roleCoreContainerName }} of pod {{ roleCorePodName }}
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "{{ roleProfileHome }}/PortalServer/bin/xmlaccess.sh -user {{ roleWpsAdminUser }} -password {{ roleWpsAdminPassword }} -url http://localhost:10039/wps/config -in {{ roleXmlInputFile }} -out /tmp/{{ roleXmlAccessOutputFile }}"
+    pod: "{{ roleCorePodName }}"
+    container: "{{ roleCoreContainerName }}"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+
+- name: Echo the xmlaccess output file from {{ roleCoreContainerName }} of pod {{ roleCorePodName }} to stdout
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "cat /tmp/{{ roleXmlAccessOutputFile }}"
+    pod: "{{ roleCorePodName }}"
+    container: "{{ roleCoreContainerName }}"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+
+- name: Display xmlaccess output file contents
+  ansible.builtin.debug:
+    msg: "Copied XML file:\n\n{{ podResult.stdout }}"
+  tags:
+    - always
+
+- name: Cleanup generated template file
+  ansible.builtin.file:
+    state: "absent"
+    path: "{{ template_out.path }}"

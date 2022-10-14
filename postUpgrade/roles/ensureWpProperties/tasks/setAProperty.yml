@@ -1,0 +1,25 @@
+---
+- name: Ensure that all required properties are set
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "sh -x /tmp/addPropIfMissing.sh {{ itemPropFile }} {{ itemPropKey }} {{ itemPropValue }}"
+    pod: "{{ rolePodName }}"
+    container: "{{ roleCoreContainerName }}"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+
+- name: Debug stdout of addPropIfMissing.sh
+  ansible.builtin.debug:
+    msg: "StdOut of addPropIfMissing.sh execution:\n {{ podResult.stdout }}"
+  tags:
+    - always
+
+- name: Debug stderr of addPropIfMissing.sh
+  ansible.builtin.debug:
+    msg: "StdErr of addPropIfMissing.sh execution:\n {{ podResult.stderr }}"
+  tags:
+    - always

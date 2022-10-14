@@ -1,0 +1,29 @@
+---
+- name: Make sure we have the latest version of the davfs2 package installed
+  become_user: "root"
+  ansible.builtin.yum:
+    name: davfs2
+    state: latest
+  tags:
+    - always
+
+- name: Unmout WebDav filesystem
+  become_user: "root"
+  ansible.builtin.command:
+    argv:
+      - "umount"
+      - "{{ mountpoint.path }}"
+  register: cmdResult
+  tags:
+    - always
+
+- name: Remove credentials from /etc/davfs2/secrets
+  become_user: "root"
+  ansible.builtin.blockinfile:
+    path: "/etc/davfs2/secrets"
+    block: |
+      {{ mountpoint.path }} {{ roleWpsAdminUser }} {{ roleWpsAdminPassword }}
+    marker: "# {mark} ANSIBLE MANAGED BLOCK {{ roleWpsAdminUser }}"
+    state: absent
+  tags:
+    - always

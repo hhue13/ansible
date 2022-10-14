@@ -1,0 +1,104 @@
+---
+- name: Update WebDav Files
+  block:
+    - name: Create temporary directory for git checkout
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: git
+      register: gitCheckout
+      tags:
+        - always
+
+    - name: Get the value of SSH_AUTH_SOCK
+      set_fact:
+        ssh_auth_sock: "{{ lookup('env', 'SSH_AUTH_SOCK') }}"
+      tags:
+        - always
+
+    - name: Clone the repository
+      ansible.builtin.git:
+        accept_hostkey: yes
+        repo: "{{ webDavItem.gitRepositoryUrl }}"
+        dest: "{{ gitCheckout.path }}"
+        umask: "{{ roleGitCheckoutUmask }}"
+        version: "{{ webDavItem.gitBranchOrVersion }}"
+        remote: "{{ webDavItem.gitRemote }}"
+        key_file: "{{ webDavItem.gitPrivateKey }}"
+        single_branch: yes
+        depth: 1
+        recursive: yes
+      environment:
+        GIT_TERMINAL_PROMPT: 0 # reports "terminal prompts disabled" on missing password
+        SSH_AUTH_SOCK: "{{ ssh_auth_sock }}"
+      tags:
+        - always
+
+    - name: Check what we've got from git to {{ gitCheckout.path }}
+      become_user: "root"
+      ansible.builtin.shell: |
+        echo "Git director {{ gitCheckout.path }}  ..."
+        cd {{ gitCheckout.path }}
+        find .
+      register: shellOut
+      tags:
+        - never
+
+    - name: Debug files in git directory {{ gitCheckout.path }}
+      ansible.builtin.debug:
+        msg: "Result Shell execution:\n\n: {{ shellOut.stdout }}\n\n\n\n {{ shellOut.stderr }}"
+      tags:
+        - never
+
+    - name: Create temporary directory as mount point for WebDav
+      become_user: "root"
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: webdav
+      register: mountpoint
+      tags:
+        - always
+
+    - name: Mount WebDav filesystem {{ roleWebDavHostUrl }}/{{ webDavItem.webDavMountDir }}
+      become_user: "root"
+      ansible.builtin.import_tasks: mountWebDav.yml
+      tags:
+        - always
+
+    - name: Copy file {{ webDavItem.file }} to {{ webDavItem.webDavPath }}
+      become_user: "root"
+      ansible.builtin.shell: |
+        echo "Target directory before copy  ..."
+        ls -altr {{ mountpoint.path }}/{{ webDavItem.webDavPath }}
+        cp {{ gitCheckout.path }}/{{ webDavItem.dirInRepo }}/{{ webDavItem.file }} {{ mountpoint.path }}/{{ webDavItem.webDavPath }}/{{ webDavItem.file }} || exit 1
+        sync
+        echo "Target directory after copy  ..."
+        ls -altr {{ mountpoint.path }}/{{ webDavItem.webDavPath }}
+      register: shellOut
+      failed_when: (shellOut.rc != 0)
+      tags:
+        - always
+
+    - name: Debug shells output
+      ansible.builtin.debug:
+        msg: "Result Shell execution:\n\n: {{ shellOut.stdout }}\n\n\n\n {{ shellOut.stderr }}\n\n\n"
+      when: (shellOut.rc != 0)
+      tags:
+        - always
+
+  always:
+    - name: UnMount WebDav filesystem {{ roleWebDavHostUrl }}/{{ webDavItem.webDavMountDir }}
+      become_user: "root"
+      ansible.builtin.import_tasks: unMountWebDav.yml
+      tags:
+        - always
+
+    - name: Cleanup target directory for gitClone
+      ansible.builtin.file:
+        state: absent
+        path: "{{ gitCheckout.path }}"
+
+    - name: Cleanup WebDav mount point
+      become_user: "root"
+      ansible.builtin.file:
+        state: absent
+        path: "{{ mountpoint.path }}"
