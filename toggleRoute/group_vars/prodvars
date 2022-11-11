@@ -1,0 +1,21 @@
+---
+##
+## OSCP installation details
+oscpDomain: cloud1.2i.at
+oscpClusterName: epyc
+##################################################################
+## playbook specifics
+##################################################################
+oscpRouteNameToToggle: dxp-route
+oscpRouteHostNameToSet: dx.2i.at
+## Namespace-1
+oscpNameSpace01: "dxb"
+oscpDeployment01: "dx-blue"
+##
+## Namespace-2
+oscpNameSpace02: "dxg"
+oscpDeployment02: "dx-green"
+##
+## Initial namespace for route (if it does not yet exist)
+oscpIntialNamespaceForRoute: "{{ oscpNameSpace02 }}"
+oscpInitialDeploymentForRoute: "{{ oscpDeployment02 }}"
