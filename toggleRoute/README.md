@@ -16,6 +16,8 @@ If the route does not exist on any of the environments if will be created using 
 # Prerequisites
 
 The following pre-requisites must be met to use the play-book
+## Installation of yq
+This playbook was tested with yq version v4.29.2 from [yq GitHub](https://github.com/mikefarah/yq/releases).
 
 ## Required Ansible collections
 
