@@ -4,7 +4,7 @@
 ##
 ## See README.md for required software dependencies
 ##
-## ansible-playbook --vault-id k8s@~/ansible_password --tags backup -e @globalVars toggleRoute.yaml
+## ansible-playbook --vault-id k8s@~/ansible_password -e @globalVars toggleRoute.yaml
 ##
 ## Note: Make sure you setup visudo correctly so that "sudo -i -u <become_user>" works
 #######################################################################################################
