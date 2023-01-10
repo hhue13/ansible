@@ -1,0 +1,148 @@
+---
+#######################################################################################################
+## Requires the following collections and python modules:
+##
+## See README.md for required software dependencies
+##
+## ansible-playbook --vault-id k8s@~/ansible_password -e @globalVars runDamDbSql.yaml
+##
+## Note: Make sure you setup visudo correctly so that "sudo -i -u <become_user>" works
+#######################################################################################################
+- name: Inspect and cleanup data from DAM Postgress DB
+  hosts: crchosts
+  become: yes
+  become_user: "{{ oscpOsUser }}"
+  gather_facts: true
+  force_handlers: true
+  vars_files:
+  - "{{ includedVars | default('group_vars/crchosts') }}"
+
+  module_defaults:
+    kubernetes.core.k8s:
+      validate_certs: "no"
+    kubernetes.core.k8s_info:
+      validate_certs: "no"
+    kubernetes.core.k8s_exec:
+      validate_certs: "no"
+    kubernetes.core.k8s_cp:
+      validate_certs: "no"
+    community.okd.openshift_auth:
+      validate_certs: "no"
+    community.okd.openshift_process:
+      validate_certs: "no"
+    community.okd.openshift_route:
+      validate_certs: "no"
+  #########################
+  ## Tasks of the play-book
+  #########################
+  tasks:
+    - name: Send start notification message via Slack
+      community.general.slack:
+        token: "{{ slackAuthenticationToken }}"
+        msg: "Fix DAM DB: {{ inventory_hostname }} started"
+      when: ((sendSlackNotifications is defined) and (sendSlackNotifications == true))
+      tags:
+        - always
+    ##
+    ## Set login facts
+    - name: Set K8S login facts
+      include_tasks: k8slogin.yaml
+      tags:
+        - always
+    ##
+    ## Retrieving the current timestamp
+    - name: Retrieving the current timestamp
+      ansible.builtin.set_fact:
+        backup_timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
+      tags:
+        - always
+    ##
+    ## Dump API Key
+    - name: Dump API Key in MAIN
+      ansible.builtin.debug:
+        msg:
+          - "API Key is {{ kube_api_key  }}"
+      tags:
+        - never
+    ##
+    ## Run oc login using the api key
+    - name: Login to the oc client using the API key
+      ansible.builtin.command:
+        argv:
+          - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+          - "login"
+          - "--token={{ kube_api_key }}"
+          - "--server={{ k8s_host }}"
+      register: cmdResult
+      ##### failed_when: (cmdResult.rc != 0)
+      tags:
+        - always
+    ##
+    ## Run oc login using the api key
+    - name: Debug the command result of 'oc login'
+      ansible.builtin.debug:
+        msg:
+          - "cmdResult is {{ cmdResult }}"
+      tags:
+        - always
+    ########################################################################################
+    ### RUN SQL commands against the active DAM DB pod
+    ########################################################################################
+    - name: Run tasks to determine the active postgress database node
+      ansible.builtin.include_tasks: getActiveDbPod.yml
+      vars:
+        roleKey: "{{ kube_api_key }}"
+        roleNs: "{{ oscpDamNameSpace }}"
+        roleHost: "{{ k8s_host }}"
+        roleInitialPersistentPodName: "{{ oscpPersistencePodName }}"
+        roleContainer: "{{ oscpPersistencePodContainerName | default('persistence-node') }}"
+      tags:
+        - always
+
+    - name: Debug active DAM DB Pod name
+      ansible.builtin.debug:
+        msg: "Currently active DAM DB persistence pod is: {{ activePersistentPodName }}"
+
+    - name: Execute SQL statements on pod {{ activePersistentPodName }}
+      ansible.builtin.include_tasks: processOneSqlStatement.yml
+      vars:
+        roleKey: "{{ kube_api_key }}"
+        roleNs: "{{ oscpDamNameSpace }}"
+        roleHost: "{{ k8s_host }}"
+        rolePod: "{{ activePersistentPodName }}"
+        roleContainer:  "{{ oscpPersistencePodContainerName | default('persistence-node') }}"
+        roleDB: "{{ oscpDamDbName }}"
+        roleSqlStatement: "{{ sql_statement }}"
+      loop: "{{ oscpSQLStatements }}"
+      loop_control:
+        loop_var: sql_statement
+    ##
+    ## Perform the oc logout
+    - name: Logout of the command line client
+      ansible.builtin.command:
+        argv:
+          - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+          - "logout"
+      when: ((oscpLogoutOfOc is defined) and
+        (oscpLogoutOfOc | bool))
+      tags:
+        - always
+    ##
+    ## Logout
+    - name: If login succeeded, try to log out (revoke access token)
+      community.okd.openshift_auth:
+        host: "{{ k8s_host }}"
+        state: absent
+        api_key: "{{ kube_api_key }}"
+        validate_certs: "no"
+      when: kube_api_key is defined
+      tags:
+        - always
+
+    - name: Send stop notification message via Slack
+      community.general.slack:
+        token: "{{ slackAuthenticationToken }}"
+        msg: "Toggle DX route: {{ inventory_hostname }} finished successfully"
+      when: ((sendSlackNotifications is defined) and (sendSlackNotifications == true))
+      tags:
+        - always
