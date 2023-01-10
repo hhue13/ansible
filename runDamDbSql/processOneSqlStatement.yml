@@ -15,4 +15,4 @@
 - name: SQL Result for Statement| "{{ roleSqlStatement }}"
   vars:
   ansible.builtin.debug:
-    msg: "{{ podResult.stdout }}"
+    msg: "{{ '%s'| format(podResult.stdout) }}"
