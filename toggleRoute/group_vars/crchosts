@@ -47,9 +47,13 @@ oscpDeployment01: "dx-blue"
 oscpNameSpace02: "dxg"
 oscpDeployment02: "dx-green"
 ##
-## Initial namespace for route (if it does not yet exist)
-oscpIntialNamespaceForRoute: "{{ oscpNameSpace02 }}"
-oscpInitialDeploymentForRoute: "{{ oscpDeployment02 }}"
-##
 ## Where to find yq
 yqBin: "/usr/local/bin/yq"
+##
+## Namespace to which we have to switch
+oscpNamespaceForTheRoute: "{{ oscpNameSpace01 }}"
+##
+## Annotations to be added to the route
+##### oscpRouteAnnotationsToAdd:
+#####   - name: "haproxy.router.openshift.io/ip_whitelist"
+#####     value: "10.1.63.48/28 10.1.63.52 10.1.63.53"
