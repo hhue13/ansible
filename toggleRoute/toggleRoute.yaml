@@ -97,6 +97,21 @@
       tags:
         - always
 
+    - name: Set the deployment for the namespace of the route to {{ oscpDeployment01 }}
+      ansible.builtin.set_fact:
+        oscpDeploymentForTheRoute: "{{ oscpDeployment01 }}"
+      when: ( oscpNamespaceForTheRoute == oscpNameSpace01 )
+
+    - name: Set the deployment for the namespace of the route to {{ oscpDeployment02 }}
+      ansible.builtin.set_fact:
+        oscpDeploymentForTheRoute: "{{ oscpDeployment02 }}"
+      when: ( oscpNamespaceForTheRoute == oscpNameSpace02 )
+
+    - name: We fail if no deployment is set as this must not happen here
+      ansible.builtin.fail:
+        msg: "Could not determine the deployment name for namespace {{ oscpNamespaceForTheRoute }}. Make sure that the variable 'oscpNamespaceForTheRoute' is set to either {{ oscpNameSpace01 }} or {{ oscpNameSpace02 }}"
+      when: ( (oscpDeploymentForTheRoute is not defined) or (oscpDeploymentForTheRoute == ""))
+
     - name: Test if the route exists in namespace {{ oscpNameSpace01 }}
       kubernetes.core.k8s_info:
         api_version: route.openshift.io/v1
@@ -109,18 +124,6 @@
       tags:
         - always
 
-    - name: We have the existing namespace with the route
-      ansible.builtin.set_fact:
-        sourceNamespace: "{{ oscpNameSpace01 }}"
-        sourceDeployment: "{{ oscpDeployment01 }}"
-        targetNamespace: "{{ oscpNameSpace02 }}"
-        targetDeployment: "{{ oscpDeployment02 }}"
-      when:  ( routeData01.resources | length > 0 )
-      tags:
-        - always
-      ##
-      ## Checking both namespaces to ensure we are not in an undefined state
-      ## that the route existson both namespaces
     - name: Test if the route exists in namespace {{ oscpNameSpace02 }}
       kubernetes.core.k8s_info:
         api_version: route.openshift.io/v1
@@ -133,37 +136,12 @@
       tags:
         - always
 
-    - name: We have the existing namespace with the route
-      ansible.builtin.set_fact:
-        sourceNamespace: "{{ oscpNameSpace02 }}"
-        sourceDeployment: "{{ oscpDeployment02 }}"
-        targetNamespace: "{{ oscpNameSpace01 }}"
-        targetDeployment: "{{ oscpDeployment01 }}"
-      when:  ( routeData02.resources | length > 0 )
-      tags:
-        - always
-
     - name: Debug current route status
       ansible.builtin.debug:
         msg:
         - "Status of the route {{ oscpRouteNameToToggle }}: "
         - "Namespace {{ oscpNameSpace01 }}: {{ routeData01.resources | length > 0 }}"
         - "Namespace {{ oscpNameSpace02 }}: {{ routeData02.resources | length > 0 }}"
-      tags:
-        - always
-
-    - name: We fail of the route exists on both namespaces
-      ansible.builtin.fail:
-        msg: "Route {{ oscpRouteNameToToggle }} exists on namespace {{ oscpNameSpace01 }} AND {{ oscpNameSpace02 }}! This is an undefined state and must be resolved manually!"
-      when: (( routeData01.resources | length > 0 ) and ( routeData02.resources | length > 0))
-      tags:
-        - always
-
-    - name: Set targetNamespace to {{ oscpIntialNamespaceForRoute }} if it does not exist
-      ansible.builtin.set_fact:
-        targetNamespace: "{{ oscpIntialNamespaceForRoute }}"
-        targetDeployment: "{{ oscpInitialDeploymentForRoute }}"
-      when: (( not routeData01.resources | length > 0 ) and ( not routeData02.resources | length > 0))
       tags:
         - always
 
@@ -193,15 +171,23 @@
 
     - name: Copy the existing Route to a new name and update host
       ansible.builtin.shell: |
-        {{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ targetNamespace }} get routes {{ targetDeployment }}-passthrough -o yaml | {{ yqBin }} eval 'del(.metadata.annotations."kubectl.kubernetes.io/last-applied-configuration", .metadata.annotations."openshift.io/host.generated", .metadata.creationTimestamp, .metadata.resourceVersion, .metadata.uid, .status)' | {{ yqBin }} '.spec.host = "{{ oscpRouteHostNameToSet }}", .metadata.name = "{{ oscpRouteNameToToggle }}"' | {{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ targetNamespace }} apply -f -
+        {{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ oscpNamespaceForTheRoute }} get routes {{ oscpDeploymentForTheRoute }}-passthrough -o yaml | {{ yqBin }} eval 'del(.metadata.annotations."kubectl.kubernetes.io/last-applied-configuration", .metadata.annotations."openshift.io/host.generated", .metadata.creationTimestamp, .metadata.resourceVersion, .metadata.uid, .status)' | {{ yqBin }} '.spec.host = "{{ oscpRouteHostNameToSet }}", .metadata.name = "{{ oscpRouteNameToToggle }}"' | {{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ oscpNamespaceForTheRoute }} apply -f -
       register: shellResult
       failed_when: ( shellResult.rc != 0 )
       tags:
         - always
 
+    - name: Add annotate route if needed
+      ansible.builtin.shell: |
+        {{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ oscpNamespaceForTheRoute  }} annotate route {{ oscpRouteNameToToggle }} "{{ annotation.name }}"="{{ annotation.value }}"
+      loop: "{{ oscpRouteAnnotationsToAdd }}"
+      loop_control:
+        loop_var: annotation
+      when: ( oscpRouteAnnotationsToAdd is defined)
+
     - name: Get the yaml of the new route
       ansible.builtin.shell: |
-        {{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ targetNamespace  }} get route {{ oscpRouteNameToToggle }} -o yaml
+        {{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ oscpNamespaceForTheRoute  }} get route {{ oscpRouteNameToToggle }} -o yaml
       register: shellResult
       failed_when: ( shellResult.rc != 0 )
       tags:
