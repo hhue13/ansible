@@ -142,7 +142,7 @@
     - name: Send stop notification message via Slack
       community.general.slack:
         token: "{{ slackAuthenticationToken }}"
-        msg: "Toggle DX route: {{ inventory_hostname }} finished successfully"
+        msg: "Fix DAM DB: {{ inventory_hostname }} finished successfully"
       when: ((sendSlackNotifications is defined) and (sendSlackNotifications == true))
       tags:
         - always
