@@ -33,7 +33,8 @@
     namespace: "{{ roleNs }}"
     host: "{{ roleHost }}"
     api_key: "{{ roleKey }}"
-    command: "{{ backup_command }} {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.tar.gz --exclude={{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}.tar.gz --one-file-system --directory {{ backupFileDict['name'] }} ."
+    #####     command: "{{ backup_command }} {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.tar.gz --exclude={{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}.tar.gz --one-file-system --directory {{ backupFileDict['name'] }} ."
+    command: "sleep 1000"
     pod: "{{ roleDamPodName }}"
     validate_certs: "no"
   register: podResult
