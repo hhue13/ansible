@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+__pid=$(cat {{ backupFileDict['tmpDir'] | default('/tmp') }}/runRestore.pid)
+echo "$(date +"%Y%m%d_%H%M%S"): Checking for backup PID: ${__pid}"
+
+if ps -p ${__pid} > /dev/null ; then
+  echo "$(date +"%Y%m%d_%H%M%S"): PID: ${__pid} still running"
+  exit 1
+else
+  echo "$(date +"%Y%m%d_%H%M%S"): PID: ${__pid} not running anymore. RC=$(cat {{ backupFileDict['tmpDir'] | default('/tmp') }}/runRestore.rc 2>&1)"
+  exit 0
+fi

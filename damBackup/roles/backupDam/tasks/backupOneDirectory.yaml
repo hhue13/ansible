@@ -26,17 +26,50 @@
   tags:
     - always
 
-##
-## Create the backup of the directory
-- name: Create directory backup file for directory {{ backupFileDict['name'] }}
+- name: Template the backup scripts
+  ansible.builtin.include_tasks: templateAndCopyOneFile.yaml
+  vars:
+    __srcTemplate: "{{ __backupTemplate.j2 }}"
+    __targetFile: "{{ __backupTemplate.sh }}"
+  loop: "{{ backupTemplates }}"
+  loop_control:
+    loop_var: __backupTemplate
+  tags:
+    - always
+
+- name: Start creating the backup file for directory {{ backupFileDict['name'] }} in the background
   kubernetes.core.k8s_exec:
     namespace: "{{ roleNs }}"
     host: "{{ roleHost }}"
     api_key: "{{ roleKey }}"
-    #####     command: "{{ backup_command }} {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.tar.gz --exclude={{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}.tar.gz --one-file-system --directory {{ backupFileDict['name'] }} ."
-    command: "sleep 1000"
+    command: "bash -c '{{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupTemplates[0].sh }} >/dev/null 2>/dev/null'"
     pod: "{{ roleDamPodName }}"
-    validate_certs: "no"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+
+- name: Check if the backup has finished
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "{{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupTemplates[1].sh }}"
+    pod: "{{ roleDamPodName }}"
+  register: podResult
+  until: (podResult.rc == 0)
+  retries: "{{ checkNumberRetries | default('90') }}"
+  delay: "{{ checkDeplayBetweenRetries | default('20') }}"
+  tags:
+    - always
+
+- name: Check if tar did complete successfully
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "{{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupTemplates[2].sh }}"
+    pod: "{{ roleDamPodName }}"
   register: podResult
   failed_when: (podResult.rc != 0)
   tags:

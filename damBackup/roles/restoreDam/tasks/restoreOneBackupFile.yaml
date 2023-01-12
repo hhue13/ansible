@@ -13,15 +13,51 @@
   tags:
     - always
 
+- name: Template the backup scripts
+  ansible.builtin.include_tasks: templateAndCopyOneFile.yaml
+  vars:
+    __srcTemplate: "{{ __restoreTemplate.j2 }}"
+    __targetFile: "{{ __restoreTemplate.sh }}"
+  loop: "{{ restoreTemplates }}"
+  loop_control:
+    loop_var: __restoreTemplate
+  tags:
+    - always
+
 ## Run tar command for directories on POD
 - name: Extract directory backup file {{ backupFileDict['backupFile'] }} to {{ backupFileDict['name'] }}
   kubernetes.core.k8s_exec:
     namespace: "{{ roleNs }}"
     host: "{{ roleHost }}"
     api_key: "{{ roleKey }}"
-    command: "{{ restore_command }} {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }} --directory {{ backupFileDict['name'] }}"
+    command: "bash -c '{{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ restoreTemplates[0].sh }} >/dev/null 2>/dev/null'"
     pod: "{{ roleDamPodName }}"
-    validate_certs: "no"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+
+- name: Check if the backup has finished
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "{{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ restoreTemplates[1].sh }}"
+    pod: "{{ roleDamPodName }}"
+  register: podResult
+  until: (podResult.rc == 0)
+  retries: "{{ checkNumberRetries | default('90') }}"
+  delay: "{{ checkDeplayBetweenRetries | default('20') }}"
+  tags:
+    - always
+
+- name: Check if un-tar did complete successfully
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "{{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ restoreTemplates[2].sh }}"
+    pod: "{{ roleDamPodName }}"
   register: podResult
   failed_when: (podResult.rc != 0)
   tags:

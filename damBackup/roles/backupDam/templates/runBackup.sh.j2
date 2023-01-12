@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+echo "Starting to backup directory {{ backupFileDict['name'] }} at $(date +"%Y%m%d_%H%M%S.%N")"
+rm -f {{ backupFileDict['tmpDir'] | default('/tmp') }}/runBackup.rc
+rm -f {{ backupFileDict['tmpDir'] | default('/tmp') }}/runBackup.pid
+##
+## Backup command as a background process
+{{ backup_command }} {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.tar.gz --exclude={{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}.tar.gz --one-file-system --directory {{ backupFileDict['name'] }} . && echo "0" > {{ backupFileDict['tmpDir'] | default('/tmp') }}/runBackup.rc || echo "1" > {{ backupFileDict['tmpDir'] | default('/tmp') }}/runBackup.rc &
+__rc=$!
+##### sleep 180 && echo "0" > {{ backupFileDict['tmpDir'] | default('/tmp') }}/runBackup.rc || echo "1" > {{ backupFileDict['tmpDir'] | default('/tmp') }}/runBackup.rc &
+
+
+echo "${__rc}" > {{ backupFileDict['tmpDir'] | default('/tmp') }}/runBackup.pid
+echo "Finished to backup directory {{ backupFileDict['name'] }} at $(date +"%Y%m%d_%H%M%S.%N")"
+exit 0

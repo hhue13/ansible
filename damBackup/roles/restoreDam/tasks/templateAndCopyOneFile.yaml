@@ -1,0 +1,20 @@
+---
+- name: Template file {{ __srcTemplate }} writing to {{ __targetFile }}
+  ansible.builtin.template:
+    src: "{{ __srcTemplate }}"
+    dest: "{{ __targetFile }}"
+    mode: "755"
+  tags:
+    - always
+
+- name: Copy the file {{ __targetFile }} to the pod
+  kubernetes.core.k8s_cp:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    local_path: "{{ __targetFile }}"
+    remote_path: "{{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ __targetFile }}"
+    pod: "{{ roleDamPodName }}"
+    no_preserve: false
+  tags:
+    - always
