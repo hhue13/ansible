@@ -1,0 +1,79 @@
+---
+#######################################################################################################
+## Sample playbook to execute a sleep command on a kubernetes pod. The time to sleep ca be set via the
+## variable __sleepTime (default 180):
+##
+## Install the following role (requirements.yml):
+## --- snip ---
+## roles:
+##   - src: https://github.com/hhue13/k8slogin.git
+##     scm: git
+##     version: hhue
+##     name: k8slogin
+## --- snip ---
+##
+## Set environment variables for kubernetes login:
+##
+## export K8S_HOST_URL=https://<k8s_api_url_host>:6443
+## export K8S_USER=<k8s-user>
+## export K8S_PASSWORD=<k8s-password>
+##
+## ansible-playbook -e __sleepTime=<num_seconds> testTimeout.yaml
+## For example: ansible-playbook -e __sleepTime=70 testTimeout.yaml
+##
+## Note: Make sure you setup visudo correctly so that "sudo -i -u <become_user>" works
+#######################################################################################################
+- name: Sample to recreate k8s_exec timeout
+  hosts: localhost
+  gather_facts: false
+  module_defaults:
+    kubernetes.core.k8s:
+      validate_certs: "no"
+    kubernetes.core.k8s_exec:
+      validate_certs: "no"
+    community.okd.openshift_auth:
+      validate_certs: "no"
+
+  #########################
+  ## Tasks of the play-book
+  #########################
+  vars:
+    __nsName: "dxb"
+    __podName: "dx-blue-core-0"
+    __containerName: "core"
+    __sleepTime: "180"
+  tasks:
+    ##
+    ## Set login facts
+    - name: Set K8S login facts
+      ansible.builtin.include_role:
+        name: k8slogin
+      tags:
+        - always
+
+    - name: Debug key & host
+      ansible.builtin.debug:
+        msg: "k8slogin_api_key={{ k8slogin_api_key }} ; k8slogin_api_url={{ k8slogin_api_url }}"
+
+    - name: Execute command on pod {{ __nsName }}/{{ __podName }} in container {{ __containerName }}
+      kubernetes.core.k8s_exec:
+        namespace: "{{ __nsName }}"
+        host: "{{ k8slogin_api_url }}"
+        api_key: "{{ k8slogin_api_key }}"
+        command: "sleep {{ __sleepTime }}"
+        pod: "{{ __podName }}"
+        container: "{{ __containerName }}"
+      register: podResult
+      failed_when: (podResult.rc != 0)
+      tags:
+        - always
+
+    - name: If login succeeded, try to log out (revoke access token)
+      community.okd.openshift_auth:
+        host: "{{ k8slogin_api_url }}"
+        state: absent
+        api_key: "{{ k8slogin_api_key }}"
+        validate_certs: "no"
+      when: k8slogin_api_key is defined
+      tags:
+        - always

@@ -16,6 +16,5 @@ oscpDeployment01: "dx-blue"
 oscpNameSpace02: "dxg"
 oscpDeployment02: "dx-green"
 ##
-## Initial namespace for route (if it does not yet exist)
-oscpIntialNamespaceForRoute: "{{ oscpNameSpace02 }}"
-oscpInitialDeploymentForRoute: "{{ oscpDeployment02 }}"
+## Namespace to which we have to switch
+oscpNamespaceForTheRoute: "{{ oscpNameSpace01 }}"

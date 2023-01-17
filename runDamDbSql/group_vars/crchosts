@@ -37,23 +37,19 @@ oscpLogoutOfOc: true
 ##################################################################
 ## playbook specifics
 ##################################################################
-oscpRouteNameToToggle: dx-route
-oscpRouteHostNameToSet: dx.2i.at
-## Namespace-1
-oscpNameSpace01: "dxb"
-oscpDeployment01: "dx-blue"
+## Namespace and deployment name
+oscpDamNameSpace: "dxb"
+oscpDamDeployment: "dx-blue"
+oscpDamDbName: "dxmediadb"
 ##
-## Namespace-2
-oscpNameSpace02: "dxg"
-oscpDeployment02: "dx-green"
+## Database pod to be backed up
+oscpPersistencePodContainerName: "persistence-node"
 ##
-## Where to find yq
-yqBin: "/usr/local/bin/yq"
+## Database pod to check for the active node
+oscpPersistencePodName: "{{ oscpDamDeployment }}-persistence-node-0"
 ##
-## Namespace to which we have to switch
-oscpNamespaceForTheRoute: "{{ oscpNameSpace01 }}"
-##
-## Annotations to be added to the route
-##### oscpRouteAnnotationsToAdd:
-#####   - name: "haproxy.router.openshift.io/ip_whitelist"
-#####     value: "10.1.63.48/28 10.1.63.52 10.1.63.53"
+## SQL Statements to run (are executed in given Order)
+oscpSQLStatements:
+  - "select count(*), trigger_function, status from schema_1_6_0.operation group by trigger_function, status order by status ;"
+  - "select distinct trigger_function from schema_1_6_0.operation;"
+  - "select table_name, column_name, data_type FROM information_schema.columns WHERE table_name = 'operation';"

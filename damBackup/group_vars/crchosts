@@ -55,8 +55,21 @@ backupDirectories:
     tmpDir: "/tmp"
     verbose: false
 ##
+## Templates needed for the DAM files backup
+backupTemplates:
+  - j2: runBackup.sh.j2
+    sh: runBackup.sh
+  - j2: checkBackup.sh.j2
+    sh: checkBackup.sh
+  - j2: setTarRc.sh.j2
+    sh: setTarRc.sh
+##
 ## How long too keep old backups (in days)
 backupRetentionPeriod: 30
+##
+## How often and in which intervall do we retry and the check if backup/restore script is done
+checkNumberRetries: 90
+checkDeplayBetweenRetries: 20
 ##
 ## Name of the core pod
 corePodName: "{{ oscpDamDeployment }}-core-0"
@@ -92,6 +105,15 @@ restoreDatabases:
 restoreDirectories:
   - name: "/opt/app/upload"
     backupFile: "{{ oscpDamDeployment }}-damFiles_{{ latestLinkSuffix }}.tar.gz"
+##
+## Templates needed for the DAM files restore
+restoreTemplates:
+  - j2: runRestore.sh.j2
+    sh: runRestore.sh
+  - j2: checkRestore.sh.j2
+    sh: checkRestore.sh
+  - j2: setTarRc.sh.j2
+    sh: setTarRc.sh
 ##
 ## Name of the xml file to import in the restore case
 ## Note: The 'restoreXmlFile' must be located in the director {{ targetDirectoryForBackupFiles }}

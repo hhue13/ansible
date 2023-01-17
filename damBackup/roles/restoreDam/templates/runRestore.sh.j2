@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+echo "Starting to restore directory {{ backupFileDict['name'] }} at $(date +"%Y%m%d_%H%M%S.%N")"
+rm -f {{ backupFileDict['tmpDir'] | default('/tmp') }}/runRestore.rc
+rm -f {{ backupFileDict['tmpDir'] | default('/tmp') }}/runRestore.pid
+##
+## Backup command as a background process
+{{ restore_command }} {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }} --directory {{ backupFileDict['name'] }} && echo "0" > {{ backupFileDict['tmpDir'] | default('/tmp') }}/runRestore.rc || echo "1" > {{ backupFileDict['tmpDir'] | default('/tmp') }}/runRestore.rc &
+__rc=$!
+##### sleep 180 && echo "0" > {{ backupFileDict['tmpDir'] | default('/tmp') }}/runRestore.rc || echo "1" > {{ backupFileDict['tmpDir'] | default('/tmp') }}/runRestore.rc &
+
+
+echo "${__rc}" > {{ backupFileDict['tmpDir'] | default('/tmp') }}/runRestore.pid
+echo "Finished to backup directory {{ backupFileDict['name'] }} at $(date +"%Y%m%d_%H%M%S.%N")"
+exit 0
