@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<request build="20221208-222431" type="update" version="8.5.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="PortalConfig_8.5.0.xsd">
+    <portal action="locate">
+        <skin action="locate" domain="rel" objectid="ZK_2B0Q8B1A0GONF0ILHEKJO70001" uniquename="se.goteborg.gbgTheme.skins.Hidden"/>
+        <skin action="locate" domain="rel" objectid="ZK_P1JQ8B1A08HOF0IJQ0QN4V3G24" uniquename="se.goteborg.gbgTheme.skins.Hidden.EService"/>
+        <theme action="locate" domain="rel" objectid="ZJ_89E4H2C0K81180A4N3VNEO00E1" uniquename="se.goteborg.gbgTheme"/>
+        <content-node action="locate" domain="rel" objectid="Z6_000000000000000000000000A0" uniquename="wps.content.root"/>
+        <content-node action="update" active="true" content-parentref="Z6_000000000000000000000000A0" domain="rel" objectid="Z6_M2C61H02OGC9F060QDQQP700O3" ordinal="50" themeref="ZJ_89E4H2C0K81180A4N3VNEO00E1" type="label" uniquename="se.goteborg">
+        </content-node>
+    </portal>
+</request>

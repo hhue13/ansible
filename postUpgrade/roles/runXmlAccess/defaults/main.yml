@@ -22,6 +22,7 @@ roleXmlAccessOutputFile: "{{ roleDeployment }}-xmlaccess-{{ roleBackupTimeStamp 
 roleXmlAccessImports:
   - ibm.portal.toolbar.ContentRoot_pageExport.xml
   - ibm.portal.Toolbar_pageExport.xml
+  - se.goteborg.xml
 ##
 ## roleResourceAggregationProfile
 roleResourceAggregationProfile: "profiles/profile_toolbar_gbg.json"
