@@ -224,6 +224,7 @@
         roleDirectories: "{{ backupDirectories }}"
         roleBackupTimestamp: "{{ backup_timestamp }}"
         roleDamPodName: "{{ damPodName }}"
+        roleDamPodContainerName: "{{ damPodContainerName | default('digital-asset-management') }}"
         roleTargetDirectoryForBackupFiles: "{{ targetDirectoryForBackupFiles }}"
         roleLatestLinkSuffix: "{{ latestLinkSuffix }}"
       tags:
@@ -265,6 +266,7 @@
         roleHost: "{{ k8s_host }}"
         roleDirectories: "{{ restoreDirectories }}"
         roleDamPodName: "{{ damPodName }}"
+        roleDamPodContainerName: "{{ damPodContainerName | default('digital-asset-management') }}"
         roleTargetDirectoryForBackupFiles: "{{ targetDirectoryForBackupFiles }}"
       tags:
         - restore

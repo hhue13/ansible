@@ -8,6 +8,8 @@
       - "cp"
       - "{{ roleDamPodName }}:{{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.tar.gz"
       - "{{ roleTargetDirectoryForBackupFiles }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.tar.gz"
+      - "-c"
+      - "{{ roleDamPodContainerName }}"
   register: cmdResult
   failed_when: (cmdResult.rc != 0)
   tags:
@@ -20,6 +22,7 @@
     api_key: "{{ roleKey }}"
     command: "rm -f {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.tar.gz"
     pod: "{{ roleDamPodName }}"
+    container: "{{ roleDamPodContainerName }}"
     validate_certs: "no"
   register: podResult
   failed_when: (podResult.rc != 0)

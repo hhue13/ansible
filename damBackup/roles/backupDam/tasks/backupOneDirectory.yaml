@@ -6,6 +6,7 @@
     api_key: "{{ roleKey }}"
     command: "mkdir -p {{ backupFileDict['tmpDir'] | default('/tmp') }}"
     pod: "{{ roleDamPodName }}"
+    container: "{{ roleDamPodContainerName }}"
     validate_certs: "no"
   register: podResult
   failed_when: (podResult.rc != 0)
@@ -44,6 +45,7 @@
     api_key: "{{ roleKey }}"
     command: "bash -c '{{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupTemplates[0].sh }} >/dev/null 2>/dev/null'"
     pod: "{{ roleDamPodName }}"
+    container: "{{ roleDamPodContainerName }}"
   register: podResult
   failed_when: (podResult.rc != 0)
   tags:
@@ -56,6 +58,7 @@
     api_key: "{{ roleKey }}"
     command: "{{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupTemplates[1].sh }}"
     pod: "{{ roleDamPodName }}"
+    container: "{{ roleDamPodContainerName }}"
   register: podResult
   until: (podResult.rc == 0)
   retries: "{{ checkNumberRetries | default('90') }}"
@@ -70,6 +73,7 @@
     api_key: "{{ roleKey }}"
     command: "{{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupTemplates[2].sh }}"
     pod: "{{ roleDamPodName }}"
+    container: "{{ roleDamPodContainerName }}"
   register: podResult
   failed_when: (podResult.rc != 0)
   tags:

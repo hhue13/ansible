@@ -6,6 +6,7 @@
     api_key: "{{ roleKey }}"
     command: "mkdir -p {{ backupFileDict['tmpDir'] | default('/tmp') }}"
     pod: "{{ roleDamPodName }}"
+    container: "{{ roleDamPodContainerName }}"
     validate_certs: "no"
   register: podResult
   failed_when: (podResult.rc != 0)
@@ -23,6 +24,8 @@
       - "cp"
       - "{{roleTargetDirectoryForBackupFiles}}/{{ backupFileDict['backupFile'] }}"
       - "{{ roleDamPodName }}:{{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}"
+      - "-c"
+      - "{{ roleDamPodContainerName }}"
   register: cmdResult
   failed_when: (cmdResult.rc != 0)
   tags:
