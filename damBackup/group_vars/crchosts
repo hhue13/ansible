@@ -80,6 +80,7 @@ damAppTag: "{{ oscpDamDeployment }}-digital-asset-management"
 ##
 ## DAM pod name to be backed up
 damPodName: "{{ oscpDamDeployment }}-digital-asset-management-0"
+damPodContainerName: "digital-asset-management"
 ##
 ## Latest link suffic
 latestLinkSuffix: "latest"
