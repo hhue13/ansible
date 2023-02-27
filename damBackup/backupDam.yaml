@@ -210,6 +210,7 @@
         rolePersistentPodContainerName: "{{ persistencePodContainerName | default('persistence-node') }}"
         roleTargetDirectoryForBackupFiles: "{{ targetDirectoryForBackupFiles }}"
         roleLatestLinkSuffix: "{{ latestLinkSuffix }}"
+        roleBackupType: "{{ backupType | default('full') }}"
       tags:
         - backup
     ##
