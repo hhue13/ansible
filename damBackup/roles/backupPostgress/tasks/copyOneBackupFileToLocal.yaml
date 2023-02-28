@@ -1,5 +1,5 @@
 ---
-- name: Copy DB backup file {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['name'] }}_{{ roleBackupTimestamp }}.dmp.gz to {{ roleTargetDirectoryForBackupFiles }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.dmp.gz
+- name: Copy DB backup file {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['name'] }}_{{ roleBackupType }}_{{ roleBackupTimestamp }}.dmp.gz to {{ roleTargetDirectoryForBackupFiles }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupType }}_{{ roleBackupTimestamp }}.dmp.gz
   ansible.builtin.command:
     argv:
       - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
@@ -8,8 +8,8 @@
       - "cp"
       - "-c"
       - "{{ rolePersistentPodContainerName }}"
-      - "{{ rolePersistentPodName }}:{{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.dmp.gz"
-      - "{{ roleTargetDirectoryForBackupFiles }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.dmp.gz"
+      - "{{ rolePersistentPodName }}:{{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupType }}_{{ roleBackupTimestamp }}.dmp.gz"
+      - "{{ roleTargetDirectoryForBackupFiles }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupType }}_{{ roleBackupTimestamp }}.dmp.gz"
   register: cmdResult
   failed_when: (cmdResult.rc != 0)
   tags:
@@ -20,7 +20,7 @@
     namespace: "{{ roleNs }}"
     host: "{{ roleHost }}"
     api_key: "{{ roleKey }}"
-    command: "rm -f {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.dmp.gz"
+    command: "rm -f {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupType }}_{{ roleBackupTimestamp }}*.dmp.gz"
     pod: "{{ rolePersistentPodName }}"
     container: "{{ rolePersistentPodContainerName }}"
   register: podResult
@@ -30,8 +30,8 @@
 
 - name: Link the lastest version to the current backup file
   ansible.builtin.shell: |
-    rm -rf {{ roleTargetDirectoryForBackupFiles }}/{{ backupFileDict['backupFile'] }}_{{ roleLatestLinkSuffix }}.dmp.gz
-    ln {{ roleTargetDirectoryForBackupFiles }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupTimestamp }}.dmp.gz {{ roleTargetDirectoryForBackupFiles }}/{{ backupFileDict['backupFile'] }}_{{ roleLatestLinkSuffix }}.dmp.gz
+    rm -rf {{ roleTargetDirectoryForBackupFiles }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupType }}_{{ roleLatestLinkSuffix }}.dmp.gz
+    ln {{ roleTargetDirectoryForBackupFiles }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupType }}_{{ roleBackupTimestamp }}.dmp.gz {{ roleTargetDirectoryForBackupFiles }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupType }}_{{ roleLatestLinkSuffix }}.dmp.gz
   register: shellResult
   failed_when: (shellResult.rc != 0)
   tags:

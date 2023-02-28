@@ -27,8 +27,8 @@ oscpDomain: cloud1.2i.at
 oscpClusterName: epyc
 ##
 ## Namespace and deployment name
-oscpDamNameSpace: "dxb"
-oscpDamDeployment: "dx-blue"
+oscpDamNameSpace: "dxg"
+oscpDamDeployment: "dx-green"
 ##
 ## Docker CLI command (docker | podman)
 dockerCliCommand: "podman"
@@ -67,6 +67,9 @@ backupTemplates:
 ## How long too keep old backups (in days)
 backupRetentionPeriod: 30
 ##
+## Type of DB backup. Can be: full or sync (excludes the tables: --exclude-table-data=event_log --exclude-table-data=subscriber_registration)
+backupType: "sync"
+##
 ## How often and in which intervall do we retry and the check if backup/restore script is done
 checkNumberRetries: 90
 checkDeplayBetweenRetries: 20
@@ -80,6 +83,7 @@ damAppTag: "{{ oscpDamDeployment }}-digital-asset-management"
 ##
 ## DAM pod name to be backed up
 damPodName: "{{ oscpDamDeployment }}-digital-asset-management-0"
+damPodContainerName: "digital-asset-management"
 ##
 ## Latest link suffic
 latestLinkSuffix: "latest"
@@ -96,7 +100,7 @@ persistencePodName: "{{ oscpDamDeployment }}-persistence-node-0"
 ## Note: The 'backupFile' must be located in the director {{ targetDirectoryForBackupFiles }}
 restoreDatabases:
   - name: "dxmediadb"
-    backupFile: "{{ oscpDamDeployment }}-dxmediadb_{{ latestLinkSuffix }}.dmp.gz"
+    backupFile: "{{ oscpDamDeployment }}-dxmediadb_sync_{{ latestLinkSuffix }}.dmp.gz"
     connLimitToSet: 500
     dbrole: "dxuser"
 ##

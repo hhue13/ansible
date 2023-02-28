@@ -39,7 +39,7 @@
     - name: Send notification message via Slack
       community.general.slack:
         token: "{{ slackAuthenticationToken }}"
-        msg: "Checkout from Git and replace Tokens in files started for {{ gitRepositoryUrl }}"
+        msg: "Started postUpgrade processing for deployment {{ oscpDxDeploymentName }} in namespace {{ oscpNameSpace }}"
       when: ((sendSlackNotifications is defined) and (sendSlackNotifications == true))
     ##
     ## Set login facts

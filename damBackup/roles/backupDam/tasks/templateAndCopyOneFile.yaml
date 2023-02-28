@@ -25,6 +25,7 @@
         local_path: "{{ __backupScript.path }}/{{ __targetFile }}"
         remote_path: "{{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ __targetFile }}"
         pod: "{{ roleDamPodName }}"
+        container: "{{ roleDamPodContainerName }}"
         no_preserve: false
       tags:
         - always

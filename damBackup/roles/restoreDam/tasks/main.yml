@@ -9,7 +9,7 @@
   tags:
     - always
 ##
-- name: Restore DAM backup files on target pod {{ roleDamPodName }}
+- name: Restore DAM backup files on target pod {{ roleDamPodName }} and container{{ roleDamPodContainerName }}
   ansible.builtin.include_tasks: restoreOneBackupFile.yaml
   vars:
     backupFileDict: "{{ item }}"
