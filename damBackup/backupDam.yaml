@@ -36,13 +36,21 @@
   ## Tasks of the play-book
   #########################
   tasks:
-    - name: Send notification message via Slack
+    - name: Send notification message via Slack that backup started
       community.general.slack:
         token: "{{ slackAuthenticationToken }}"
-        msg: "DAM Backup on host: {{ inventory_hostname }} started"
+        msg: "DAM backup on host: {{ inventory_hostname }} started"
       when: ((sendSlackNotifications is defined) and (sendSlackNotifications == true))
       tags:
-        - always
+        - backup
+
+    - name: Send notification message via Slack that restore started
+      community.general.slack:
+        token: "{{ slackAuthenticationToken }}"
+        msg: "Restore of DAM backup on host: {{ inventory_hostname }} started"
+      when: ((sendSlackNotifications is defined) and (sendSlackNotifications == true))
+      tags:
+        - restore
     ##
     ## Set login facts
     - name: Set K8S login facts
@@ -347,3 +355,20 @@
       when: kube_api_key is defined
       tags:
         - always
+    ##
+    ## Send slack notifications that playbook has finished
+    - name: Send notification message via Slack that backup finished
+      community.general.slack:
+        token: "{{ slackAuthenticationToken }}"
+        msg: "DAM backup on host: {{ inventory_hostname }} finished"
+      when: ((sendSlackNotifications is defined) and (sendSlackNotifications == true))
+      tags:
+        - backup
+
+    - name: Send notification message via Slack that restore finished
+      community.general.slack:
+        token: "{{ slackAuthenticationToken }}"
+        msg: "Restore of DAM backup on host: {{ inventory_hostname }} finished"
+      when: ((sendSlackNotifications is defined) and (sendSlackNotifications == true))
+      tags:
+        - restore

@@ -32,7 +32,7 @@
     namespace: "{{ roleNs }}"
     host: "{{ roleHost }}"
     api_key: "{{ roleKey }}"
-    command: "pg_dump -d {{ backupFileDict['name'] }} --exclude-table-data=event_log --exclude-table-data=subscriber_registration -f {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupType }}_{{ roleBackupTimestamp }}.dmp"
+    command: "pg_dump -d {{ backupFileDict['name'] }} --exclude-table-data=*.event_log --exclude-table-data=*.subscriber_registration -f {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupType }}_{{ roleBackupTimestamp }}.dmp"
     pod: "{{ rolePersistentPodName }}"
     container: "{{ rolePersistentPodContainerName }}"
   register: podResult
