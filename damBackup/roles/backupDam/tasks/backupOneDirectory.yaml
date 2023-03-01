@@ -62,7 +62,7 @@
   register: podResult
   until: (podResult.rc == 0)
   retries: "{{ checkNumberRetries | default('90') }}"
-  delay: "{{ checkDeplayBetweenRetries | default('20') }}"
+  delay: "{{ checkDelayBetweenRetries | default('20') }}"
   tags:
     - always
 
