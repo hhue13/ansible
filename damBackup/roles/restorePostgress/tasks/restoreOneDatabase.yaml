@@ -31,7 +31,7 @@
 ##
 - name: Wait some seconds to allow connections to terminate
   pause:
-    seconds: 10
+    seconds: "{{ roleWaitTimeBeforeDropDb }}"
   tags:
     - always
 ##

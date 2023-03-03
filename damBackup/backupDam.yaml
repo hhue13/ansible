@@ -292,6 +292,7 @@
         rolePersistentPodName: "{{ activePersistentPodName }}"
         rolePersistentPodContainerName: "{{ persistencePodContainerName | default('persistence-node') }}"
         roleTargetDirectoryForBackupFiles: "{{ targetDirectoryForBackupFiles }}"
+        roleWaitTimeBeforeDropDb: "{{ waitTimeBeforeDropDb | default('10')  }}"
       tags:
         - restore
     ##
