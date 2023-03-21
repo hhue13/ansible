@@ -9,13 +9,17 @@ User={{ roleInstallation.libertyUsers.adminUser.name }}
 Group={{ roleInstallation.libertyGroups.adminGroup.name }}
 
 Type=forking
-
+{% if roleDirectories.profileRoot.name is defined and roleDirectories.logRoot.name is defined %}
+EnvironmentFile={{ roleDirectories.profileRoot.name }}/{{ roleInstallation.name }}/{{ __profileCreation.name }}/servers/%I/server.env
+ExecStart={{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ roleActiveLibertyLinkName }}/{{ __profileCreation.name }}/bin/server start %I
+ExecStop={{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ roleActiveLibertyLinkName }}/{{ __profileCreation.name }}/bin/server stop %I
+PIDFile={{ roleDirectories.logRoot.name }}/{{ roleInstallation.name }}/{{ __profileCreation.name }}/.pid/%I.pid
+{% else %}
 EnvironmentFile={{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ __profileCreation.name }}/servers/%I/server.env
-
 ExecStart={{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ roleActiveLibertyLinkName }}/bin/server start %I
 ExecStop={{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ roleActiveLibertyLinkName }}/bin/server stop %I
-
 PIDFile={{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ __profileCreation.name }}/servers/.pid/%I.pid
+{% endif %}
 
 # Allow a minute for ExecStop before systemd sends SIGTERM
 TimeoutStopSec=60
