@@ -1,0 +1,137 @@
+---
+# tasks file for roles/libertyInstallation
+- name: Install IHS from the provided URL
+  block:
+    ##
+    ## Init local gather_facts
+    - name: Init local facts
+      ansible.builtin.set_fact:
+        __isCoSign: false
+    ##
+    ## Download the IHS binaries
+    - name: Download the installation binaries for IHS from {{ __binInstall.http.url }}
+      ansible.builtin.get_url:
+        url: "{{ __binInstall.http.url }}"
+        dest: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.url | basename }}"
+        mode: "644"
+        owner: "{{ roleInstallation.ihsUsers.adminUser.name }}"
+        group: "{{ roleInstallation.ihsGroups.adminGroup.name }}"
+        checksum: "{{ __binInstall.http.checksum | default(omit) }}"
+        timeout: "{{ roleDownloadSettings.readTimeout }}"
+      when: ( __binInstall.http.url is defined )
+    ##
+    ## Download the IHS sig file for verification
+    - name: Download the IHS sig file for verification {{ __binInstall.http.sigUrl }}
+      ansible.builtin.get_url:
+        url: "{{ __binInstall.http.sigUrl }}"
+        dest: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.sigUrl | basename }}"
+        mode: "644"
+        owner: "{{ roleInstallation.ihsUsers.adminUser.name }}"
+        group: "{{ roleInstallation.ihsGroups.adminGroup.name }}"
+        checksum: "{{ __binInstall.http.sigChecksum | default(omit) }}"
+        timeout: "{{ roleDownloadSettings.readTimeout }}"
+      when: ( __binInstall.http.sigUrl is defined )
+    ##
+    ## If we have a signature URL we need to determine if it is to be verified by openssl or
+    ## by using cosign as used by IBM WLP (https://www.ibm.com/docs/en/was-liberty/nd?topic=archives-verifying-liberty-release-packages)
+    - name: Determine if we have a cosign signature files
+      ansible.builtin.set_fact:
+        __isCoSign: true
+      when: (( __binInstall.http.sigUrl is defined ) and ( __binInstall.http.sigUrl is ansible.builtin.match('^.*\\.cosign\\.sig$', ignorecase=true, multiline=false) ))
+    ##
+    ## Copy the public signing key to the server
+    - name: Copy IHS Signing key to the server
+      ansible.builtin.copy:
+        src: "files/{{ __binInstall.http.pubKeyFile }}"
+        dest: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.pubKeyFile }}"
+        mode: "644"
+        owner: "{{ roleInstallation.ihsUsers.adminUser.name }}"
+        group: "{{ roleInstallation.ihsGroups.adminGroup.name }}"
+      when: ( __binInstall.http.sigUrl is defined )
+    ##
+    ## Verfiy the download
+    - name: Verify IHS download binary using openssl (https://openliberty.io/docs/latest/verifying-package-signatures.html)
+      ansible.builtin.command:
+        argv:
+          - "openssl"
+          - "dgst"
+          - "-sha256"
+          - "-verify"
+          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.pubKeyFile }}"
+          - "-signature"
+          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.sigUrl | basename }}"
+          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.url | basename }}"
+      register: cmdResult
+      failed_when: (cmdResult.rc != 0)
+      when: (( __binInstall.http.sigUrl is defined ) and ( __isCoSign == false ))
+    ##
+    ## Verify package using cosign
+    - name: Verify IHS download binary using cosign (https://www.ibm.com/docs/en/was-liberty/nd?topic=archives-verifying-liberty-release-packages)
+      ansible.builtin.command:
+        argv:
+          - "cosign"
+          - "verify-blob"
+          - "--insecure-ignore-tlog"
+          - "--key"
+          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.pubKeyFile }}"
+          - "--signature"
+          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.sigUrl | basename }}"
+          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.url | basename }}"
+      when: (( __binInstall.http.sigUrl is defined ) and ( __isCoSign == true ))
+    ##
+    ## Create IHS target directrory
+    - name: Create IHS target directory {{ roleDirectories.ihsBase.name }}/{{ __binInstall.http.version }}
+      ansible.builtin.file:
+        path: "{{ roleDirectories.ihsBase.name }}/{{ __binInstall.http.version }}"
+        state: directory
+        owner: "{{ roleInstallation.ihsUsers.adminUser.name }}"
+        group: "{{ roleInstallation.ihsGroups.adminGroup.name }}"
+        mode: "{{ roleDirectories.ihsBase.mode }}"
+    ##
+    ## Set the IHS installation file name as fact as RegEx matching can't be mixed with Jinja templating
+    - name: Set the IHS installation file name as fact
+      ansible.builtin.set_fact:
+        __ihsInstallationFile: "{{ __binInstall.http.url | basename }}"
+    ##
+    ## Unpack IHS
+    - name: Unpack IHS to {{ roleDirectories.ihsBase.name }}/{{ __binInstall.http.version }}
+      ansible.builtin.unarchive:
+        src: "{{ roleDirectories.downloadDir.name }}/{{ __ihsInstallationFile }}"
+        dest: "{{ roleDirectories.ihsBase.name }}/{{ __binInstall.http.version }}"
+        creates: "{{ roleDirectories.ihsBase.name }}/{{ __binInstall.http.version }}/IHS/bin/httpd"
+        remote_src: true
+        group: "{{ roleInstallation.ihsGroups.adminGroup.name }}"
+        owner: "{{ roleInstallation.ihsUsers.adminUser.name }}"
+    ##
+    ## Check if postInstall has been executed before
+    - name: Check if postInstall has been executed before via {{ roleDirectories.ihsBase.name }}/{{ __binInstall.http.version }}/IHS/.postInstallExecDate
+      ansible.builtin.stat:
+        path: "{{ roleDirectories.ihsBase.name }}/{{ __binInstall.http.version }}/IHS/.postInstallExecDate"
+      register: __statResult
+    ##
+    ## Run the IHS postinstallation script
+    - name: Run IHS postinstallation script for {{ roleDirectories.downloadDir.name }}/{{ __ihsInstallationFile }}
+      ansible.builtin.shell: |
+        cd {{ roleDirectories.ihsBase.name }}/{{ __binInstall.http.version }}/IHS || exit 1
+        ./postinstall.sh && echo $(date +"%Y-%m-%d %H:%M:%S") > {{ roleDirectories.ihsBase.name }}/{{ __binInstall.http.version }}/IHS/.postInstallExecDate
+      register: __shellResult
+      ignore_errors: false
+      failed_when: __shellResult.rc != 0
+      when: (not __statResult.stat.exists)
+    ##
+    ## Activate Liberty if it is the active deployment depending on the FS structure
+    - name: Set active IHS installation {{ __binInstall.http.version  }} of installation {{ roleInstallation.name }} as active
+      ansible.builtin.file:
+        path: "{{ roleDirectories.ihsBase.name }}//{{ roleActiveIhsLinkName | default('IHS') }}"
+        src: "{{ roleDirectories.ihsBase.name }}/{{ __binInstall.http.version }}/IHS"
+        state: link
+        force: true
+        owner: "{{ roleInstallation.ihsUsers.adminUser.name }}"
+        group: "{{ roleInstallation.ihsGroups.adminGroup.name }}"
+        mode: "755"
+      when: ( __binInstall.http.active == true )
+
+  become: true
+  become_user: "{{ ihsUsers.adminUser.name }}"
+  tags:
+    - always

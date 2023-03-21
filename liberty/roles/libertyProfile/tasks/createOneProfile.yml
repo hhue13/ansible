@@ -1,0 +1,124 @@
+---
+# tasks creation of the profile
+- name: Create a liberty profile
+  block:
+    ##
+    ## Init local gather_facts
+    - name: Init local facts for profileCreation when logroot & profileroot are defined
+      ansible.builtin.set_fact:
+        __wlpUserDir: "{{ roleDirectories.profileRoot.name }}/{{ roleInstallation.name }}/{{ __profileCreation.name }}"
+        __wlpSharedResourcesDir: "{{ roleDirectories.profileRoot.name }}/{{ roleInstallation.name }}/{{ __profileCreation.name }}/shared/resources/security"
+        __wlpSharedAppsDir: "{{ roleDirectories.profileRoot.name }}/{{ roleInstallation.name }}/{{ __profileCreation.name }}/shared/apps"
+        __wlpSharedConfigDir: "{{ roleDirectories.profileRoot.name }}/{{ roleInstallation.name }}/{{ __profileCreation.name }}/shared/config"
+        __wlpOutputDir: "{{ roleDirectories.logRoot.name }}/{{ roleInstallation.name }}/{{ __profileCreation.name }}"
+        __profileDirMode: "{{ roleDirectories.profileRoot.mode }}"
+        __logDirMode: "{{ roleDirectories.logRoot.mode }}"
+      when: (( roleDirectories.profileRoot.name is defined ) and ( roleDirectories.logRoot.name is defined ))
+
+    - name: Init local facts for profileCreation when logroot & profileroot are defined
+      ansible.builtin.set_fact:
+        __wlpUserDir: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ __profileCreation.name }}"
+        __wlpSharedResourcesDir: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/shared/resources"
+        __wlpSharedAppsDir: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ __profileCreation.name }}/shared/apps"
+        __wlpSharedConfigDir: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ __profileCreation.name }}/shared/config"
+        __wlpOutputDir: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ __profileCreation.name }}/servers"
+        __profileDirMode: "{{ roleDirectories.libertyBase.mode }}"
+        __logDirMode: "{{ roleDirectories.libertyBase.mode }}"
+      when: (( roleDirectories.profileRoot.name is not defined ) or ( roleDirectories.logRoot.name is not defined ))
+
+    - name: Init dependent local facts for profileCreation
+      ansible.builtin.set_fact:
+        __wlpAesKeyFile: "{{ __wlpSharedResourcesDir }}/{{ __profileCreation.aesKeyFileName }}"
+
+    - name: Create profile log directory
+      ansible.builtin.file:
+        path: "{{ __userDir }}"
+        state: directory
+        owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
+        group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
+        mode: "{{ __logDirMode }}"
+      loop:
+        - "{{ __wlpOutputDir }}"
+      loop_control:
+        loop_var: __userDir
+
+    - name: Create profile directories
+      ansible.builtin.file:
+        path: "{{ __userDir }}"
+        state: directory
+        owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
+        group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
+        mode: "{{ __profileDirMode }}"
+      loop:
+        - "{{ __wlpSharedAppsDir }}"
+        - "{{ __wlpSharedConfigDir }}"
+        - "{{ __wlpSharedResourcesDir }}"
+      loop_control:
+        loop_var: __userDir
+
+    - name: Check if AES Key file exists
+      ansible.builtin.stat:
+        path: "{{ __wlpAesKeyFile }}"
+      register: __statResult
+
+    - name: Create AES Key file if it does not exists
+      block:
+        - name: Create {{ __wlpAesKeyFile }}
+          ansible.builtin.file:
+            path: "{{ __wlpAesKeyFile }}"
+            state: "touch"
+            owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
+            group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
+            mode: "640"
+      when: ( __statResult.stat.exists != true )
+      tags:
+        - always
+
+    - name: Create AES Key file if it exists
+      block:
+        - name: Check if the wlp.password.encryption.key line exists in {{ __wlpAesKeyFile }}
+          ansible.builtin.lineinfile:
+            state: absent
+            path: "{{ __wlpAesKeyFile }}"
+            regexp: "^wlp.password.encryption.key="
+          check_mode: true
+          changed_when: false # This just makes things look prettier in the logs
+          register: __aesPropertyExists
+
+        - name: Add wlp.password.encryption.key line to {{ __wlpAesKeyFile }}
+          ansible.builtin.include_tasks:
+            file: "addAesKeyToFile.yml"
+          when: ( __aesPropertyExists.found == 0 )
+      tags:
+        - always
+    ##
+    ## Install the service
+    - name: Install systemctld service for profile {{ roleInstallation.name }}/{{ __profileCreation.name }}
+      ansible.builtin.include_tasks:
+        file: "../../../templateAFile.yml"
+      vars:
+        __tempateData:
+          templateFile: "templates/liberty@.service.j2"
+          templateDestination: "/etc/systemd/system/liberty-{{ roleInstallation.name }}-{{ __profileCreation.name }}@.service"
+          templateBecomeUser: "{{ roleRootUser }}"
+    ##
+    ## Reload and enable service
+    - name: Reload and enable systemctld service for profile {{ roleInstallation.name }}/{{ __profileCreation.name }}
+      ansible.builtin.systemd:
+        name: "liberty-{{ roleInstallation.name }}-{{ __profileCreation.name }}@.service"
+        daemon_reload: true
+      become: true
+      become_user: "{{ roleRootUser }}"
+    ##
+    ## Create the servers of the profile
+    - name: Create servers for profile {{ roleInstallation.name }}/{{ __profileCreation.name }}
+      ansible.builtin.include_tasks:
+        file: "createServersForProfile.yml"
+      loop: "{{ __profileCreation.servers }}"
+      loop_control:
+        loop_var: __serverToCreate
+
+  become: true
+  become_user: "{{ roleInstallation.libertyUsers.adminUser.name }}"
+  tags:
+    - always

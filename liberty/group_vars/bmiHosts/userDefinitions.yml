@@ -1,0 +1,57 @@
+---
+##
+## Groups used for liberty
+libertyGroups:
+  adminGroup:
+    name: "liberty"
+    gid: "4242"
+    comment: "Liberty admin user group"
+  developerGroup:
+    name: "libdev"
+    gid: "4243"
+    comment: "Liberty developer user group"
+  deployerGroup:
+    name: "libdeploy"
+    gid: "4244"
+    comment: "Liberty deployer user group"
+libertyUsers:
+  adminUser:
+    name: "liberty"
+    uid: "4242"
+    comment: "Liberty admin user"
+    primaryGroup: "{{ libertyGroups.adminGroup.name }}"
+    supplementalGroups:
+      - "{{ libertyGroups.deployerGroup.name }}"
+  developerUser:
+    name: "libdev"
+    uid: "4243"
+    comment: "Liberty developer user"
+    primaryGroup: "{{ libertyGroups.developerGroup.name }}"
+    supplementalGroups:
+      - "{{ libertyGroups.deployerGroup.name }}"
+    shell: "/bin/bash"
+ihsGroups:
+  adminGroup:
+    name: "ihsadm"
+    gid: "4342"
+    comment: "IHS admin users group"
+  runtimeGroup:
+    name: "ihsrun"
+    gid: "4343"
+    comment: "IHS runtime user group"
+ihsUsers:
+  adminUser:
+    name: "ihsadma"
+    uid: "4342"
+    comment: "IHS admin user"
+    primaryGroup: "{{ ihsGroups.adminGroup.name }}"
+    supplementalGroups:
+      - "{{ ihsGroups.runtimeGroup.name }}"
+  developerUser:
+    name: "ihsrunu"
+    uid: "4343"
+    comment: "IHS runtime user"
+    primaryGroup: "{{ ihsGroups.runtimeGroup.name }}"
+    supplementalGroups:
+      - "{{ ihsGroups.adminGroup.name }}"
+    shell: "/bin/bash"

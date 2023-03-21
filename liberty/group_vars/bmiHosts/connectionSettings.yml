@@ -1,0 +1,6 @@
+##
+## Communication settings
+downloadSettings:
+  use_proxy: false
+  connectionTimeout: 7
+  readTimeout: 7

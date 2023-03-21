@@ -1,0 +1,18 @@
+---
+- name: Add wlp.password.encryption.key line using predefined key to {{ __wlpAesKeyFile }}
+  ansible.builtin.lineinfile:
+    state: present
+    path: "{{ __wlpAesKeyFile }}"
+    line: 'wlp.password.encryption.key="{{ __profileCreation.aesKey }}"'
+  when: ( __profileCreation.aesKey is defined )
+  tags:
+    - always
+
+- name: Add wlp.password.encryption.key line using generated key to {{ __wlpAesKeyFile }}
+  ansible.builtin.lineinfile:
+    state: present
+    path: "{{ __wlpAesKeyFile }}"
+    line: "wlp.password.encryption.key={{ lookup('ansible.builtin.password', '/dev/null', length=64) }}"
+  when: ( __profileCreation.aesKey is not defined )
+  tags:
+    - always

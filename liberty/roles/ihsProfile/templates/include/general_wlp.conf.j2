@@ -1,0 +1,352 @@
+# *********************************************************************
+# *
+# *  Name: /opt/liberty/ctl/ihs/${COLLECTIVE}/include/general_wlp.conf
+# *  Parm: n/a
+# *  Func: IBM HTTP server general configuration include for WebSphere Liberty
+# *  Desc: This include needs the vollowing variables defined with values:
+# *        thisCollective, thisSystem and thisServer.
+# *
+# *        Please keep this file in shape as strictly as possible. This
+# *        is essential for comparisons done with httpd.conf.default
+# *        when service has to be applied.
+# *
+# *        Please be aware that this file has to be coded in codepage
+# *        1047. If you do not know exactly the code points of
+# *        codepages 1047 and 1141: Don't use any special characters
+# *        e.g. german "Umlaute" - even in comments.
+# *
+# *        Thx! (-;
+# *
+# *  who when       what
+# *  --- ---------- ---------------------------------------------------
+# *  YE9 2022-04-21 change MPM directives to values from httpd.conf.default
+# *  YE9 2022-03-18 rework for WAS fix pack level 9.0.5.11
+# *  YE9 2022-03-18 change TypesConfig to conf/mime.types.default
+# *  YE9 2021-10-31 change status port from 10080 to 18080
+# *  YE9 2021-04-19 change ServerSignature to Off, unset Header X-Powered-By
+# *  YE9 2021-02-04 rework for include general_was.conf
+# *  YE9 2021-01-18 add server name to ErrorLog & CustomLog file name
+# *  YE9 2021-01-15 rework for WAS fix pack level 9.0.5.6
+# *  YE9 2020-11-07 rearrange general host (port 80) to virtual host
+# *  YE9 2020-09-26 add header X-AUTHENTICATE-UserID to LogFormat
+# *                 rework for WAS fix pack level 9.0.0.6
+# *  YE9 2019-03-28 rework for WAS fix pack level 9.0.0.10 (comments)
+# *  YE9 2018-06-19 change Listen LHccINT.rz.bmi.intra.gv.at:80
+# *                        Listen LHccyINT.rz.bmi.intra.gv.at:10080
+# *  YE9 2017-09-20 change status port
+# *  YE9 2017-09-08 new
+# *  YYY 2023-02-23 adapted to Linux sltebfliberty1 virtual host LHA61*
+# *
+# *********************************************************************
+#
+# This is the main IBM HTTP server configuration file.  It contains the
+# configuration directives that give the server its instructions.
+# See <URL:http://publib.boulder.ibm.com/httpserv/manual24/> for detailed
+# information about the Apache directives.
+#
+# The instructions provided in this configuration file are only hints or
+# reminders.  Consult the online docs for definitive information.
+#
+# You are strongly encourated to start with the default configuration
+# and append your changes to the problem wherever possible, rather than
+# changeing it in-line.
+#
+# The configuration directives are grouped into three basic sections:
+#  1. Directives that control the operation of the web server process as a
+#     whole (the 'global environment').
+#  2. Directives that define the parameters of the 'main' or 'default' server,
+#     which responds to requests that aren't handled by a virtual host.
+#     These directives also provide default values for the settings
+#     of all virtual hosts.
+#  3. Settings for virtual hosts, which allow Web requests to be sent to
+#     different IP addresses or hostnames and have them handled by the
+#     same web server process.
+#
+# Configuration and logfile names: If the filenames you specify for many
+# of the server's control files begin with "/" (or "drive:/" for Win32), the
+# server will use that explicit path.  If the filenames do *not* begin
+# with "/", the value of ServerRoot is prepended -- so "logs/foo.log"
+# with ServerRoot set to "/opt/liberty/ctl/ihs/${thisCollective}/${thisSystem}/${thisServer}" will be interpreted by the
+# server as "/opt/liberty/ctl/ihs/${thisCollective}/${thisSystem}/${thisServer}/logs/foo.log".
+#
+
+### Section 1: Global Environment
+ServerRoot "{{ roleDirectories.ihsBase.name }}/${thisCollective}/${thisSystem}/${thisServer}"
+
+PidFile {{ roleDirectories.ihsLogs.name }}/${thisCollective}/logs/${thisServer}/httpd.pid
+
+Timeout 300
+
+LoadModule reqtimeout_module modules/mod_reqtimeout.so
+<ifModule mod_reqtimeout.c>
+    RequestReadTimeout header=0 body=0
+</ifModule>
+
+KeepAlive On
+MaxKeepAliveRequests 100
+KeepAliveTimeout 10
+#
+# Listen: Allows you to bind the web server to specific IP addresses
+# and/or ports, in addition to the default. See also the <VirtualHost>
+# directive.
+#
+##### {% for __listenAddress in __serverToCreate.listen %}
+#####   Listen {{ __listenAddress.dnsName }}:{{ __listenAddress.port | default("80") }}
+##### {% endfor %}
+
+# Example:
+# LoadModule foo_module modules/mod_foo.so
+LoadModule unixd_module modules/mod_unixd.so
+LoadModule authz_host_module modules/mod_authz_host.so
+LoadModule authz_core_module modules/mod_authz_core.so
+LoadModule authn_core_module modules/mod_authn_core.so
+LoadModule auth_basic_module modules/mod_auth_basic.so
+LoadModule authn_file_module modules/mod_authn_file.so
+LoadModule authz_user_module modules/mod_authz_user.so
+#LoadModule authn_cert_module modules/mod_authn_cert.so
+#LoadModule ldap_module modules/mod_ldap.so
+#LoadModule authnz_ldap_module modules/mod_authnz_ldap.so
+
+#LoadModule authz_groupfile_module modules/mod_authz_groupfile.so
+LoadModule include_module modules/mod_include.so
+LoadModule log_config_module modules/mod_log_config.so
+LoadModule env_module modules/mod_env.so
+#LoadModule expires_module modules/mod_expires.so
+LoadModule headers_module modules/mod_headers.so
+LoadModule unique_id_module modules/mod_unique_id.so
+LoadModule setenvif_module modules/mod_setenvif.so
+#LoadModule proxy_module modules/mod_proxy.so
+#LoadModule proxy_connect_module modules/mod_proxy_connect.so
+#LoadModule proxy_ftp_module modules/mod_proxy_ftp.so
+#LoadModule proxy_http_module modules/mod_proxy_http.so
+LoadModule mime_module modules/mod_mime.so
+#LoadModule dav_module modules/mod_dav.so
+#LoadModule dav_fs_module modules/mod_dav_fs.so
+LoadModule autoindex_module modules/mod_autoindex.so
+#LoadModule asis_module modules/mod_asis.so
+LoadModule info_module modules/mod_info.so
+#LoadModule cgi_module modules/mod_cgi.so
+LoadModule dir_module modules/mod_dir.so
+LoadModule actions_module modules/mod_actions.so
+#LoadModule speling_module modules/mod_speling.so
+#LoadModule userdir_module modules/mod_userdir.so
+LoadModule alias_module modules/mod_alias.so
+LoadModule rewrite_module modules/mod_rewrite.so
+#LoadModule deflate_module modules/mod_deflate.so
+
+#LoadModule cache_module modules/mod_cache.so
+#LoadModule cache_disk_module modules/mod_cache_disk.so
+
+#LoadModule filter_module modules/mod_filter.so
+#LoadModule lua_module modules/mod_lua.so
+#LoadModule substitute_module modules/mod_substitute.so
+
+
+#
+# ExtendedStatus controls whether the web server will generate "full"
+# status information (ExtendedStatus On) or just basic information
+# (ExtendedStatus Off) when the server status page is formatted or
+# when IBM HTTP Server diagnostic modules report information.  The
+# default is Off.
+#
+LoadModule status_module modules/mod_status.so
+<IfModule mod_status.c>
+    ExtendedStatus On
+</IfModule>
+
+### Section 2: 'Main' server configuration
+ServerAdmin {{ __serverToCreate.serverAdmin }}
+
+ServerName ${thisServer}.{{ __serverToCreate.vHosts[0].serverName }}:{{ __serverToCreate.vHosts[0].serverPort | default("80") }}
+UseCanonicalName Off
+DocumentRoot "{{ roleDirectories.ihsBase.name }}/${thisCollective}/${thisSystem}/${thisServer}/htdocs"
+
+<Directory />
+    Options FollowSymLinks
+    AllowOverride None
+    FileETag All -INode
+    Require all denied
+</Directory>
+
+<Directory "{{ roleDirectories.ihsBase.name }}/${thisCollective}/${thisSystem}/${thisServer}/htdocs">
+    Options FollowSymLinks
+    AllowOverride None
+   Require all granted
+</Directory>
+
+#
+# UserDir: The name of the directory that is appended onto a user's home
+# directory if a ~user request is received.
+#
+<IfModule mod_userdir.c>
+UserDir public_html
+</IfModule>
+
+DirectoryIndex index.html index.html.var
+
+# Use welcome page of index_ihs.html by default in the shipped documentroot
+<DirectoryMatch ^{{ roleDirectories.ihsBase.name }}/${thisCollective}/${thisSystem}/${thisServer}/htdocs/$>
+DirectoryIndex index.html index.html.var index_ihs.html
+</DirectoryMatch>
+
+AccessFileName .htaccess
+<Files ~ "^\.ht">
+   Require all denied
+   Forbid
+</Files>
+
+TypesConfig conf/mime.types.default
+HostnameLookups Off
+EnableSendfile off
+ErrorLog "|{{ roleDirectories.ihsBase.name }}/${thisCollective}/${thisSystem}/${thisServer}/bin/rotatelogs -l {{ roleDirectories.ihsLogs.name }}/${thisCollective}/logs/${thisServer}/error_${thisServer}_log.%Y-%m-%d 86400"
+
+LogLevel warn
+
+LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\" %D \"%{WAS}e\" %X" combined
+LogFormat "%h %l %u %t \"%r\" %>s %b %D \"%{WAS}e\" %X" common
+LogFormat "%{Referer}i -> %U" referer
+LogFormat "%{User-agent}i" agent
+
+LogFormat "%v %h %l %u %t \"%r\" %>s %b %T/%D %{X-AUTHENTICATE-UserID}i %{WAS}e %X %{RH}e" NCSASharedCommonLogFormat
+CustomLog "|{{ roleDirectories.ihsBase.name }}/${thisCollective}/${thisSystem}/${thisServer}/bin/rotatelogs -l {{ roleDirectories.ihsLogs.name }}/${thisCollective}/logs/${thisServer}/access_${thisServer}_log.%Y-%m-%d 86400" NCSASharedCommonLogFormat
+
+ServerTokens Prod
+ServerSignature Off
+Alias /icons/ "{{ roleDirectories.ihsBase.name }}/${thisCollective}/${thisSystem}/${thisServer}/icons/"
+
+<Directory "{{ roleDirectories.ihsBase.name }}/${thisCollective}/${thisSystem}/${thisServer}/icons">
+    Options MultiViews
+    AllowOverride None
+    Require all granted
+</Directory>
+
+<IfModule mod_cgi.c>
+
+    Alias /cgi-bin/ "{{ roleDirectories.ihsBase.name }}/${thisCollective}/${thisSystem}/${thisServer}/cgi-bin/"
+
+    # "{{ roleDirectories.ihsBase.name }}/${thisCollective}/${thisSystem}/${thisServer}/cgi-bin" should be changed to wherever your Aliased
+    # CGI directory exists, if you have that configured.
+    <Directory "{{ roleDirectories.ihsBase.name }}/${thisCollective}/${thisSystem}/${thisServer}/cgi-bin">
+        AllowOverride None
+        Options ExecCGI
+        SetHandler cgi-script
+        Require all granted
+    </Directory>
+</IfModule>
+
+AddIconByEncoding (CMP,/icons/compressed.gif) x-compress x-gzip
+
+AddIconByType (TXT,/icons/text.gif) text/*
+AddIconByType (IMG,/icons/image2.gif) image/*
+AddIconByType (SND,/icons/sound2.gif) audio/*
+AddIconByType (VID,/icons/movie.gif) video/*
+
+AddIcon /icons/binary.gif .bin .exe
+AddIcon /icons/binhex.gif .hqx
+AddIcon /icons/tar.gif .tar
+AddIcon /icons/world2.gif .wrl .wrl.gz .vrml .vrm .iv
+AddIcon /icons/compressed.gif .Z .z .tgz .gz .zip
+AddIcon /icons/a.gif .ps .ai .eps
+AddIcon /icons/layout.gif .html .shtml .htm .pdf
+AddIcon /icons/text.gif .txt
+AddIcon /icons/c.gif .c
+AddIcon /icons/p.gif .pl .py
+AddIcon /icons/f.gif .for
+AddIcon /icons/dvi.gif .dvi
+AddIcon /icons/uuencoded.gif .uu
+AddIcon /icons/script.gif .conf .sh .shar .csh .ksh .tcl
+AddIcon /icons/tex.gif .tex
+AddIcon /icons/bomb.gif core
+
+AddIcon /icons/back.gif ..
+AddIcon /icons/hand.right.gif README
+AddIcon /icons/folder.gif ^^DIRECTORY^^
+AddIcon /icons/blank.gif ^^BLANKICON^^
+
+DefaultIcon /icons/unknown.gif
+
+ReadmeName README.html
+HeaderName HEADER.html
+
+IndexIgnore .??* *~ *# HEADER* README* RCS CVS *,v *,t
+
+AddEncoding x-compress Z
+AddEncoding x-gzip gz tgz
+
+AddType application/x-tar .tgz
+AddType image/x-icon .ico
+
+BrowserMatch "Mozilla/2" nokeepalive
+BrowserMatch "MSIE 4\.0b2;" nokeepalive downgrade-1.0 force-response-1.0
+BrowserMatch "RealPlayer 4\.0" force-response-1.0
+BrowserMatch "Java/1\.0" force-response-1.0
+BrowserMatch "JDK/1\.0" force-response-1.0
+
+BrowserMatch "Microsoft Data Access Internet Publishing Provider" redirect-carefully
+BrowserMatch "^WebDrive" redirect-carefully
+BrowserMatch "^WebDAVFS/1.[012]" redirect-carefully
+BrowserMatch "^gnome-vfs" redirect-carefully
+
+<IfModule mod_status.c>
+<Location /server-status>
+    SetHandler server-status
+    Require all granted
+#   To allow access from a specific IP:
+#   Require ip 192.168.1
+</Location>
+</IfModule>
+
+<IfModule mod_info.c>
+<Location /server-info>
+    SetHandler server-info
+    Require all granted
+#   To allow access from a specific IP:
+#   Require ip 192.168.1
+</Location>
+</IfModule>
+
+LoadModule  mpm_event_module modules/mod_mpm_event.so
+LoadModule mpmstats_module modules/debug/mod_mpmstats.so
+<IfModule mod_mpmstats.c>
+    ReportInterval 60
+    TrackModules On
+    TrackHooks allhooks
+    SlowThreshold 60
+    TrackHooksOptions logslow
+</IfModule>
+
+EnableExceptionHook On
+LoadModule backtrace_module modules/debug/mod_backtrace.so
+LoadModule whatkilledus_module modules/debug/mod_whatkilledus.so
+<IfModule mod_net_trace.c>
+    NetTraceFile /tmp/nettrace
+    NetTrace client * dest file event senddata=65535 event recvdata=65535 event misccalls
+</IfModule>
+
+ThreadLimit          100
+# After 9.0.0.3, it's important for the event MPM to have some slack space for ServerLimit
+ServerLimit           18
+StartServers           1
+MaxRequestWorkers   1200
+MinSpareThreads       50
+# PI74200: When using the event MPM, discourage process termination during runtime.
+MaxSpareThreads      600
+ThreadsPerChild      100
+MaxRequestsPerChild    0
+MaxMemFree 2048
+
+# Diagnostic log files, uncomment to enable.
+
+# GlobalLog logs/deflate-debug.log "%h %l %u %t \"%r\" %>s %b %{RH}e %{WAS}e %{Accept-Encoding}i %{Content-Type}o %{Content-Encoding}o %{Via}i %{no-gzip}e %{remote}p %D"
+# GlobalLog logs/ssl-debug.log "%h %l %u %t \"%r\" %>s %b %{RH}e %{WAS}e %{HTTPS}e %{HTTPS_CIPHER}e %{SSL_PROTOCOL_VERSION}e %{SSL_CLIENT_DN}e %{SSL_HANDSHAKE}e %{SSL_TLS_SNI}e %{SSL_HANDSHAKE_TIME}e %{remote}p %D"
+# GlobalLog logs/cache-debug.log "%h %l %u %t \"%r\" %>s %b %{RH}e %{WAS}e %{Age}o %{Cache-Control}i %{Last-Modified}o %{Etag}o %{If-Match}i %{If-None-Match}i %{If-Modified-Since}i %{Cache-Control}o exp=%{Expires}o %{Vary}o %{cache-hit}e %{cache-revalidate}e %{cache-invalidate}e %{cache-status}e %D"
+# GlobalLog logs/was-debug.log "%h %l %u %t \"%r\" %>s %b %{WAS_UNIQUE_ID}e %{RH}e %{WAS}e %{JSESSIONID}C %{remote}p %D"
+# GlobalLog logs/cookie-debug.log "%h %l %u %t \"%r\" %>s %b %{User-Agent}i %{RH}e %{WAS}e %{Age}o %{Cache-Control}i exp=%{Expires}o %{Cache-Control}o SC=\"%{Set-Cookie}o\" C=\"%{Cookie}i\" %{Location}o %D"
+
+# Unset Header X-Powered-By for security reasons
+Header always unset "X-Powered-By"
+Header unset "X-Powered-By"
+
+# WebSphere Application Server Plugin
+LoadModule was_ap24_module {{ roleDirectories.ihsBase.name }}/{{ roleActiveIhsLinkName }}/plugin/bin/mod_was_ap24_http.so
+WebSpherePluginConfig {{ roleDirectories.ihsBase.name }}/${thisCollective}/${thisSystem}/${thisServer}/Plugins/config/${thisServer}/plugin-cfg.xml

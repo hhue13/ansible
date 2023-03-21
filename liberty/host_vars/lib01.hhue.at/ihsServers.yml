@@ -1,0 +1,18 @@
+ihsServersA6:
+  - name: LHA61INT
+    listen:
+      - dnsName: "LHA61INT.hhue.at"
+        port: "80"
+      - dnsName: "127.0.0.1"
+        port: "80"
+    vHosts:
+      - name: "LHA61INT.hhue.at"
+        port: "80"
+        serverName: "LHA61INT.hhue.at"
+        serverPort: "80"
+    serverAdmin: "BMI-IV-2-Helpdesk@bmi.gv.at"
+    conf:
+      templateFile: "templates/conf/httpd.conf.j2"
+    include:
+      relativeFileName: "include/general_wlp.conf"
+      templateFile: "templates/include/general_wlp.conf.j2"

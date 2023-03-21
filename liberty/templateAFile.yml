@@ -1,0 +1,27 @@
+##
+##
+- name: Template file {{ __tempateData.templateFile }} to {{ __tempateData.templateDestination }}
+  ansible.builtin.template:
+    src: "{{ __tempateData.templateFile }}"
+    dest: "{{ __tempateData.templateDestination }}"
+  when: ( __tempateData.templateBecomeUser is not defined)
+
+- name: Template file as become_user {{ __tempateData.templateFile }} to {{ __tempateData.templateDestination }}
+  ansible.builtin.template:
+    src: "{{ __tempateData.templateFile }}"
+    dest: "{{ __tempateData.templateDestination }}"
+  become: true
+  become_user: "{{ __tempateData.templateBecomeUser }}"
+  when: ( __tempateData.templateBecomeUser is defined)
+##
+## Read the server.xml from tmp file
+- name: Read the templates file
+  ansible.builtin.slurp:
+    src: "{{ __tempateData.templateDestination }}"
+  register: __slurpedFile
+##
+## Debug the templates server.xml
+- name: Debug the templated file
+  ansible.builtin.debug:
+    msg: "Templated file:\n\n{{ __slurpedFile['content'] | b64decode }}\n\n"
+  ignore_errors: true

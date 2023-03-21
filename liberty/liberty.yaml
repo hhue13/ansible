@@ -1,0 +1,124 @@
+---
+#######################################################################################################
+## Requires the following collections and python modules:
+##
+## See README.md for required software dependencies
+##
+## ansible-playbook -e @globalVars postUpgrade.yaml
+## ansible-playbook --vault-id k8s@~/ansible_password -e @globalVars postUpgrade.yaml
+##
+## Note: Make sure you setup visudo correctly so that "sudo -i -u <become_user>" works
+#######################################################################################################
+- name: Perform a liberty installation
+  hosts: "{{ HOSTS }}"
+  gather_facts: true
+  force_handlers: true
+
+  tasks:
+    - name: Send notification message via Slack
+      community.general.slack:
+        token: "{{ slackAuthenticationToken }}"
+        msg: "Started liberty processing on host {{ inventory_hostname }}"
+      when: ((sendSlackNotifications is defined) and (sendSlackNotifications == true))
+      tags:
+        - always
+    ##
+    ## Create required users and groups for liberty and IHS installation
+    - name: Create prereqisites for installation
+      block:
+      - name: Create required users and groups for liberty
+        ansible.builtin.include_role:
+          name: libertyPreReqs
+        vars:
+          roleInstallationName: "{{ libInstallation.name }}"
+          roleGroupInfo: "{{ libInstallation.libertyGroups }}"
+          roleUserInfo: "{{ libInstallation.libertyUsers }}"
+          roleDirectories: "{{ libertyDirectories }}"
+          roleBecomeUser: "{{ rootUser }}"
+        loop: "{{ liberty.installations }}"
+        loop_control:
+          loop_var: libInstallation
+
+      - name: Create required users and groups for IHS
+        ansible.builtin.include_role:
+          name: libertyPreReqs
+        vars:
+          roleInstallationName: "{{ ihsInstallation.name }}"
+          roleGroupInfo: "{{ ihsInstallation.ihsGroups }}"
+          roleUserInfo: "{{ ihsInstallation.ihsUsers }}"
+          roleDirectories: "{{ libertyDirectories }}"
+          roleBecomeUser: "{{ rootUser }}"
+        loop: "{{ ihs.installations }}"
+        loop_control:
+          loop_var: ihsInstallation
+        when: (( ihs.installations is defined ) and (ihs.installations | length > 0 ))
+      tags:
+        - prereqs
+    ##
+    ## Install liberty
+    - name: Install liberty on the server
+      ansible.builtin.include_role:
+        name: libertyInstallation
+      vars:
+        roleActiveLibertyLinkName: "{{ activeLibertyLinkName  }}"
+        roleActiveJavaLinkName: "{{ activeJavaLinkName  }}"
+        roleDirectories: "{{ libertyDirectories }}"
+        roleInstallation: "{{ libInstallation }}"
+        roleDownloadSettings: "{{ downloadSettings }}"
+        roleRootUser: "{{ rootUser }}"
+      loop: "{{ liberty.installations }}"
+      loop_control:
+        loop_var: libInstallation
+      tags:
+        - install
+    ##
+    ## Install IHS
+    - name: Install IHS on the server
+      ansible.builtin.include_role:
+        name: ihsInstallation
+      vars:
+        roleActiveIhsLinkName: "{{ activeIhsLinkName }}"
+        roleDirectories: "{{ libertyDirectories }}"
+        roleInstallation: "{{ ihsInstallation }}"
+        roleDownloadSettings: "{{ downloadSettings }}"
+        roleRootUser: "{{ rootUser }}"
+      loop: "{{ ihs.installations }}"
+      loop_control:
+        loop_var: ihsInstallation
+      when: (( ihs.installations is defined ) and (ihs.installations | length > 0 ))
+      tags:
+        - ihsInstall
+    ##
+    ## Install liberty profile(s)
+    - name: Setup liberty profiles
+      ansible.builtin.include_role:
+        name: libertyProfile
+      vars:
+        roleActiveLibertyLinkName: "{{ activeLibertyLinkName  }}"
+        roleActiveJavaLinkName: "{{ activeJavaLinkName  }}"
+        roleDirectories: "{{ libertyDirectories }}"
+        roleInstallation: "{{ libInstallation }}"
+        roleDownloadSettings: "{{ downloadSettings }}"
+        roleRootUser: "{{ rootUser }}"
+      loop: "{{ liberty.installations }}"
+      loop_control:
+        loop_var: libInstallation
+      tags:
+        - profiles
+    ##
+    ## Install IHS profile(s)
+    - name: Create IHS profiles
+      ansible.builtin.include_role:
+        name: ihsProfile
+      vars:
+        roleActiveIhsLinkName: "{{ activeIhsLinkName }}"
+        roleDirectories: "{{ libertyDirectories }}"
+        roleInstallation: "{{ ihsInstallation }}"
+        roleDownloadSettings: "{{ downloadSettings }}"
+        roleRootUser: "{{ rootUser }}"
+      loop: "{{ ihs.installations }}"
+      loop_control:
+        loop_var: ihsInstallation
+      when: (( ihs.installations is defined ) and (ihs.installations | length > 0 ))
+      tags:
+        - ihsProfiles

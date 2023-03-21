@@ -1,0 +1,22 @@
+############################################################################################################
+## <!--  systemd file definition to start / stop HTTP server.                                           -->
+## <!-- Copy to: /etc/systemd/system/httpd_ihs01.service                                                      -->
+## <!-- Run: systemctl daemon-reload && systemctl enable httpd_ihs01.service && systemctl start httpd_ihs01.service -->
+############################################################################################################
+[Unit]
+Description=IBM HTTP Server
+After=network.target remote-fs.target nss-lookup.target network-online.target
+Wants=network-online.target
+
+[Service]
+##### User={{ roleInstallation.ihsUsers.adminUser.name }}
+##### Group={{ roleInstallation.ihsGroups.adminGroup.name }}
+
+Environment=SERVER_HOME={{ roleDirectories.ihsBase.name }}//{{ roleActiveIhsLinkName | default('IHS') }}
+Type=forking
+ExecStart=/bin/bash -c "${SERVER_HOME}/bin/apachectl -f {{ roleDirectories.ihsBase.name }}/{{ roleInstallation.name }}/{{ __profileCreation.name }}/%I/conf/httpd.conf -k start"
+ExecStop=/bin/bash -c "${SERVER_HOME}/bin/apachectl -f {{ roleDirectories.ihsBase.name }}/{{ roleInstallation.name }}/{{ __profileCreation.name }}/%I/conf/httpd.conf -k stop"
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

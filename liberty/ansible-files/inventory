@@ -1,0 +1,8 @@
+[libertyHosts]
+epyc.2i.at ansible_python_interpreter={{ansible_playbook_python}}
+##### hhuelinux.huebler.at
+##### localhost
+
+[bmiHosts]
+lib01.hhue.at ansible_python_interpreter={{ansible_playbook_python}}
+lib02.hhue.at ansible_python_interpreter={{ansible_playbook_python}}

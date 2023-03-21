@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<Config ASDisableNagle="false" IISDisableNagle="false"
+    IgnoreDNSFailures="false" RefreshInterval="60"
+    ResponseChunkSize="64" AcceptAllContent="false"
+    IISPluginPriority="High" FIPSEnable="false"
+    AppServerPortPreference="HostHeader" VHostMatchingCompat="false"
+    ChunkedResponse="false">
+    <Log LogLevel="Error" Name="{{ roleDirectories.ihsLogs.name }}/${thisCollective}/logs/${thisServer}/http_plugin.log" />
+    <Property Name="ESIEnable" Value="true" />
+    <Property Name="ESIMaxCacheSize" Value="1024" />
+    <Property Name="ESIInvalidationMonitor" Value="false" />
+    <Property Name="PluginInstallRoot" Value="{{ roleDirectories.ihsBase.name }}/{{ roleActiveIhsLinkName}}/plugin" />
+    <VirtualHostGroup Name="default_host">
+        <VirtualHost Name="*:9080" />
+        <VirtualHost Name="*:80" />
+    </VirtualHostGroup>
+    <ServerCluster Name="server1_Cluster" CloneSeparatorChange="false" LoadBalance="Round Robin"
+        PostBufferSize="64" IgnoreAffinityRequests="true"
+        PostSizeLimit="-1" RemoveSpecialHeaders="true" RetryInterval="60">
+        <Server Name="server1" ConnectTimeout="5" ExtendedHandshake="false" ServerIOTimeout="60"
+            LoadBalanceWeight="1" MaxConnections="-1" WaitForContinue="false">
+            <Transport Hostname="*" Port="9080" Protocol="http" />
+        </Server>
+    </ServerCluster>
+    <UriGroup Name="server1_Cluster_URIs">
+        <Uri Name="/*" />
+    </UriGroup>
+    <Route ServerCluster="server1_Cluster"
+        UriGroup="server1_Cluster_URIs" VirtualHostGroup="default_host" />
+    <RequestMetrics armEnabled="false" newBehavior="false"
+        rmEnabled="false" traceLevel="HOPS">
+        <filters enable="false" type="URI">
+            <filterValues enable="false" value="/servlet/snoop" />
+            <filterValues enable="false" value="/webapp/examples/HitCount" />
+        </filters>
+        <filters enable="false" type="SOURCE_IP">
+            <filterValues enable="false" value="255.255.255.255" />
+            <filterValues enable="false" value="254.254.254.254" />
+        </filters>
+    </RequestMetrics>
+</Config>

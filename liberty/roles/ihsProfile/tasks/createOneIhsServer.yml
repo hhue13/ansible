@@ -1,0 +1,103 @@
+---
+## Create on IHS profile
+- name: Create one IHS profile
+  block:
+    - name: Create temporary file for templating
+      ansible.builtin.tempfile:
+        state: file
+        suffix: temp
+      register: __serverTemplateOut
+    ##eEEERT
+    ## Debug the variables
+    - name: Debug server variables
+      ansible.builtin.debug:
+        msg: "Server variable: \n\n{{ __serverToCreate }}\n\n"
+    ##
+    ## Create base path for the IHS instance
+    - name: Create directories for the IHS instance
+      ansible.builtin.file:
+        path: "{{ __dirToCreate }}"
+        state: directory
+        owner: "{{ roleInstallation.ihsUsers.adminUser.name }}"
+        group: "{{ roleInstallation.ihsGroups.adminGroup.name }}"
+        mode: "{{ roleDirectories.ihsBase.mode }}"
+      loop:
+        - "{{ roleDirectories.ihsLogs.name }}/{{ roleInstallation.name }}/logs/{{ __serverToCreate.name }}"
+        - "{{ roleDirectories.ihsBase.name }}/{{ roleInstallation.name }}/{{ __profileCreation.name }}/{{ __serverToCreate.name }}/conf"
+        - "{{ roleDirectories.ihsBase.name }}/{{ roleInstallation.name }}/{{ __profileCreation.name }}/{{ __serverToCreate.name }}/Plugins/config/{{ __serverToCreate.name }}"
+        - "{{ roleDirectories.ihsBase.name }}/{{ roleInstallation.name }}/include"
+      loop_control:
+        loop_var: __dirToCreate
+    ##
+    ## Template httpd.conf
+    - name: Create httpd.conf for IHS server {{ __serverToCreate.name }}
+      ansible.builtin.include_tasks:
+        file: "../../../templateAFile.yml"
+      vars:
+        __tempateData:
+          templateFile: "{{ __serverToCreate.conf.templateFile }}"
+          templateDestination: "{{ roleDirectories.ihsBase.name }}/{{ roleInstallation.name }}/{{ __profileCreation.name }}/{{ __serverToCreate.name }}/conf/httpd.conf"
+    ##
+    ## Template httpd.conf
+    - name: Create general_wlp.conf for IHS server {{ __serverToCreate.name }}
+      ansible.builtin.include_tasks:
+        file: "../../../templateAFile.yml"
+      vars:
+        __tempateData:
+          templateFile: "{{ __serverToCreate.include.templateFile }}"
+          templateDestination: "{{ roleDirectories.ihsBase.name }}/{{ roleInstallation.name }}/include/general_wlp.conf"
+    ##
+    ## Template an empty plugin-cfg.xml
+    - name: Template an empty plugin-cfg.xml for IHS server {{ __serverToCreate.name }}
+      ansible.builtin.include_tasks:
+        file: "../../../templateAFile.yml"
+      vars:
+        __tempateData:
+          templateFile: "templates/plugin/plugin-cfg.xml"
+          templateDestination: "{{ roleDirectories.ihsBase.name }}/{{ roleInstallation.name }}/{{ __profileCreation.name }}/{{ __serverToCreate.name }}/Plugins/config/{{ __serverToCreate.name }}/plugin-cfg.xml"
+    ##
+    ##  Create required links to installation subdirectories
+    - name: Create required softlinks to the IHS installation
+      ansible.builtin.file:
+        path: "{{ roleDirectories.ihsBase.name }}/{{ roleInstallation.name }}/{{ __profileCreation.name }}/{{ __serverToCreate.name }}/{{ __linkToCreate }}"
+        src: "{{ roleDirectories.ihsBase.name }}/{{ roleActiveIhsLinkName }}/{{ __linkToCreate }}"
+        mode: "{{ roleDirectories.ihsBase.mode }}"
+        owner: "{{ roleInstallation.ihsUsers.adminUser.name }}"
+        group: "{{ roleInstallation.ihsGroups.adminGroup.name }}"
+        state: link
+        force: true
+      loop:
+        - "modules"
+        - "bin"
+        - "htdocs"
+      loop_control:
+        loop_var: __linkToCreate
+    ##
+    ##  Create required links to installation conf diretory
+    - name: Create required softlinks to the IHS conf directory
+      ansible.builtin.file:
+        path: "{{ roleDirectories.ihsBase.name }}/{{ roleInstallation.name }}/{{ __profileCreation.name }}/{{ __serverToCreate.name }}/conf/mime.types.default"
+        src: "{{ roleDirectories.ihsBase.name }}/{{ roleActiveIhsLinkName }}/conf/mime.types.default"
+        mode: "{{ roleDirectories.ihsBase.mode }}"
+        owner: "{{ roleInstallation.ihsUsers.adminUser.name }}"
+        group: "{{ roleInstallation.ihsGroups.adminGroup.name }}"
+        state: link
+        force: true
+    ##
+    ## Start the IHS service
+    - name: Start systemctld service for server {{ roleInstallation.name }}/{{ __profileCreation.name }}/{{ __serverToCreate.name }}
+      ansible.builtin.systemd:
+        name: "ihs-{{ roleInstallation.name }}-{{ __profileCreation.name }}@{{ __serverToCreate.name }}"
+        state: "started"
+        enabled: True
+        daemon_reload: True
+      become: true
+      become_user: "{{ roleRootUser }}"
+  always:
+    ##
+    ## Cleanup temp. file
+    - name: Cleanup generated temporary file
+      ansible.builtin.file:
+        state: "absent"
+        path: "{{ __serverTemplateOut.path }}"
+      ignore_errors: true

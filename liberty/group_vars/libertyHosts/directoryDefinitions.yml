@@ -1,0 +1,18 @@
+##
+## Liberty definitions
+libertyDirectories:
+  libertyBase:
+    name: "/app/IBM"
+    mode: 755
+  ihsBase:
+    name: "/app/IBM"
+    mode: 755
+  logRoot:
+    name: "/app/IBM/logs"
+    mode: 755
+  profileRoot:
+    name: "/app/IBM/profiles"
+    mode: 755
+  downloadDir:
+    name: "/app/IBM/downloads"
+    mode: 755
