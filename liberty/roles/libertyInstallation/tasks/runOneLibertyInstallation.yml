@@ -1,0 +1,213 @@
+---
+# tasks file for roles/libertyInstallation
+- name: Install liberty from the provided URLs
+  block:
+    ##
+    ## Init local gather_facts
+    - name: Init local facts
+      ansible.builtin.set_fact:
+        __isCoSign: false
+        __isOpenLiberty: false
+        __isWlpLiberty: false
+    ##
+    ## Download the java binaries
+    - name: Download the installation binaries for Java from {{ __binInstall.java.url }}
+      ansible.builtin.get_url:
+        url: "{{ __binInstall.java.url }}"
+        dest: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.java.url | basename }}"
+        mode: "644"
+        owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
+        group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
+        checksum: "{{ __binInstall.java.checksum | default(omit) }}"
+        timeout: "{{ roleDownloadSettings.readTimeout }}"
+      when: ( __binInstall.java.url is defined )
+    ##
+    ## Download the liberty binaries
+    - name: Download the installation binaries for Liberty from {{ __binInstall.liberty.url }}
+      ansible.builtin.get_url:
+        url: "{{ __binInstall.liberty.url }}"
+        dest: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.liberty.url | basename }}"
+        mode: "644"
+        owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
+        group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
+        checksum: "{{ __binInstall.liberty.checksum | default(omit) }}"
+        timeout: "{{ roleDownloadSettings.readTimeout }}"
+      when: ( __binInstall.liberty.url is defined )
+    ##
+    ## Download the liberty sig file for verification
+    - name: Download the liberty sig file for verification {{ __binInstall.liberty.sigUrl }}
+      ansible.builtin.get_url:
+        url: "{{ __binInstall.liberty.sigUrl }}"
+        dest: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.liberty.sigUrl | basename }}"
+        mode: "644"
+        owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
+        group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
+        checksum: "{{ __binInstall.liberty.sigChecksum | default(omit) }}"
+        timeout: "{{ roleDownloadSettings.readTimeout }}"
+      when: ( __binInstall.liberty.sigUrl is defined )
+    ##
+    ## If we have a signature URL we need to determine if it is to be verified by openssl or
+    ## by using cosign as used by IBM WLP (https://www.ibm.com/docs/en/was-liberty/nd?topic=archives-verifying-liberty-release-packages)
+    - name: Determine if we have a cosign signature files
+      ansible.builtin.set_fact:
+        __isCoSign: true
+      when: (( __binInstall.liberty.sigUrl is defined ) and ( __binInstall.liberty.sigUrl is ansible.builtin.match('^.*\\.cosign\\.sig$', ignorecase=true, multiline=false) ))
+    ##
+    ## Copy the WebSphereLiberty_06-02-2021.pem (public signing key) to the server
+    - name: Copy Liberty Signing key to the server
+      ansible.builtin.copy:
+        src: "files/{{ __binInstall.liberty.pubKeyFile }}"
+        dest: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.liberty.pubKeyFile }}"
+        mode: "644"
+        owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
+        group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
+      when: ( __binInstall.liberty.sigUrl is defined )
+    ##
+    ## Verfiy the download
+    - name: Verify Liberty download binary using openssl (https://openliberty.io/docs/latest/verifying-package-signatures.html)
+      ansible.builtin.command:
+        argv:
+          - "openssl"
+          - "dgst"
+          - "-sha256"
+          - "-verify"
+          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.liberty.pubKeyFile }}"
+          - "-signature"
+          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.liberty.sigUrl | basename }}"
+          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.liberty.url | basename }}"
+      register: cmdResult
+      failed_when: (cmdResult.rc != 0)
+      when: (( __binInstall.liberty.sigUrl is defined ) and ( __isCoSign == false ))
+    ##
+    ## Verify package using cosign
+    - name: Verify Liberty download binary using cosign (https://www.ibm.com/docs/en/was-liberty/nd?topic=archives-verifying-liberty-release-packages)
+      ansible.builtin.command:
+        argv:
+          - "cosign"
+          - "verify-blob"
+          - "--insecure-ignore-tlog"
+          - "--key"
+          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.liberty.pubKeyFile }}"
+          - "--signature"
+          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.liberty.sigUrl | basename }}"
+          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.liberty.url | basename }}"
+      when: (( __binInstall.liberty.sigUrl is defined ) and ( __isCoSign == true ))
+    ##
+    ## Create Java target directrory
+    - name: Create java target directory {{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}{{ roleInstallation.javaPathPrefix | default('') }}/{{ __binInstall.java.version }}
+      ansible.builtin.file:
+        path: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}{{ roleInstallation.javaPathPrefix | default('') }}/{{ __binInstall.java.version }}"
+        state: directory
+        owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
+        group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
+        mode: "{{ roleDirectories.libertyBase.mode }}"
+    ##
+    ## Unpack Java
+    - name: Unpack java to "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}{{ roleInstallation.javaPathPrefix | default('') }}/{{ __binInstall.java.version }}"
+      ansible.builtin.unarchive:
+        src: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.java.url | basename }}"
+        dest: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}{{ roleInstallation.javaPathPrefix | default('') }}"
+        creates: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}{{ roleInstallation.javaPathPrefix | default('') }}/{{ __binInstall.java.version }}/bin/java"
+        remote_src: true
+        owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
+        group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
+    ##
+    ## Activate Java if it is the active deployment
+    - name: Set java {{ __binInstall.java.version }} of installation {{ roleInstallation.name }} as the active Java deployment
+      ansible.builtin.file:
+        src: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}{{ roleInstallation.javaPathPrefix | default('') }}/{{ __binInstall.java.version }}"
+        path: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}{{ roleInstallation.javaPathPrefix | default('') }}/{{ roleActiveJavaLinkName | default('java') }}"
+        state: link
+        force: true
+        owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
+        group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
+        mode: "755"
+      when: ( __binInstall.java.active == true )
+    ##
+    ## Create Liberty target directrory
+    - name: Create liberty target directory {{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ __binInstall.liberty.edition }}-{{ __binInstall.liberty.version }}
+      ansible.builtin.file:
+        path: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ __binInstall.liberty.edition }}-{{ __binInstall.liberty.version }}"
+        state: directory
+        owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
+        group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
+        mode: "{{ roleDirectories.libertyBase.mode }}"
+    ##
+    ## Set the liberty installation file name as fact as RegEx matching can't be mixed with Jinja templating
+    - name: Set the liberty installation file name as fact
+      ansible.builtin.set_fact:
+        __libertyInstallationFile: "{{ __binInstall.liberty.url | basename }}"
+    ##
+    ## Determine if we have an openliberty or an IBM Liberty deployment
+    - name: Determine if installation binary is openliberty installation
+      ansible.builtin.set_fact:
+        __isOpenLiberty: true
+      when: "__libertyInstallationFile is ansible.builtin.match('^openliberty-.*\\.zip$', ignorecase=true, multiline=false)"
+    ##
+    ## Determine if we have an IBM WLP deployment
+    - name: Determine if we have an IBM WLP deployment
+      ansible.builtin.set_fact:
+        __isWlpLiberty: true
+      when: "__libertyInstallationFile is ansible.builtin.match('^wlp-.*\\.jar$', ignorecase=true, multiline=false)"
+
+    - name: Debug WebSphere liberty type
+      ansible.builtin.debug:
+        msg:
+          - "Is Openliberty Installation: {{ __isOpenLiberty| default(false) }}"
+          - "Is WLP Installation: {{ __isWlpLiberty | default(false) }}"
+    ##
+    ## Unpack OpenLiberty
+    - name: Unpack OpenLiberty to "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ __binInstall.liberty.edition }}-{{ __binInstall.liberty.version }}"
+      ansible.builtin.unarchive:
+        src: "{{ roleDirectories.downloadDir.name }}/{{ __libertyInstallationFile }}"
+        dest: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ __binInstall.liberty.edition }}-{{ __binInstall.liberty.version }}"
+        creates: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ __binInstall.liberty.edition }}-{{ __binInstall.liberty.version }}/wlp/bin/server"
+        remote_src: true
+        group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
+        owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
+      when: (( __isOpenLiberty is defined ) and ( __isOpenLiberty == true ))
+    ##
+    ## Check if the IBM WebSphere Libery installation exists
+    - name: Check if IBM WebSphere Liberty exists in {{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ __binInstall.liberty.edition }}-{{ __binInstall.liberty.version }}
+      ansible.builtin.stat:
+        path: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ __binInstall.liberty.edition }}-{{ __binInstall.liberty.version }}/wlp/bin/server"
+      register: __statResult
+      when: (( __isWlpLiberty is defined ) and ( __isWlpLiberty == true ))
+    ##
+    ## Install IBM WLP
+    - name: Unpack IBM WebSphere Liberty to "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}{{ roleInstallation.javaPathPrefix | default('') }}/{{ __binInstall.liberty.edition }}-{{ __binInstall.liberty.version }}"
+      ansible.builtin.shell: |
+        {{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}{{ roleInstallation.javaPathPrefix | default('') }}/{{ __binInstall.java.version }}/bin/java -jar {{ roleDirectories.downloadDir.name }}/{{ __binInstall.liberty.url | basename }} --acceptLicense --verbose {{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ __binInstall.liberty.edition }}-{{ __binInstall.liberty.version }}
+      when: (( __isWlpLiberty is defined ) and ( __isWlpLiberty == true ) and (not __statResult.stat.exists))
+      register: __shellResult
+      ignore_errors: false
+      failed_when: __shellResult.rc != 0
+    ##
+    ## Set the src directory for the active installation depending on FS structure
+    - name: Set source directory for active installation
+      ansible.builtin.set_fact:
+        __activeInstallationDir: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ __binInstall.liberty.edition }}-{{ __binInstall.liberty.version }}/wlp"
+      when: (( __binInstall.liberty.active == true ) and (( roleDirectories.profileRoot.name is not defined ) or ( roleDirectories.logRoot.name is not defined )))
+
+    - name: Set source directory for active installation
+      ansible.builtin.set_fact:
+        __activeInstallationDir: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ __binInstall.liberty.edition }}-{{ __binInstall.liberty.version }}"
+      when: (( __binInstall.liberty.active == true ) and (( roleDirectories.profileRoot.name is defined ) and ( roleDirectories.logRoot.name is defined )))
+
+    ##
+    ## Activate Liberty if it is the active deployment depending on the FS structure
+    - name: Set active liberty version {{ __binInstall.liberty.version  }}-{{ __binInstall.liberty.edition }} of installation {{ roleInstallation.name }} as active
+      ansible.builtin.file:
+        src: "{{ __activeInstallationDir }}"
+        path: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ roleActiveLibertyLinkName | default('liberty') }}"
+        state: link
+        force: true
+        owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
+        group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
+        mode: "755"
+      when: ( __binInstall.liberty.active == true )
+
+  become: true
+  become_user: "{{ libertyUsers.adminUser.name }}"
+  tags:
+    - always

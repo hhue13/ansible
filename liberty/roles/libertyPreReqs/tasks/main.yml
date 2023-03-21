@@ -1,0 +1,65 @@
+---
+# tasks file for roles/libertyUsers
+- name: Create the OS prerequ's for the liberty installation
+  block:
+    ##
+    ## Create the groups
+    - name: Create groups for liberty installation {{ roleInstallationName }}
+      ansible.builtin.group:
+        name: "{{ __libGroup.groupData.name }}"
+        gid: "{{ __libGroup.groupData.gid }}"
+        state: present
+      loop: "{{ roleGroupInfo | ansible.builtin.dict2items(key_name='groupUsage', value_name='groupData') }}"
+      loop_control:
+        loop_var: __libGroup
+    ##
+    ## Create Users
+    - name: Create liberty users for liberty installation {{ roleInstallationName }}
+      ansible.builtin.user:
+        name: "{{ __libUser.user.name }}"
+        uid: "{{ __libUser.user.uid }}"
+        comment: "{{ __libUser.user.comment }}"
+        group: "{{ __libUser.user.primaryGroup }}"
+        groups: "{{ __libUser.user.supplementalGroups }}"
+        shell: "{{ __libUser.user.shell | default(omit) }}"
+        state: present
+      loop: "{{ roleUserInfo | ansible.builtin.dict2items(key_name='userUsage', value_name='user') }}"
+      loop_control:
+        loop_var: __libUser
+    ##
+    ## Create directories
+    - name: Create base directories for liberty installation {{ roleInstallationName }}
+      ansible.builtin.file:
+        path: "{{ __libDir.dirType.name }}"
+        mode: "{{ __libDir.dirType.mode | default('755') }}"
+        owner: "{{ roleUserInfo.adminUser.name }}"
+        group: "{{ roleUserInfo.adminUser.primaryGroup }}"
+        state: directory
+      loop: "{{ roleDirectories | ansible.builtin.dict2items(key_name='dirUsage', value_name='dirType') }}"
+      loop_control:
+        loop_var: __libDir
+    ##
+    ## Check if we have cogsing installed (available via: https://github.com/sigstore/cosign/releases) as this
+    ## is required by IBM WebSphere liberty from 23.0.0.2 onwards
+    - name: Check if cosign is installed on the system
+      ansible.builtin.package_facts:
+        manager:
+          - auto
+        strategy: first
+      register: packageResults
+    ##
+    ## Fail if package is missing
+    - name: Fail if cosign is not installed
+      ansible.builtin.fail:
+        msg: 'The required package "cosign" is missing. Please install it from https://github.com/sigstore/cosign/releases'
+      when: ( 'cosign' not in ansible_facts.packages )
+
+    - name: Install additional Python modules needed
+      ansible.builtin.pip:
+        name: "{{ pythonModulesToBeInstalled }}"
+      when: ((pythonModulesToBeInstalled is defined) and ( pythonModulesToBeInstalled | length > 0 ))
+
+  become: true
+  become_user: "{{ roleBecomeUser }}"
+  tags:
+    - always

@@ -72,7 +72,7 @@ backupType: "sync"
 ##
 ## How often and in which intervall do we retry and the check if backup/restore script is done
 checkNumberRetries: 90
-checkDeplayBetweenRetries: 20
+checkDelayBetweenRetries: 20
 ##
 ## Name of the core pod
 corePodName: "{{ oscpDamDeployment }}-core-0"

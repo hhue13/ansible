@@ -1,0 +1,357 @@
+---
+# tasks creation of the servers
+- name: Create a liberty profile server
+  block:
+    ##
+    ## Init local gather_facts
+    - name: Init local facts for server creation when logroot & profileroot are defined
+      ansible.builtin.set_fact:
+        __wlpServerDir: "{{ __wlpUserDir }}/servers/{{ __serverToCreate.name }}"
+      when: (( roleDirectories.profileRoot.name is defined ) and ( roleDirectories.logRoot.name is defined ))
+
+    - name: Init local facts for server creation when logroot & profileroot are defined
+      ansible.builtin.set_fact:
+        __wlpServerDir: "{{ __wlpUserDir }}/servers/{{ __serverToCreate.name }}"
+      when: (( roleDirectories.profileRoot.name is not defined ) or ( roleDirectories.logRoot.name is not defined ))
+
+    - name: Init local facts for server creation
+      ansible.builtin.set_fact:
+        __wlpBinDir: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ roleActiveLibertyLinkName }}"
+        __wlpJavaHome: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}{{ roleInstallation.javaPathPrefix | default('') }}/{{ roleActiveJavaLinkName }}"
+
+    - name: Init dependent local facts for server creation  if we have a profile directory - 1
+      ansible.builtin.set_fact:
+        __wlpServerCmdDir: "{{ __wlpBinDir }}/wlp/bin"
+      when: (( roleDirectories.profileRoot.name is defined ) and ( roleDirectories.logRoot.name is defined ))
+
+    - name: Init dependent local facts for server creation  if we do not have a profile directory - 1
+      ansible.builtin.set_fact:
+        __wlpServerCmdDir: "{{ __wlpBinDir }}/bin"
+      when: (( roleDirectories.profileRoot.name is not defined ) or ( roleDirectories.logRoot.name is not defined ))
+
+    - name: Init dependent local facts for server creation - 2
+      ansible.builtin.set_fact:
+        __wlpServerCmd: "{{ __wlpServerCmdDir }}/server"
+    ##
+    ## Check if server exists
+    - name: Check if server already exists
+      ansible.builtin.stat:
+        path: "{{ __wlpServerDir }}"
+      register: __serverStatResult
+    ##
+    ## Create the server
+    - name: Create server {{ __serverToCreate.name }} for profile {{ __profileCreation.name }} in installation {{ roleInstallation.name }}
+      ansible.builtin.shell: |
+        export JAVA_HOME={{ __wlpJavaHome }}
+        export WLP_USER_DIR={{ __wlpUserDir }}
+        export WLP_OUTPUT_DIR={{ __wlpOutputDir }}
+        export WLP_BIN_DIR={{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ roleActiveLibertyLinkName }}
+        {{ __wlpServerCmd }} create {{ __serverToCreate.name }}
+      register: __createServerResult
+      failed_when: __createServerResult.rc != 0
+      when: ( __serverStatResult.stat.exists != true )
+    ##
+    ## Set the mode depending on what FS structure we run
+    - name: Set mode for for directories from roleDirectories.profileRoot
+      ansible.builtin.set_fact:
+        __modeForServerDirs: "{{ roleDirectories.profileRoot.mode }}"
+      when: (( roleDirectories.profileRoot.name is defined ) and ( roleDirectories.logRoot.name is defined ))
+    ##
+    ## Set the mode depending on what FS structure we run
+    - name: Set mode for for directories from roleDirectories.libertyBase
+      ansible.builtin.set_fact:
+        __modeForServerDirs: "{{ roleDirectories.libertyBase.mode }}"
+      when: (( roleDirectories.profileRoot.name is not defined ) or ( roleDirectories.logRoot.name is not defined ))
+    ##
+    ## Create server's dropins directories
+    - name: Create servers dropins directories
+      ansible.builtin.file:
+        path: "{{ __dropinsDirs }}"
+        state: directory
+        owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
+        group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
+        mode: "{{ __modeForServerDirs }}"
+      loop:
+        - "{{ __wlpServerDir }}/configDropins/overrides"
+        - "{{ __wlpServerDir }}/configDropins/defaults"
+      loop_control:
+        loop_var: __dropinsDirs
+    ##
+    ## Create the servers.env file
+    - name: Update server.env
+      block:
+        ##
+        ## Make sure the file server.env exists
+        - name: Ensure that server.env exists
+          ansible.builtin.file:
+            path: "{{ __wlpServerDir }}/server.env"
+            state: "touch"
+            owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
+            group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
+            mode: "{{ __modeForServerDirs }}"
+        ##
+        ## Make sure the file server.env.sh exists
+        - name: Ensure that server.env.sh exists
+          ansible.builtin.file:
+            path: "{{ __wlpServerDir }}/server.env.sh"
+            state: "touch"
+            owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
+            group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
+            mode: "{{ __modeForServerDirs }}"
+        ##
+        ## Empty {{ __wlpServerDir }}/server.env
+        - name: Remove current properties from {{ __wlpServerDir }}/server.env
+          ansible.builtin.lineinfile:
+            state: absent
+            path: "{{ __wlpServerDir }}/server.env"
+            regexp: "^.*$"
+        ##
+        ## Empty {{ __wlpServerDir }}/server.env.sh
+        - name: Remove current properties from {{ __wlpServerDir }}/server.env.sh
+          ansible.builtin.lineinfile:
+            state: absent
+            path: "{{ __wlpServerDir }}/server.env.sh"
+            regexp: "^.*$"
+
+        - name: Add property {{ __prop.key }} to {{ __wlpServerDir }}/server.env
+          ansible.builtin.lineinfile:
+            state: present
+            path: "{{ __wlpServerDir }}/server.env"
+            line: "{{ __prop.key }}={{ __prop.value }}"
+          loop:
+            - key: "WLP_BIN_DIR"
+              value: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ roleActiveLibertyLinkName }}"
+            - key: "WLP_USER_DIR"
+              value: "{{ __wlpUserDir }}"
+            - key: "WLP_OUTPUT_DIR"
+              value: "{{ __wlpOutputDir }}"
+            - key: "JAVA_HOME"
+              value: "{{ __wlpJavaHome }}"
+          loop_control:
+            loop_var: __prop
+
+        - name: Add property {{ __prop.key }} to {{ __wlpServerDir }}/server.env.sh
+          ansible.builtin.lineinfile:
+            state: present
+            path: "{{ __wlpServerDir }}/server.env.sh"
+            line: "export {{ __prop.key }}={{ __prop.value }}"
+          loop:
+            - key: "WLP_BIN_DIR"
+              value: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ roleActiveLibertyLinkName }}"
+            - key: "WLP_USER_DIR"
+              value: "{{ __wlpUserDir }}"
+            - key: "WLP_OUTPUT_DIR"
+              value: "{{ __wlpOutputDir }}"
+            - key: "JAVA_HOME"
+              value: "{{ __wlpJavaHome }}"
+          loop_control:
+            loop_var: __prop
+      become: true
+      become_user: "{{ libertyUsers.adminUser.name }}"
+      tags:
+        - always
+
+    ##
+    ## Update jvm.options
+    - name: set Servers jvm.options
+      block:
+        ##
+        ## Make sure the file exists
+        - name: Ensure that jvm.options exists
+          ansible.builtin.file:
+            path: "{{ __wlpServerDir }}/jvm.options"
+            state: "touch"
+            owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
+            group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
+            mode: "{{ __modeForServerDirs }}"
+
+        - name: Remove current options from {{ __wlpServerDir }}/jvm.options
+          ansible.builtin.lineinfile:
+            state: absent
+            path: "{{ __wlpServerDir }}/jvm.options"
+            regexp: "^.*$"
+
+        - name: Add configured JVM options
+          ansible.builtin.lineinfile:
+            state: present
+            path: "{{ __wlpServerDir }}/jvm.options"
+            line: "{{ __jvmOption }}"
+          loop: "{{ __serverToCreate.jvmOptions }}"
+          loop_control:
+            loop_var: "__jvmOption"
+
+      become: true
+      become_user: "{{ libertyUsers.adminUser.name }}"
+      tags:
+        - always
+    ##
+    ## Update bootstrap.properties
+    - name: set Servers bootstrap.properties
+      block:
+        ##
+        ## Encode keystore_password
+        - name: Encode keystore password with key from {{ __wlpAesKeyFile }}
+          ansible.builtin.shell: |
+            source {{ __wlpServerDir }}/server.env.sh
+            export PATH=${PATH}:${JAVA_HOME}/bin
+            {{ __wlpServerCmdDir }}/securityUtility encode --encoding=aes --key="$(cut -d= -f2- {{ __wlpAesKeyFile }})"  {{ __serverToCreate.libertyKeystorePass }}
+          register: __encodeResult
+          failed_when: ( __encodeResult.rc != 0 )
+        ##
+        ## Make sure the file exists
+        - name: Ensure that bootstrap.properties exists
+          ansible.builtin.file:
+            path: "{{ __wlpServerDir }}/bootstrap.properties"
+            state: "touch"
+            owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
+            group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
+            mode: "{{ __modeForServerDirs }}"
+
+        - name: Remove current options from {{ __wlpServerDir }}/bootstrap.properties
+          ansible.builtin.lineinfile:
+            state: absent
+            path: "{{ __wlpServerDir }}/bootstrap.properties"
+            regexp: "^.*$"
+
+        - name: Add property {{ __prop.key }} to {{ __wlpServerDir }}/bootstrap.properties
+          ansible.builtin.lineinfile:
+            state: present
+            path: "{{ __wlpServerDir }}/bootstrap.properties"
+            line: "{{ __prop.key }}={{ __prop.value }}"
+          loop:
+            - key: "wlp.port.http"
+              value: "{{ __serverToCreate.httpPort }}"
+            - key: "wlp.port.https"
+              value: "{{ __serverToCreate.httpsPort }}"
+            - key: "wlp.keystore.pass"
+              value: "{{ __encodeResult.stdout }}"
+            - key: "bootstrap.include"
+              value: "{{ __wlpSharedResourcesDir }}/{{ __profileCreation.aesKeyFileName }}"
+          loop_control:
+            loop_var: __prop
+
+        - name: Add custom bootstrap properties to {{ __wlpServerDir }}/bootstrap.properties
+          ansible.builtin.lineinfile:
+            state: present
+            path: "{{ __wlpServerDir }}/bootstrap.properties"
+            line: "{{ __line }}"
+          loop: "{{ __serverToCreate.server.bootstrapProperties }}"
+          loop_control:
+            loop_var: __line
+          when: (( __serverToCreate.server.bootstrapProperties is defined ) and ( __serverToCreate.server.bootstrapProperties | length > 0 ))
+
+      become: true
+      become_user: "{{ libertyUsers.adminUser.name }}"
+      tags:
+        - always
+    ##
+    ## Create XMLs for server configuration
+    - name: Create XMLs for server configuration
+      ansible.builtin.include_tasks:
+        file: "createXmlsFromTemplates.yml"
+      vars:
+        __serverXmlFile: "{{ __wlpServerDir }}/server.xml"
+
+    - name: If we don't have a key we generate a PKCS12 keyfile pair for server
+      block:
+        - name: Check if keystore exists
+          ansible.builtin.stat:
+            path: "{{ __wlpSharedResourcesDir }}/{{ __serverToCreate.name }}-key.p12"
+          register: __pkcs12Stat
+
+        - name: If we don't have a key we generate a PKCS12 keyfile pair for server {{ __serverToCreate.name }}
+          ansible.builtin.shell: |
+            # Generate self signed TLS certificate & key in P12 keytstore
+            {{ __wlpJavaHome }}/bin/keytool -genkeypair  -keyalg RSA -keysize 4096 -sigalg SHA256withRSA  -alias "{{ __serverToCreate.name }}" -keystore "{{ __wlpSharedResourcesDir }}/{{ __serverToCreate.name }}-key.p12" -dname "CN={{ __serverToCreate.name }}-{{ ansible_hostname }}" -validity 3650 -storepass {{ __serverToCreate.libertyKeystorePass }} -storetype PKCS12 || exit 1
+            #
+            # Export cert to be imported wherever needed
+            {{ __wlpJavaHome }}/bin/keytool -exportcert -alias "{{ __serverToCreate.name }}" -keystore "{{ __wlpSharedResourcesDir }}/{{ __serverToCreate.name }}-key.p12" -file "/tmp/{{ __serverToCreate.name }}.cer" -storepass {{ __serverToCreate.libertyKeystorePass }} -storetype PKCS12 -rfc || exit 1
+            #
+            # Create server specific trust store and import own certificate
+            {{ __wlpJavaHome }}/bin/keytool -importcert -keystore "{{ __wlpSharedResourcesDir }}/{{ __serverToCreate.name }}-trust.p12" -storepass {{ __serverToCreate.libertyKeystorePass }} -alias "{{ __serverToCreate.name }}" -file /tmp/{{ __serverToCreate.name }}.cer -storetype PKCS12  -noprompt || exit 1
+          register: __pkcs12ShellResult
+          failed_when: ( __pkcs12ShellResult.rc != 0 )
+          when: ( not __pkcs12Stat.stat.exists )
+
+        - name: Get the certificate and print it
+          ansible.builtin.slurp:
+            src: "/tmp/{{ __serverToCreate.name }}.cer"
+          register: __slurpedFile
+
+        - name: Debug server certificate
+          ansible.builtin.debug:
+            msg: "Server certificate from /tmp/{{ __serverToCreate.name }}.cer is: \n\n{{ __slurpedFile['content'] | b64decode }}\n\n"
+      when: ( __serverToCreate.key is not defined)
+
+    - name: Create temporary file for certificates to import
+      ansible.builtin.tempfile:
+        state: file
+        suffix: temp
+      register: __serverCert
+
+    - name: Generate the keystores using the provided key & certificate
+      block:
+        - name: Copy server certificate to a file
+          ansible.builtin.copy:
+            dest: "{{  __serverCert.path }}"
+            content: "{{ __serverToCreate.crt }}"
+
+        - name: Generate PKCS12 file from provided key for server {{ __serverToCreate.name }}
+          community.crypto.openssl_pkcs12:
+            action: export
+            path: "{{ __wlpSharedResourcesDir }}/{{ __serverToCreate.name }}-key.p12"
+            backup: true
+            passphrase: "{{ __serverToCreate.libertyKeystorePass }}"
+            friendly_name: "{{ __serverToCreate.name }}"
+            other_certificates_parse_all: true
+            privatekey_content: "{{ __serverToCreate.key }}"
+            privatekey_passphrase: "{{ __serverToCreate.keyPassphrase | default(omit) }}"
+            certificate_path: "{{  __serverCert.path }}"
+            state: present
+            force: true
+            mode: "0640"
+            owner: "{{ libertyUsers.adminUser.name }}"
+            group: "{{ libertyUsers.adminUser.primaryGroup }}"
+
+        - name: Import all server's cert to the trust store "{{ __wlpSharedResourcesDir }}/{{ __serverToCreate.name }}-trust.p12"
+          ansible.builtin.include_tasks:
+            file: "importOneSignerCert.yml"
+          loop:
+            - name: "{{ __serverToCreate.name }}"
+              value: "{{ __serverToCreate.crt }}"
+          loop_control:
+            loop_var: __trustedSigner
+
+      when: ( __serverToCreate.key is defined)
+    ##
+    ## Add additional signer certs
+    - name: Import all trusted signers to the trust store "{{ __wlpUser__wlpSharedResourcesDirDir }}/{{ __serverToCreate.name }}-trust.p12"
+      ansible.builtin.include_tasks:
+        file: "importOneSignerCert.yml"
+      loop: "{{ __serverToCreate.trustedSigners }}"
+      loop_control:
+        loop_var: __trustedSigner
+    ##
+    ## Start the service
+    - name: start systemctld service for server {{ roleInstallation.name }}/{{ __profileCreation.name }}/{{ __serverToCreate.name }}
+      ansible.builtin.systemd:
+        name: "liberty-{{ roleInstallation.name }}-{{ __profileCreation.name }}@{{ __serverToCreate.name }}"
+        state: "started"
+        enabled: True
+        daemon_reload: True
+      become: true
+      become_user: "{{ roleRootUser }}"
+  become: true
+  become_user: "{{ libertyUsers.adminUser.name }}"
+  tags:
+    - always
+
+  always:
+    ##
+    ## Cleanup temp. file
+    - name: Cleanup generated temporary file
+      ansible.builtin.file:
+        state: "absent"
+        path: "{{ __serverCert.path }}"
+      when: ( __serverCert is defined )
+      ignore_errors: true

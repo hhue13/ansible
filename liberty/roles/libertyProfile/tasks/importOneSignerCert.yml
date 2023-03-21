@@ -1,0 +1,16 @@
+---
+- name: Copy certificate to a file
+  ansible.builtin.copy:
+    dest: "{{  __serverCert.path }}"
+    content: "{{ __trustedSigner.value }}"
+
+- name: Add certificate {{ __trustedSigner.name }} to trust store {{ __wlpSharedResourcesDir }}/{{ __serverToCreate.name }}-trust.p12
+  ansible.builtin.shell: |
+    #
+    # If the alias exists remove it ...
+    {{ __wlpJavaHome }}/bin/keytool -list -alias "{{ __serverToCreate.name }}-{{ __trustedSigner.name }}" -keystore "{{ __wlpSharedResourcesDir }}/{{ __serverToCreate.name }}-trust.p12" -storepass {{ __serverToCreate.libertyKeystorePass }} -storetype PKCS12 && {{ __wlpJavaHome }}/bin/keytool -delete -alias "{{ __serverToCreate.name }}-{{ __trustedSigner.name }}" -keystore "{{ __wlpSharedResourcesDir }}/{{ __serverToCreate.name }}-trust.p12" -storepass {{ __serverToCreate.libertyKeystorePass }} -storetype PKCS12
+    #
+    # Add the trusted signer
+    {{ __wlpJavaHome }}/bin/keytool -importcert -keystore "{{ __wlpSharedResourcesDir }}/{{ __serverToCreate.name }}-trust.p12" -storepass {{ __serverToCreate.libertyKeystorePass }} -alias "{{ __serverToCreate.name }}-{{ __trustedSigner.name }}" -file {{  __serverCert.path }} -storetype PKCS12  -noprompt || exit 1
+  register: __pkcs12ShellResult
+  failed_when: ( __pkcs12ShellResult.rc != 0 )

@@ -1,0 +1,15 @@
+---
+# tasks file for roles/ihsInstallation
+- name: Install liberty from the provided URLs
+  block:
+    ##
+    ## Iterate over all installations
+    - name: Perform binary IHS installations for installation {{ roleInstallation.name }}
+      ansible.builtin.include_tasks: runOneIhsInstallation.yml
+      loop: "{{ roleInstallation.binInstalls }}"
+      loop_control:
+        loop_var: __binInstall
+  become: true
+  become_user: "{{ roleRootUser }}"
+  tags:
+    - always

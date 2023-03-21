@@ -1,0 +1,25 @@
+<server description="main server config. Will be merged with /configDropins/**/">
+    <featureManager>
+        {% for __serverFeature in __serverToCreate.server.features %}
+        <feature>{{ __serverFeature }}</feature>
+        {% endfor %}
+    </featureManager>
+
+    <!-- Automatically expand WAR files and EAR files -->
+    <applicationManager autoExpand="true"/>
+
+    <!-- HTTP Endpoints -->
+    <httpEndpoint id="defaultHttpEndpoint" host="*" httpPort="${wlp.port.http}" httpsPort="${wlp.port.https}" >
+        <sslOptions></sslOptions>
+        <httpOptions></httpOptions>
+        <accessLogging enabled="{{ __serverToCreate.logging.enableHttpAccessLogging }}"
+            maxFileSize="{{ __serverToCreate.logging.maxFileSize }}" maxFiles="{{ __serverToCreate.logging.maxFiles }}"
+            rolloverStartTime="00:00" rolloverInterval="{{ __serverToCreate.logging.rolloverInterval }}"
+            filePath="${server.output.dir}/logs/http_access.log"
+            logFormat={{ __serverToCreate.logging.logFormat }} >
+        </accessLogging>
+    </httpEndpoint>
+
+    <!-- Disable security for metrics -->
+    <mpMetrics authentication="false"/>
+</server>

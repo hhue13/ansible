@@ -1,0 +1,42 @@
+# *********************************************************************
+# *
+# *  Name: /opt/liberty/ctl/ihs/${COLLECTIVE}/${SYSTEM}/${SERVER}/conf/httpd.conf
+# *  Parm: n/a
+# *  Func: IBM HTTP server configuration file
+# *  Desc: Please be aware that this file has to be coded in codepage
+# *        1047. If you do not know exactly the code points of
+# *        codepages 1047 and 1141: Don't use any special characters
+# *        e.g. german "Umlaute" - even in comments.
+# *
+# *        Thx! (-;
+# *
+# *  who when       what
+# *  --- ---------- ---------------------------------------------------
+# *  YE9 2022-11-23 add SSL virtual host LHA4INT.rz.bmi.intra.gv.at:443
+# *  YE9 2021-09-14 new (relocated from WEB3)
+# *  YYY 2022-02-23 adapted to Linux sltebfliberty1 virtual host LHA61INT.sz.bmi.gv.at:80
+# *
+# *********************************************************************
+User {{ roleInstallation.ihsUsers.adminUser.name }}
+Group {{ roleInstallation.libertyGroups.adminGroup.name }}
+
+# Define variables
+Define thisCollective {{ roleInstallation.name }}
+Define thisSystem     {{ __profileCreation.name }}
+Define thisServer     {{ __serverToCreate.name }}
+
+# Include general WebSphere Liberty configuration directives
+Include {{ roleDirectories.ihsBase.name }}/{{ roleInstallation.name }}/{{ __serverToCreate.include.relativeFileName }}
+
+# BM.I virtual hosts
+
+# Non-SSL virtual host
+{% for __listenAddress in __serverToCreate.listen %}
+Listen {{ __listenAddress.dnsName }}:{{ __listenAddress.port | default("80") }}
+{% endfor %}
+
+{% for __vHost in __serverToCreate.vHosts %}
+<VirtualHost {{ __vHost.name }}:{{ __vHost.port | default("80") }}>
+	ServerName {{ __vHost.serverName }}:{{ __vHost.serverPort | default("80") }}
+</VirtualHost>
+{% endfor %}

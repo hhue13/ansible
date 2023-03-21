@@ -1,0 +1,34 @@
+---
+- name: Create an IHS profile
+  block:
+    ##
+    ## Install the service
+    - name: Install systemctld service for profile {{ roleDirectories.ihsBase.name }}/{{ roleInstallation.name }}/{{ __profileCreation.name }}
+      ansible.builtin.include_tasks:
+        file: "../../../templateAFile.yml"
+      vars:
+        __tempateData:
+          templateFile: "templates/httpd@.service.j2"
+          templateDestination: "/etc/systemd/system/ihs-{{ roleInstallation.name }}-{{ __profileCreation.name }}@.service"
+          templateBecomeUser: "{{ roleRootUser }}"
+    ##
+    ## Reload and enable service
+    - name: Reload and enable systemctld service for profile {{ roleInstallation.name }}/{{ __profileCreation.name }}
+      ansible.builtin.systemd:
+        name: "ihs-{{ roleInstallation.name }}-{{ __profileCreation.name }}@.service"
+        daemon_reload: true
+      become: true
+      become_user: "{{ roleRootUser }}"
+    ##
+    ## Create the servers of the profile
+    - name: Create servers for profile {{ roleInstallation.name }}/{{ __profileCreation.name }}
+      ansible.builtin.include_tasks:
+        file: "createOneIhsServer.yml"
+      loop: "{{ __profileCreation.servers }}"
+      loop_control:
+        loop_var: __serverToCreate
+
+  become: true
+  become_user: "{{ roleInstallation.ihsUsers.adminUser.name }}"
+  tags:
+    - always

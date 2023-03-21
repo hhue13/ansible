@@ -1,0 +1,31 @@
+---
+##
+## Groups used for liberty
+libertyGroups:
+  adminGroup:
+    name: "liberty"
+    gid: "4242"
+    comment: "Liberty admin user group"
+  developerGroup:
+    name: "libdev"
+    gid: "4243"
+    comment: "Liberty developer user group"
+  deployerGroup:
+    name: "libdeploy"
+    gid: "4244"
+    comment: "Liberty deployer user group"
+libertyUsers:
+  adminUser:
+    name: "liberty"
+    uid: "4242"
+    comment: "Liberty admin user"
+    primaryGroup: "{{ libertyGroups.adminGroup.name }}"
+    supplementalGroups:
+      - "{{ libertyGroups.deployerGroup.name }}"
+  developerUser:
+    name: "libdev"
+    uid: "4243"
+    comment: "Liberty developer user"
+    primaryGroup: "{{ libertyGroups.developerGroup.name }}"
+    supplementalGroups:
+      - "{{ libertyGroups.deployerGroup.name }}"

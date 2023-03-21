@@ -1,0 +1,61 @@
+---
+- name: Template XMLs
+  block:
+    - name: Create temporary file for templating
+      ansible.builtin.tempfile:
+        state: file
+        suffix: temp
+      register: __serverTemplateOut
+    ##
+    ## Template base server.xml
+    - name: Create XML for base server.xml
+      ansible.builtin.include_tasks:
+        file: "../../../templateAFile.yml"
+      vars:
+        __tempateData:
+          templateFile: "templates/server.xml.j2"
+          templateDestination: "{{ __serverXmlFile }}"
+    ##
+    ## Template base server.xml
+    - name: Create XML for configDropins/overrides/server.xml
+      ansible.builtin.include_tasks:
+        file: "../../../templateAFile.yml"
+      vars:
+        __tempateData:
+          templateFile: "{{ __serverToCreate.server.configDropins.overrides.server.templateFile | default('templates/configDropins/overrides/server.xml.j2') }}"
+          templateDestination: "{{ __wlpServerDir }}/configDropins/overrides/server.xml"
+      when: ( __serverToCreate.server.configDropins.overrides.server.features is defined )
+    ##
+    ## Remove "{{ __wlpServerDir }}/configDropins/overrides/server.xml" if __serverToCreate.server.configDropins.overrides.server.features is defined is not defined
+    - name: Cleanup "{{ __wlpServerDir }}/configDropins/overrides/server.xml" if required
+      ansible.builtin.file:
+        path: "{{ __wlpServerDir }}/configDropins/overrides/server.xml"
+        state: absent
+      when: ( __serverToCreate.server.configDropins.overrides.server.features is not defined )
+
+    ##
+    ## Template base server.xml
+    - name: Create XML for configDropins/overrides/admin-center.xml
+      ansible.builtin.include_tasks:
+        file: "../../../templateAFile.yml"
+      vars:
+        __tempateData:
+          templateFile: "templates/configDropins/overrides/admin-center.xml.j2"
+          templateDestination: "{{ __wlpServerDir }}/configDropins/overrides/admin-center.xml"
+      when: ( __serverToCreate.server.configDropins.overrides.adminCenter is defined )
+    ##
+    ## Remove "{{ __wlpServerDir }}/configDropins/overrides/admin-center.xml" if __serverToCreate.server.configDropins.overrides.server.features is defined is not defined
+    - name: Cleanup "{{ __wlpServerDir }}/configDropins/overrides/admin-center.xml" if required
+      ansible.builtin.file:
+        path: "{{ __wlpServerDir }}/configDropins/overrides/admin-center.xml"
+        state: absent
+      when: ( __serverToCreate.server.configDropins.overrides.adminCenter is not defined )
+
+  always:
+    ##
+    ## Cleanup temp. file
+    - name: Cleanup generated temporary file
+      ansible.builtin.file:
+        state: "absent"
+        path: "{{ __serverTemplateOut.path }}"
+      ignore_errors: true

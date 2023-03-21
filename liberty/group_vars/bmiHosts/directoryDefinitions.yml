@@ -1,0 +1,18 @@
+##
+## Liberty definitions
+libertyDirectories:
+  libertyBase:
+    name: "/opt/liberty/ctl/wlp"
+    mode: 755
+  installationSharedDirBase:
+    name: "/opt/liberty-shared/ctl/wlp"
+    mode: 755
+  ihsBase:
+    name: "/opt/liberty/ctl/ihs"
+    mode: 755
+  ihsLogs:
+    name: "/opt/liberty/ctl/var/wlp"
+    mode: 755
+  downloadDir:
+    name: "/app/IBM/downloads"
+    mode: 755

@@ -1,0 +1,49 @@
+---
+# tasks file for roles/libertyInstallation
+- name: Install liberty from the provided URLs
+  block:
+    ##
+    ## Create the shared directory for the installation if configured
+    - name: Create shared directory for the installation block and link the instance
+      block:
+        - name: Create shared directory for the installation
+          ansible.builtin.file:
+            path: "{{ roleDirectories.installationSharedDirBase.name }}/{{ roleInstallation.name }}/{{ roleInstallation.sharedDir }}"
+            state: directory
+            owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
+            group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
+            mode: "{{ roleDirectories.libertyBase.mode }}"
+
+        #####         - name: Pause execution
+        #####           pause:
+        #####             prompt: "Press return to continue. Press Ctrl+c and then "a" to abort"
+        ##
+        ## Link the installation shared directory to installationSharedDir
+        - name: Create parent dir for the link
+          ansible.builtin.file:
+            path: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}"
+            state: directory
+            owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
+            group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
+            mode: "{{ roleDirectories.libertyBase.mode }}"
+
+        - name: Link installation shared directory to {{ roleDirectories.installationSharedDirBase.name }}/{{ roleInstallation.name  }}/{{ roleInstallation.sharedDir }}
+          ansible.builtin.file:
+            src: "{{ roleDirectories.installationSharedDirBase.name }}/{{ roleInstallation.name }}/{{ roleInstallation.sharedDir }}"
+            path: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ roleInstallation.sharedDir }}"
+            mode: "{{ roleDirectories.libertyBase.mode }}"
+            state: link
+            force: true
+      when: ( roleInstallation.sharedDir is defined )
+    ##
+    ## Iterate over all installations
+    - name: Perform binary installations for installation {{ roleInstallation.name }}
+      ansible.builtin.include_tasks: runOneLibertyInstallation.yml
+      loop: "{{ roleInstallation.binInstalls }}"
+      loop_control:
+        loop_var: __binInstall
+
+  become: true
+  become_user: "{{ roleRootUser }}"
+  tags:
+    - always

@@ -1,0 +1,16 @@
+---
+# tasks file for roles/libertyProfile
+- name: Create a liberty profile
+  block:
+    ##
+    ## Iterate over all profiles
+    - name: Perform profile creations for installation {{ roleInstallation.name }}
+      ansible.builtin.include_tasks: createOneProfile.yml
+      loop: "{{ roleInstallation.profiles }}"
+      loop_control:
+        loop_var: __profileCreation
+
+  become: true
+  become_user: "{{ roleInstallation.libertyUsers.adminUser.name }}"
+  tags:
+    - always

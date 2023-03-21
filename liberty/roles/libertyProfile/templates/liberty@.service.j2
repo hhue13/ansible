@@ -1,0 +1,27 @@
+[Unit]
+Description=WebSphere Liberty Application Server - %I
+After=network.target remote-fs.target nss-lookup.target network-online.target
+Wants=network-online.target
+
+[Service]
+
+User={{ roleInstallation.libertyUsers.adminUser.name }}
+Group={{ roleInstallation.libertyGroups.adminGroup.name }}
+
+Type=forking
+
+EnvironmentFile={{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ __profileCreation.name }}/servers/%I/server.env
+
+ExecStart={{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ roleActiveLibertyLinkName }}/bin/server start %I
+ExecStop={{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ roleActiveLibertyLinkName }}/bin/server stop %I
+
+PIDFile={{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ __profileCreation.name }}/servers/.pid/%I.pid
+
+# Allow a minute for ExecStop before systemd sends SIGTERM
+TimeoutStopSec=60
+
+# JVM returns 143 after being killed with SIGTERM
+SuccessExitStatus=143
+
+[Install]
+WantedBy=multi-user.target

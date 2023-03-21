@@ -1,0 +1,106 @@
+---
+##
+## Link name for the active Java installation
+activeJavaLinkName: "java"
+##
+## Link name for active Liberty installation
+activeLibertyLinkName: "wlp"
+##
+## Link name for active IHS installation
+activeIhsLinkName: "IHS"
+##
+## IHS Installation
+
+ihs:
+  installations:
+    - name: "A6"
+      libertyGroups: "{{ libertyGroups  }}"
+      ihsGroups: "{{ ihsGroups  }}"
+      ihsUsers: "{{ ihsUsers  }}"
+      binInstalls:
+        - http:
+            active: true
+            version: "9.0.5-fp14"
+            url: "http://192.168.57.1:8080/9.0.5-WS-IHS-ARCHIVE-linux-x86_64-FP014.zip"
+            sigUrl: "http://192.168.57.1:8080/9.0.5-WS-IHS-ARCHIVE-linux-x86_64-FP014.zip.sig"
+            checksum: sha256:801f311d9617c1d54e2281bfd9d651277fb2d33dfa7a18e673b51278f950fcc2
+            pubKeyFile: "WebSphere_12-09-2020.pem"
+      profiles:
+        - name: "{{ ansible_hostname | regex_replace('^(.*?)\\..*$', '\\1') }}"
+          servers: "{{ ihsServersA6 }}"
+
+##
+## Liberty Installations
+liberty:
+  installations:
+    - name: "A6"
+      libertyGroups: "{{ libertyGroups  }}"
+      libertyUsers: "{{ libertyUsers  }}"
+      sharedDir: "shared"
+      javaPathPrefix: "/java"
+      binInstalls:
+        - liberty:
+            active: true
+            version: "22.0.0.12"
+            edition: "wlp-base-all"
+            url: "https://public.dhe.ibm.com/ibmdl/export/pub/software/openliberty/runtime/release/22.0.0.12/openliberty-22.0.0.12.zip"
+            sigUrl: "https://public.dhe.ibm.com/ibmdl/export/pub/software/openliberty/runtime/release/22.0.0.12/openliberty-22.0.0.12.zip.sig"
+            pubKeyFile: "WebSphereLiberty_06-02-2021.pem"
+          java:
+            active: true
+            version: "jdk-17.0.5+8" ## must match the root directory of the java .tar.gz package
+            url: "https://github.com/ibmruntimes/semeru17-binaries/releases/download/jdk-17.0.5%2B8_openj9-0.35.0/ibm-semeru-open-jdk_x64_linux_17.0.5_8_openj9-0.35.0.tar.gz"
+            checksum: sha512:be3868aeef3d4d0fdcca37e680c24b3c3144dc2338dc41c8c36dad4f09b686f24438b663ecb22ca8a58b909b3f14933386c88c4d95e6e0f0c03f84e268ce8872
+        - liberty:
+            active: false
+            version: "23.0.0.1"
+            edition: "wlp-base-all"
+            url: "https://public.dhe.ibm.com/ibmdl/export/pub/software/openliberty/runtime/release/23.0.0.1/openliberty-23.0.0.1.zip"
+            sigUrl: "https://public.dhe.ibm.com/ibmdl/export/pub/software/openliberty/runtime/release/23.0.0.1/openliberty-23.0.0.1.zip.sig"
+            sigChecksum: sha256:95369868b4e6c8bec3fa2901d5d5cbc15cf0a8e63fefc155ebe2eb38e3d39c1a
+            pubKeyFile: "WebSphereLiberty_06-02-2021.pem"
+          java:
+            active: false
+            version: "jdk-17.0.6+10" ## must match the root directory of the java .tar.gz package
+            url: "https://github.com/ibmruntimes/semeru17-binaries/releases/download/jdk-17.0.6%2B10_openj9-0.36.0/ibm-semeru-open-jdk_x64_linux_17.0.6_10_openj9-0.36.0.tar.gz"
+            checksum: sha256:ce39a4f7c2e08e56083f17f3e44c05e0fbbeba775e670f015a337679c99c54c6
+      profiles:
+        - name: "{{ ansible_hostname | regex_replace('^(.*?)\\..*$', '\\1') }}"
+          aesKeyFileName: "aesKey.properties"
+          servers: "{{ libertyServersA6 }}"
+
+    - name: "A13"
+      libertyGroups: "{{ libertyGroups  }}"
+      libertyUsers: "{{ libertyUsers  }}"
+      sharedDir: "shared"
+      javaPathPrefix: "/java"
+      binInstalls:
+        - liberty:
+            active: false
+            version: "22.0.0.12"
+            edition: "wlp-base-all"
+            url: "https://public.dhe.ibm.com/ibmdl/export/pub/software/openliberty/runtime/release/22.0.0.12/openliberty-22.0.0.12.zip"
+            sigUrl: "https://public.dhe.ibm.com/ibmdl/export/pub/software/openliberty/runtime/release/22.0.0.12/openliberty-22.0.0.12.zip.sig"
+            pubKeyFile: "WebSphereLiberty_06-02-2021.pem"
+          java:
+            active: false
+            version: "jdk-17.0.6+10" ## must match the root directory of the java .tar.gz package
+            url: "https://github.com/ibmruntimes/semeru17-binaries/releases/download/jdk-17.0.6%2B10_openj9-0.36.0/ibm-semeru-open-jdk_x64_linux_17.0.6_10_openj9-0.36.0.tar.gz"
+            checksum: sha256:ce39a4f7c2e08e56083f17f3e44c05e0fbbeba775e670f015a337679c99c54c6
+        - liberty:
+            active: true
+            version: "23.0.0.2"
+            edition: "wlp-base-all"
+            url: "http://192.168.57.1:8080/wlp-base-all-23.0.0.2.jar"
+            sigUrl: "http://192.168.57.1:8080/wlp-base-all-23.0.0.2.jar.cosign.sig"
+            checksum: sha256:4dbf16f017750d629b3dd6916dfface605e85720ff8fabdcdefe44648ba3d1b1
+            pubKeyFile: "WebSphereLiberty_02-13-2023.pem"
+          java:
+            active: true
+            version: "jdk-17.0.6+10" ## must match the root directory of the java .tar.gz package
+            url: "https://github.com/ibmruntimes/semeru17-binaries/releases/download/jdk-17.0.6%2B10_openj9-0.36.0/ibm-semeru-open-jdk_x64_linux_17.0.6_10_openj9-0.36.0.tar.gz"
+            checksum: sha256:ce39a4f7c2e08e56083f17f3e44c05e0fbbeba775e670f015a337679c99c54c6
+      profiles:
+        - name: "{{ ansible_hostname | regex_replace('^(.*?)\\..*$', '\\1') }}"
+          aesKeyFileName: "aesKey.properties"
+          servers: "{{ libertyServersA13 }}"

@@ -1,0 +1,32 @@
+---
+# tasks file for roles/libertyProfile
+- name: Create a IHS profile
+  block:
+    ##
+    ## Iterate over all profiles
+    - name: Perform IHS creations for installation {{ roleInstallation.name }}
+      ansible.builtin.include_tasks: createOneIhsProfile.yml
+      loop: "{{ roleInstallation.profiles }}"
+      loop_control:
+        loop_var: __profileCreation
+  become: true
+  become_user: "{{ roleInstallation.ihsUsers.adminUser.name }}"
+  tags:
+    - always
+##
+## Adjust the ownership of the IHS files
+- name: Set owner & group for the IHS installation
+  ansible.builtin.file:
+    path: "{{ __dirToSetOwner }}"
+    owner: "{{ roleInstallation.ihsUsers.adminUser.name }}"
+    group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
+    recurse: True
+  loop:
+    - "{{ roleDirectories.ihsBase.name }}"
+    - "{{ roleDirectories.ihsLogs.name }}"
+  loop_control:
+    loop_var: __dirToSetOwner
+  become: true
+  become_user: "{{ roleRootUser }}"
+  tags:
+    - always

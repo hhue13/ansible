@@ -1,0 +1,23 @@
+<server description="configDropin admin-center">
+    <featureManager>
+        {% for __serverFeature in __serverToCreate.server.configDropins.overrides.adminCenter.features %}
+        <feature>{{ __serverFeature }}</feature>
+        {% endfor %}
+    </featureManager>
+
+    <basicRegistry id="basic" realm="BasicRealm">
+        <user name="{{ __serverToCreate.server.configDropins.overrides.adminCenter.user }}" password="{{ __serverToCreate.server.configDropins.overrides.adminCenter.password }}"/>
+    </basicRegistry>
+
+    <administrator-role>
+        <user>{{ __serverToCreate.server.configDropins.overrides.adminCenter.user }}</user>
+        {% for __adminGroup in __serverToCreate.server.configDropins.overrides.adminCenter.adminGroups %}
+        <group>{{ __adminGroup }}</group>
+        {% endfor %}
+    </administrator-role>
+
+    <remoteFileAccess>
+        <readDir>${server.config.dir}</readDir>
+        <!-- <writeDir>${server.config.dir}</writeDir> -->
+    </remoteFileAccess>
+</server>

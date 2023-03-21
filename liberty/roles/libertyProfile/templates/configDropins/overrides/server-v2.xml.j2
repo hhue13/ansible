@@ -1,0 +1,27 @@
+<server description="configDropins server.xml - provide secure defaults for Liberty">
+    <featureManager>
+        {% for __serverFeature in __serverToCreate.server.configDropins.overrides.server.features: %}
+        <feature>{{ __serverFeature }}</feature>
+        {% endfor %}
+    </featureManager>
+
+    <keyStore id="defaultKeyStore"
+        location="{{ __wlpSharedResourcesDir }}/${wlp.server.name}-key.p12"
+        type="PKCS12"
+        password="${wlp.keystore.pass}" />
+
+    <keyStore id="defaultTrustStore"
+        location="{{ __wlpSharedResourcesDir }}/${wlp.server.name}-trust.p12"
+        type="PKCS12"
+        password="${wlp.keystore.pass}" />
+
+    <!-- TLS configuration for Inbound SSL connection-->
+    <ssl id="defaultSSLConfig" keyStoreRef="defaultKeyStore" trustStoreRef="defaultTrustStore" />
+
+    <!-- LOGGING -->
+    <logging logDirectory="${server.output.dir}/logs"
+        maxFileSize="{{ __serverToCreate.logging.maxFileSize }}" maxFiles="{{ __serverToCreate.logging.maxFiles }}"
+        rolloverStartTime="00:00" rolloverInterval="{{ __serverToCreate.logging.rolloverInterval }}">
+        messageFormat="{{ __serverToCreate.logging.messageFormat }}" isoDateFormat="true"
+    </logging>
+</server>
