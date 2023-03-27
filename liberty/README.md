@@ -1,4 +1,4 @@
-# Ansible Playbook to instlall WebSphere- and/or Openliberty optionally with IBM HTTP Server and WebSphere Plugins
+# Ansible Playbook to install WebSphere- and/or Openliberty optionally with IBM HTTP Server and WebSphere Plugins
 
 This Ansble playbook was written to performs the following tasks:
 
