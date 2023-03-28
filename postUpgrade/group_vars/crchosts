@@ -122,3 +122,11 @@ webDavFilesToBeAdded:
 #####     textMarker: "# {mark} ANSIBLE MANAGED BLOCK"
 #####     state: "present"
 webDavFilesToBeEdited: []
+##
+## Configure XML Access files to be imported from a Git Repo
+xmlFilesToBeAppliedFromGit:
+  - gitPrivateKey: "/home/hhuebler/.ssh/github_deploy_key"
+    gitRepositoryUrl: "ssh://git@github.com/hhue13/postUpgrade.git"
+    gitBranchOrVersion: "master"
+    gitRemote: "origin"
+    gitXmlSubDirectory: "xmls"

@@ -18,7 +18,7 @@
   tags:
     - always
 
-- name: Mount the WebDav filesystem
+- name: Mount the WebDav filesystem {{ roleWebDavHostUrl }}/{{ webDavItem.webDavMountDir }}/
   become_user: "root"
   ansible.builtin.command:
     argv:

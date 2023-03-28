@@ -159,7 +159,6 @@
         roleNewFilterClass: "{{ wpsNewFilterClass }}"
       tags:
         - always
-
     - name: Set required properties in properties files
       ansible.builtin.include_role:
         name: ensureWpProperties
@@ -191,6 +190,8 @@
         roleWpsAdminPassword: "{{ wpsPassword }}"
         roleBackupTimeStamp: "{{ backupTimeStamp }}"
         roleClientBin: "{{ oscpClientBin }}"
+        roleXmlFilesToBeAppliedFromGit: "{{ xmlFilesToBeAppliedFromGit }}"
+        roleGitCheckoutUmask: "{{ gitCheckoutUmask }}"
       tags:
         - always
 
@@ -203,6 +204,7 @@
         roleWpsAdminPassword: "{{ wpsPassword }}"
         roleWebDavFileToBeAdded: "{{ webDavFilesToBeAdded }}"
         roleWebDavFileToBeEdited: "{{ webDavFilesToBeEdited }}"
+        roleGitCheckoutUmask: "{{ gitCheckoutUmask }}"
       tags:
         - always
 

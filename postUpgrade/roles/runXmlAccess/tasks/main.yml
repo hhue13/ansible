@@ -2,12 +2,10 @@
 #####################################################################################
 ## Role to run xmlaccess.sh on the pod
 #####################################################################################
-- name: Run the XMLACCESS imports
-  ansible.builtin.include_tasks: runOneXmlAccessFile.yml
-  vars:
-    itemXmlInputFile: "{{ propsItem }}"
-  loop: "{{ roleXmlAccessImports }}"
+- name: Import XMLs from GitRepositories
+  ansible.builtin.include_tasks: applyXmlsFromOneGitRepo.yml
+  loop: "{{ roleXmlFilesToBeAppliedFromGit }}"
   loop_control:
-    loop_var: propsItem
+    loop_var: roleXmlGitRepo
   tags:
     - always

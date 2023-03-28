@@ -1,18 +1,11 @@
 ---
-- name: Set the absolut xmlaccess input filenamefor restore
+- name: Set the absolut xmlaccess input filename /tmp/{{ itemXmlInputFile.path | basename }}
   ansible.builtin.set_fact:
-    roleXmlInputFile: "/tmp/{{ itemXmlInputFile }}"
+    roleXmlInputFile: "/tmp/{{ itemXmlInputFile.path | basename }}"
   tags:
     - always
 
-##### - name: Copy XML input file to control node
-#####   ansible.builtin.copy:
-#####     src: "files/{{ itemXmlInputFile }}"
-#####     dest: "{{ roleXmlInputFile }}"
-#####   tags:
-#####     - always
-
-- name: Create temporary file for templating XML file to apply {{ roleResourceAggregationProfile }}
+- name: Create temporary file for templating XML file to apply variables
   ansible.builtin.tempfile:
     state: file
     suffix: temp
@@ -20,25 +13,19 @@
   tags:
     - always
 
+- name: Fetch the XML template from Git to the local system
+  ansible.builtin.fetch:
+    src: "{{ itemXmlInputFile.path }}"
+    dest: "/tmp/"
+    flat: false
+    validate_checksum: true
+
 - name: Replace variables in the XML file
   ansible.builtin.template:
-    src: "files/{{ itemXmlInputFile }}"
+    src: "/tmp/{{ ansible_host }}/{{ itemXmlInputFile.path }}"
     dest: "{{ template_out.path }}"
   tags:
     - always
-
-##### - name: Get remote XML file {{ roleXmlInputFile }} using slurp
-#####   ansible.builtin.slurp:
-#####     src: "{{ roleXmlInputFile }}"
-#####   register: slurpedFile
-#####   tags:
-#####     - always
-#####
-##### - name: Display decoded slurp'ed data for file {{ roleXmlInputFile }}
-#####   ansible.builtin.debug:
-#####     msg: "Copied XML file:\n\n{{ slurpedFile['content'] | b64decode }}"
-#####   tags:
-#####     - always
 
 - name: Get remote templated XML file {{ template_out.path }} using slurp
   ansible.builtin.slurp:
@@ -47,7 +34,7 @@
   tags:
     - always
 
-- name: Display decoded slurp'ed data for storage class {{ storageClassName }}
+- name: Display decoded slurp'ed data for XML file
   ansible.builtin.debug:
     msg: "Templated XML file:\n\n{{ slurpedFile['content'] | b64decode }}"
   tags:
