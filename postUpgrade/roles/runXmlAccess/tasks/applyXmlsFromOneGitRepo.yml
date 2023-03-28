@@ -1,0 +1,85 @@
+---
+#####################################################################################
+## Role to run xmlaccess.sh on the pod
+#####################################################################################
+- name: Apply all xmlaccess files from git repo {{ roleXmlGitRepo}}
+  block:
+    - name: Create temporary directory for git checkout
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: git
+      register: gitCheckout
+
+    - name: Get the value of SSH_AUTH_SOCK
+      set_fact:
+        ssh_auth_sock: "{{ lookup('env', 'SSH_AUTH_SOCK') }}"
+
+    - name: Clone the repository
+      ansible.builtin.git:
+        accept_hostkey: yes
+        repo: "{{ roleXmlGitRepo.gitRepositoryUrl }}"
+        dest: "{{ gitCheckout.path }}"
+        umask: "{{ roleGitCheckoutUmask }}"
+        version: "{{ roleXmlGitRepo.gitBranchOrVersion }}"
+        remote: "{{ roleXmlGitRepo.gitRemote }}"
+        key_file: "{{ roleXmlGitRepo.gitPrivateKey }}"
+        single_branch: yes
+        depth: 1
+        recursive: yes
+      environment:
+        GIT_TERMINAL_PROMPT: 0 # reports "terminal prompts disabled" on missing password
+        SSH_AUTH_SOCK: "{{ ssh_auth_sock }}"
+  tags:
+    - always
+
+- name: Debug the result of checked out git repo
+  block:
+    - name: Check what we've got from git to {{ gitCheckout.path }}
+      become_user: "root"
+      ansible.builtin.shell: |
+        echo "Git directory {{ gitCheckout.path }}  ..."
+        cd {{ gitCheckout.path }}
+        find .
+      register: shellOut
+
+    - name: Debug files in git directory {{ gitCheckout.path }}
+      ansible.builtin.debug:
+        msg: "Result Shell execution:\n\n: {{ shellOut.stdout }}\n\n\n\n {{ shellOut.stderr }}"
+  tags:
+    - debug
+
+- name: Run block of XMLACCESS imports
+  block:
+  - name: Determine list of files being imported
+    ansible.builtin.find:
+      file_type: "file"
+      follow: true
+      hidden: false
+      paths:
+        - "{{ gitCheckout.path + '/' + roleXmlGitRepo.gitXmlSubDirectory }}"
+      patterns:
+        - "*.xml"
+      use_regex: false
+      recurse: true
+    register: __matchedXmlFiles
+
+  - name: Debug xml files to be imported
+    ansible.builtin.debug:
+      msg: "XML files being imported:\n\n\n {{ __matchedXmlFiles }}"
+
+  - name: Run the XMLACCESS imports
+    ansible.builtin.include_tasks: runOneXmlAccessFile.yml
+    vars:
+      itemXmlInputFile: "{{ propsItem }}"
+    loop: "{{ __matchedXmlFiles.files }}"
+    loop_control:
+      loop_var: propsItem
+  tags:
+    - always
+
+#####   always:
+#####     - name: Cleanup temporary directory {{ gitCheckout.path }}
+#####       ansible.builtin.file:
+#####         path: "{{ gitCheckout.path }}"
+#####         state: absent
+#####

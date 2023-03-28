@@ -11,6 +11,3 @@ roleWebDavFileToBeAdded:
     gitRepositoryUrl: "git@s008aa39r.staden.gotheborg.net:7999/got/goteborg-theme-toolbar.git"
     gitBranchOrVersion: "main"
     gitRemote: "origin"
-
-#
-roleGitCheckoutUmask: "022"
