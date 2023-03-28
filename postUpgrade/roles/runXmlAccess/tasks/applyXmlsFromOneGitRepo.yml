@@ -71,7 +71,7 @@
     ansible.builtin.include_tasks: runOneXmlAccessFile.yml
     vars:
       itemXmlInputFile: "{{ propsItem }}"
-    loop: "{{ __matchedXmlFiles.files }}"
+    loop: "{{ __matchedXmlFiles.files | sort (attribute='path')}}"
     loop_control:
       loop_var: propsItem
   tags:
