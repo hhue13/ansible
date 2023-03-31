@@ -46,7 +46,7 @@
           roleInstallationName: "{{ ihsInstallation.name }}"
           roleGroupInfo: "{{ ihsInstallation.ihsGroups }}"
           roleUserInfo: "{{ ihsInstallation.ihsUsers }}"
-          roleDirectories: "{{ libertyDirectories }}"
+          roleDirectories: "{{ ihsDirectories }}"
           roleBecomeUser: "{{ rootUser }}"
         loop: "{{ ihs.installations }}"
         loop_control:
@@ -78,7 +78,7 @@
         name: ihsInstallation
       vars:
         roleActiveIhsLinkName: "{{ activeIhsLinkName }}"
-        roleDirectories: "{{ libertyDirectories }}"
+        roleDirectories: "{{ ihsDirectories }}"
         roleInstallation: "{{ ihsInstallation }}"
         roleDownloadSettings: "{{ downloadSettings }}"
         roleRootUser: "{{ rootUser }}"
@@ -112,7 +112,7 @@
         name: ihsProfile
       vars:
         roleActiveIhsLinkName: "{{ activeIhsLinkName }}"
-        roleDirectories: "{{ libertyDirectories }}"
+        roleDirectories: "{{ ihsDirectories }}"
         roleInstallation: "{{ ihsInstallation }}"
         roleDownloadSettings: "{{ downloadSettings }}"
         roleRootUser: "{{ rootUser }}"
