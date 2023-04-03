@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+echo "Checking if xmlaccess completed at $(date +"%Y%m%d_%H%M%S.%N")"
+##
+## Outputfile does not exit so not yet done
+test -f {{ __outputFile }} || exit 1
+##
+## Request must be finisged
+tail -1 {{ __outputFile }} | grep '<\/request>' 2>&1 >/dev/null  || exit 1
+exit 0

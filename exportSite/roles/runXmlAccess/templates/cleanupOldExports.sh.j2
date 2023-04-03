@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+echo "Starting to run the xmlAccess export at $(date +"%Y%m%d_%H%M%S.%N")"
+__numFiles=$(ls -al {{ roleExportDir }}/{{ roleXmlAccessOutputFilePrefix }}_*.xml | awk '{print $9}' | sort | wc -l)
+if [[ $__numFiles -gt {{ roleExportRetainCopies }} ]] ; then
+    ((__filesToDelete=__numFiles-{{ roleExportRetainCopies }}))
+    ((__filesToDelete=__filesToDelete*-1))
+    ls -al {{ roleExportDir }}/{{ roleXmlAccessOutputFilePrefix }}_*.xml | awk '{print $9}' | sort | head ${__filesToDelete} | while read line ; do
+        echo "Deleting file ${libe} at $(date +"%Y%m%d_%H%M%S.%N")"
+        rm -rf ${line}
+    done
+else
+    echo "No cleanup of files required as there are less than {{ roleExportRetainCopies }} exported files available at $(date +"%Y%m%d_%H%M%S.%N")"
+fi
+
+exit 0

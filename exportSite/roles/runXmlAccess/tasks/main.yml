@@ -1,0 +1,139 @@
+---
+- name: Run the xmlAccess export
+  block:
+    - name: Set the output filename to {{ roleExportDir }}/{{ roleXmlAccessOutputFilePrefix }}_{{ roleBackupTimeStamp }}.xml
+      ansible.builtin.set_fact:
+        __outputFile: "{{ roleExportDir }}/{{ roleXmlAccessOutputFilePrefix }}_{{ roleBackupTimeStamp }}.xml"
+
+    - name: Create temporary directory for templating
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: exportScript
+      register: __exportScript
+
+    - name: Template script files for async execution
+      ansible.builtin.template:
+        src: "{{ __currentTemplate.template }}"
+        dest: "{{ __exportScript.path }}/{{ __currentTemplate.script }}"
+        mode: "755"
+      loop: "{{ roleTemplatesToProcess }}"
+      loop_control:
+        loop_var: __currentTemplate
+
+    - name: Copy templates file to pod as /tmp/{{ roleRunExportScript }}
+      kubernetes.core.k8s_cp:
+        namespace: "{{ roleNs }}"
+        host: "{{ roleHost }}"
+        api_key: "{{ roleKey }}"
+        local_path: "{{ __exportScript.path }}/{{ __currentTemplate.script }}"
+        remote_path: "/tmp/{{ __currentTemplate.script }}"
+        pod: "{{ roleCorePodName }}"
+        container: "{{ roleCoreContainerName }}"
+        no_preserve: false
+      loop: "{{ roleTemplatesToProcess }}"
+      loop_control:
+        loop_var: __currentTemplate
+
+    - name: Ensure that the xmlaccess output directory exists
+      kubernetes.core.k8s_exec:
+        namespace: "{{ roleNs }}"
+        host: "{{ roleHost }}"
+        api_key: "{{ roleKey }}"
+        command: "mkdir -p {{ __outputFile | ansible.builtin.dirname }}"
+        pod: "{{ roleCorePodName }}"
+        container: "{{ roleCoreContainerName }}"
+      register: podResult
+      failed_when: (podResult.rc != 0)
+
+    - name: Remove the output file in case it exists {{ roleCoreContainerName }} of pod {{ roleCorePodName }}
+      kubernetes.core.k8s_exec:
+        namespace: "{{ roleNs }}"
+        host: "{{ roleHost }}"
+        api_key: "{{ roleKey }}"
+        command: "rm -rf {{ __outputFile }}"
+        pod: "{{ roleCorePodName }}"
+        container: "{{ roleCoreContainerName }}"
+      register: podResult
+      failed_when: (podResult.rc != 0)
+
+    - name: Get timestamp from the system, include the first 5 nanoseconds digits (start)
+      shell: "date +%Y-%m-%d%H-%M-%S.%5N"
+      register: tstamp_ns_start
+
+      ##
+      ## Need to run asynchronousely as it might run a long time and therefore timeout
+    - name: Run xmlaccess in container {{ roleCoreContainerName }} of pod {{ roleCorePodName }}
+      kubernetes.core.k8s_exec:
+        namespace: "{{ roleNs }}"
+        host: "{{ roleHost }}"
+        api_key: "{{ roleKey }}"
+        command: "bash -c '/tmp/{{ roleTemplatesToProcess[0].script }}'"
+        pod: "{{ roleCorePodName }}"
+        container: "{{ roleCoreContainerName }}"
+      register: podResult
+      failed_when: (podResult.rc != 0)
+
+    - name: Get timestamp from the system, include the first 5 nanoseconds digits (return)
+      shell: "date +%Y-%m-%d%H-%M-%S.%5N"
+      register: tstamp_ns_return
+
+    - name: Debug time to submit xmlaccess to the background
+      ansible.builtin.debug:
+        msg: "Time at submit xmlaccess: {{ tstamp_ns_start.stdout }}"
+        msg: 'Time at return from xmlaccess: {{ tstamp_ns_return }}'
+
+    - name: Check if the xmlaccess as finished
+      kubernetes.core.k8s_exec:
+        namespace: "{{ roleNs }}"
+        host: "{{ roleHost }}"
+        api_key: "{{ roleKey }}"
+        command: "bash -c '/tmp/{{ roleTemplatesToProcess[1].script }}'"
+        pod: "{{ roleCorePodName }}"
+        container: "{{ roleCorePodContainerName }}"
+      register: podResult
+      until: (podResult.rc == 0)
+      retries: "{{ roleExportWaitNumberChecks | default('90') }}"
+      delay: "{{ roleExportWaitBetweenChecks | default('20') }}"
+
+    - name: Check if xmlaccess finished successfully
+      kubernetes.core.k8s_exec:
+        namespace: "{{ roleNs }}"
+        host: "{{ roleHost }}"
+        api_key: "{{ roleKey }}"
+        command: "bash -c '/tmp/{{ roleTemplatesToProcess[2].script }}'"
+        pod: "{{ roleCorePodName }}"
+        container: "{{ roleCorePodContainerName }}"
+      register: podResult
+      failed_when: (podResult.rc != 0)
+
+    - name: Check the number of exported files and delete older copies so retain {{ roleExportRetainCopies }} exports only
+      kubernetes.core.k8s_exec:
+        namespace: "{{ roleNs }}"
+        host: "{{ roleHost }}"
+        api_key: "{{ roleKey }}"
+        command: "bash -c '/tmp/{{ roleTemplatesToProcess[4].script }}'"
+        pod: "{{ roleCorePodName }}"
+        container: "{{ roleCorePodContainerName }}"
+      register: podResult
+      failed_when: (podResult.rc != 0)
+
+  tags:
+    - always
+
+  always:
+    - name: Cleanup temp directory
+      ansible.builtin.file:
+        name: "{{ __exportScript.path }}"
+        state: absent
+
+    - name: Cleanup templates script /tmp/{{ roleRunExportScript }}
+      kubernetes.core.k8s_exec:
+        namespace: "{{ roleNs }}"
+        host: "{{ roleHost }}"
+        api_key: "{{ roleKey }}"
+        command: "rm -rf /tmp/{{ __currentTemplate.script }}"
+        pod: "{{ roleCorePodName }}"
+        container: "{{ roleCoreContainerName }}"
+      loop: "{{ roleTemplatesToProcess }}"
+      loop_control:
+        loop_var: __currentTemplate

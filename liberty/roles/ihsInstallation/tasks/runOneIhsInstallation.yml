@@ -12,7 +12,7 @@
     - name: Download the installation binaries for IHS from {{ __binInstall.http.url }}
       ansible.builtin.get_url:
         url: "{{ __binInstall.http.url }}"
-        dest: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.url | basename }}"
+        dest: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.url | ansible.builtin.basename }}"
         mode: "644"
         owner: "{{ roleInstallation.ihsUsers.adminUser.name }}"
         group: "{{ roleInstallation.ihsGroups.adminGroup.name }}"
@@ -24,7 +24,7 @@
     - name: Download the IHS sig file for verification {{ __binInstall.http.sigUrl }}
       ansible.builtin.get_url:
         url: "{{ __binInstall.http.sigUrl }}"
-        dest: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.sigUrl | basename }}"
+        dest: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.sigUrl | ansible.builtin.basename }}"
         mode: "644"
         owner: "{{ roleInstallation.ihsUsers.adminUser.name }}"
         group: "{{ roleInstallation.ihsGroups.adminGroup.name }}"
@@ -59,8 +59,8 @@
           - "-verify"
           - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.pubKeyFile }}"
           - "-signature"
-          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.sigUrl | basename }}"
-          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.url | basename }}"
+          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.sigUrl | ansible.builtin.basename }}"
+          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.url | ansible.builtin.basename }}"
       register: cmdResult
       failed_when: (cmdResult.rc != 0)
       when: (( __binInstall.http.sigUrl is defined ) and ( __isCoSign == false ))
@@ -75,8 +75,8 @@
           - "--key"
           - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.pubKeyFile }}"
           - "--signature"
-          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.sigUrl | basename }}"
-          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.url | basename }}"
+          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.sigUrl | ansible.builtin.basename }}"
+          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.url | ansible.builtin.basename }}"
       when: (( __binInstall.http.sigUrl is defined ) and ( __isCoSign == true ))
     ##
     ## Create IHS target directrory
@@ -91,7 +91,7 @@
     ## Set the IHS installation file name as fact as RegEx matching can't be mixed with Jinja templating
     - name: Set the IHS installation file name as fact
       ansible.builtin.set_fact:
-        __ihsInstallationFile: "{{ __binInstall.http.url | basename }}"
+        __ihsInstallationFile: "{{ __binInstall.http.url | ansible.builtin.basename }}"
     ##
     ## Unpack IHS
     - name: Unpack IHS to {{ roleDirectories.ihsBase.name }}/{{ __binInstall.http.version }}

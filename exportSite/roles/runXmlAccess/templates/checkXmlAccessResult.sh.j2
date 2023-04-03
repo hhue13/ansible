@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+echo "Checking result attribte of xmlaccess output file $(date +"%Y%m%d_%H%M%S.%N")"
+##
+## Check the result of the xmlaccess xml file
+{{ roleProfileHome }}/bin/wsadmin.sh -lang jython -connType none -f /tmp/{{ roleTemplatesToProcess[3].script }} || exit 1
+exit 0
