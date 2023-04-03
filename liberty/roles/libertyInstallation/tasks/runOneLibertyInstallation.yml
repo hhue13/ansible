@@ -14,7 +14,7 @@
     - name: Download the installation binaries for Java from {{ __binInstall.java.url }}
       ansible.builtin.get_url:
         url: "{{ __binInstall.java.url }}"
-        dest: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.java.url | basename }}"
+        dest: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.java.url | ansible.builtin.basename }}"
         mode: "644"
         owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
         group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
@@ -26,7 +26,7 @@
     - name: Download the installation binaries for Liberty from {{ __binInstall.liberty.url }}
       ansible.builtin.get_url:
         url: "{{ __binInstall.liberty.url }}"
-        dest: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.liberty.url | basename }}"
+        dest: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.liberty.url | ansible.builtin.basename }}"
         mode: "644"
         owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
         group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
@@ -38,7 +38,7 @@
     - name: Download the liberty sig file for verification {{ __binInstall.liberty.sigUrl }}
       ansible.builtin.get_url:
         url: "{{ __binInstall.liberty.sigUrl }}"
-        dest: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.liberty.sigUrl | basename }}"
+        dest: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.liberty.sigUrl | ansible.builtin.basename }}"
         mode: "644"
         owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
         group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
@@ -73,8 +73,8 @@
           - "-verify"
           - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.liberty.pubKeyFile }}"
           - "-signature"
-          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.liberty.sigUrl | basename }}"
-          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.liberty.url | basename }}"
+          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.liberty.sigUrl | ansible.builtin.basename }}"
+          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.liberty.url | ansible.builtin.basename }}"
       register: cmdResult
       failed_when: (cmdResult.rc != 0)
       when: (( __binInstall.liberty.sigUrl is defined ) and ( __isCoSign == false ))
@@ -89,8 +89,8 @@
           - "--key"
           - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.liberty.pubKeyFile }}"
           - "--signature"
-          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.liberty.sigUrl | basename }}"
-          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.liberty.url | basename }}"
+          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.liberty.sigUrl | ansible.builtin.basename }}"
+          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.liberty.url | ansible.builtin.basename }}"
       when: (( __binInstall.liberty.sigUrl is defined ) and ( __isCoSign == true ))
     ##
     ## Create Java target directrory
@@ -105,7 +105,7 @@
     ## Unpack Java
     - name: Unpack java to "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}{{ roleInstallation.javaPathPrefix | default('') }}/{{ __binInstall.java.version }}"
       ansible.builtin.unarchive:
-        src: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.java.url | basename }}"
+        src: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.java.url | ansible.builtin.basename }}"
         dest: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}{{ roleInstallation.javaPathPrefix | default('') }}"
         creates: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}{{ roleInstallation.javaPathPrefix | default('') }}/{{ __binInstall.java.version }}/bin/java"
         remote_src: true
@@ -136,7 +136,7 @@
     ## Set the liberty installation file name as fact as RegEx matching can't be mixed with Jinja templating
     - name: Set the liberty installation file name as fact
       ansible.builtin.set_fact:
-        __libertyInstallationFile: "{{ __binInstall.liberty.url | basename }}"
+        __libertyInstallationFile: "{{ __binInstall.liberty.url | ansible.builtin.basename }}"
     ##
     ## Determine if we have an openliberty or an IBM Liberty deployment
     - name: Determine if installation binary is openliberty installation
@@ -177,19 +177,30 @@
     ## Install IBM WLP
     - name: Unpack IBM WebSphere Liberty to "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}{{ roleInstallation.javaPathPrefix | default('') }}/{{ __binInstall.liberty.edition }}-{{ __binInstall.liberty.version }}"
       ansible.builtin.shell: |
-        {{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}{{ roleInstallation.javaPathPrefix | default('') }}/{{ __binInstall.java.version }}/bin/java -jar {{ roleDirectories.downloadDir.name }}/{{ __binInstall.liberty.url | basename }} --acceptLicense --verbose {{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ __binInstall.liberty.edition }}-{{ __binInstall.liberty.version }}
+        {{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}{{ roleInstallation.javaPathPrefix | default('') }}/{{ __binInstall.java.version }}/bin/java -jar {{ roleDirectories.downloadDir.name }}/{{ __binInstall.liberty.url | ansible.builtin.basename }} --acceptLicense --verbose {{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ __binInstall.liberty.edition }}-{{ __binInstall.liberty.version }}
       when: (( __isWlpLiberty is defined ) and ( __isWlpLiberty == true ) and (not __statResult.stat.exists))
       register: __shellResult
       ignore_errors: false
       failed_when: __shellResult.rc != 0
     ##
     ## Set the src directory for the active installation depending on FS structure
-    - name: Set source directory for active installation
-      ansible.builtin.set_fact:
-        __activeInstallationDir: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ __binInstall.liberty.edition }}-{{ __binInstall.liberty.version }}/wlp"
+    - name: Quirk directories based for non-profile directory installation
+      block:
+        - name: Set source directory for active installation
+          ansible.builtin.set_fact:
+            __activeInstallationDir: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ __binInstall.liberty.edition }}-{{ __binInstall.liberty.version }}/wlp"
+
+        - name: Create softlink for Java (will be a link on link)
+          ansible.builtin.file:
+            dest: "{{ __activeInstallationDir }}/java"
+            src: "{{ __activeInstallationDir }}/../../java"
+            state: link
+            mode: "{{ roleDirectories.libertyBase.mode }}"
+            owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
+            group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
       when: (( __binInstall.liberty.active == true ) and (( roleDirectories.profileRoot.name is not defined ) or ( roleDirectories.logRoot.name is not defined )))
 
-    - name: Set source directory for active installation
+    - name: Set source directory for active installation for profile directory
       ansible.builtin.set_fact:
         __activeInstallationDir: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ __binInstall.liberty.edition }}-{{ __binInstall.liberty.version }}"
       when: (( __binInstall.liberty.active == true ) and (( roleDirectories.profileRoot.name is defined ) and ( roleDirectories.logRoot.name is defined )))

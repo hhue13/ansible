@@ -259,28 +259,30 @@
             path: "{{ __wlpSharedResourcesDir }}/{{ __serverToCreate.name }}-key.p12"
           register: __pkcs12Stat
 
-        - name: If we don't have a key we generate a PKCS12 keyfile pair for server {{ __serverToCreate.name }}
-          ansible.builtin.shell: |
-            # Generate self signed TLS certificate & key in P12 keytstore
-            {{ __wlpJavaHome }}/bin/keytool -genkeypair  -keyalg RSA -keysize 4096 -sigalg SHA256withRSA  -alias "{{ __serverToCreate.name }}" -keystore "{{ __wlpSharedResourcesDir }}/{{ __serverToCreate.name }}-key.p12" -dname "CN={{ __serverToCreate.name }}-{{ ansible_hostname }}" -validity 3650 -storepass {{ __serverToCreate.libertyKeystorePass }} -storetype PKCS12 || exit 1
-            #
-            # Export cert to be imported wherever needed
-            {{ __wlpJavaHome }}/bin/keytool -exportcert -alias "{{ __serverToCreate.name }}" -keystore "{{ __wlpSharedResourcesDir }}/{{ __serverToCreate.name }}-key.p12" -file "/tmp/{{ __serverToCreate.name }}.cer" -storepass {{ __serverToCreate.libertyKeystorePass }} -storetype PKCS12 -rfc || exit 1
-            #
-            # Create server specific trust store and import own certificate
-            {{ __wlpJavaHome }}/bin/keytool -importcert -keystore "{{ __wlpSharedResourcesDir }}/{{ __serverToCreate.name }}-trust.p12" -storepass {{ __serverToCreate.libertyKeystorePass }} -alias "{{ __serverToCreate.name }}" -file /tmp/{{ __serverToCreate.name }}.cer -storetype PKCS12  -noprompt || exit 1
-          register: __pkcs12ShellResult
-          failed_when: ( __pkcs12ShellResult.rc != 0 )
+        - name: Create the PKCS12 keyfile if no key is provided
+          block:
+            - name: If we don't have a key we generate a PKCS12 keyfile pair for server {{ __serverToCreate.name }}
+              ansible.builtin.shell: |
+                # Generate self signed TLS certificate & key in P12 keytstore
+                {{ __wlpJavaHome }}/bin/keytool -genkeypair  -keyalg RSA -keysize 4096 -sigalg SHA256withRSA  -alias "{{ __serverToCreate.name }}" -keystore "{{ __wlpSharedResourcesDir }}/{{ __serverToCreate.name }}-key.p12" -dname "CN={{ __serverToCreate.name }}-{{ ansible_hostname }}" -validity 3650 -storepass {{ __serverToCreate.libertyKeystorePass }} -storetype PKCS12 || exit 1
+                #
+                # Export cert to be imported wherever needed
+                {{ __wlpJavaHome }}/bin/keytool -exportcert -alias "{{ __serverToCreate.name }}" -keystore "{{ __wlpSharedResourcesDir }}/{{ __serverToCreate.name }}-key.p12" -file "/tmp/{{ __serverToCreate.name }}.cer" -storepass {{ __serverToCreate.libertyKeystorePass }} -storetype PKCS12 -rfc || exit 1
+                #
+                # Create server specific trust store and import own certificate
+                {{ __wlpJavaHome }}/bin/keytool -importcert -keystore "{{ __wlpSharedResourcesDir }}/{{ __serverToCreate.name }}-trust.p12" -storepass {{ __serverToCreate.libertyKeystorePass }} -alias "{{ __serverToCreate.name }}" -file /tmp/{{ __serverToCreate.name }}.cer -storetype PKCS12  -noprompt || exit 1
+              register: __pkcs12ShellResult
+              failed_when: ( __pkcs12ShellResult.rc != 0 )
+            - name: Get the certificate and print it
+              ansible.builtin.slurp:
+                src: "/tmp/{{ __serverToCreate.name }}.cer"
+              register: __slurpedFile
+
+            - name: Debug server certificate
+              ansible.builtin.debug:
+                msg: "Server certificate from /tmp/{{ __serverToCreate.name }}.cer is: \n\n{{ __slurpedFile['content'] | b64decode }}\n\n"
           when: ( not __pkcs12Stat.stat.exists )
 
-        - name: Get the certificate and print it
-          ansible.builtin.slurp:
-            src: "/tmp/{{ __serverToCreate.name }}.cer"
-          register: __slurpedFile
-
-        - name: Debug server certificate
-          ansible.builtin.debug:
-            msg: "Server certificate from /tmp/{{ __serverToCreate.name }}.cer is: \n\n{{ __slurpedFile['content'] | b64decode }}\n\n"
       when: ( __serverToCreate.key is not defined)
 
     - name: Create temporary file for certificates to import
