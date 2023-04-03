@@ -1,0 +1,73 @@
+---
+sendSlackNotifications: true
+## Slack authentication token
+## ansible-vault encrypt_string --vault-id dev@~ansible_password '<plain-text-password>' --name 'slackAuthenticationToken'
+slackAuthenticationToken: !vault |
+  $ANSIBLE_VAULT;1.2;AES256;ks8
+  62663330373062393833343462646333636262393535643564303232346232363931303036386363
+  6166333237383730383633626633626234386463656239330a376334366631353333396233363064
+  62373638326433643034653039316263333431383766343662623065373435376630393936333764
+  3532623135623431650a323564326162396331613235366531393737636131353837383732663832
+  31626239646531653162366233363264313539646438633664393630363135303830333465386236
+  3835373762646335316537633830383933616439356161613933
+##
+## OSCP Authenticaton data used to login to K8S
+## ansible-vault encrypt_string --vault-id ks8@~/ansible_password '<plain-text-password>' --name 'oscpKubeAdminPassword'
+oscpKubeAdminUserName: hhue
+oscpKubeAdminPassword: !vault |
+  $ANSIBLE_VAULT;1.2;AES256;k8s
+  30653463636438626431613430343637343231646363346436656634393731356662343133383861
+  3639646239346438323762353733373861356337303631350a346132653638366563643831373532
+  66633030356533616631643333313137386132343962653764653335613263316639306266643731
+  3537613466653462640a333531656263383639313236613137313837626232326261306339356531
+  3032
+##
+## OSCP installation details
+oscpDomain: cloud1.2i.at
+oscpClusterName: epyc
+##
+## Namespace
+oscpNameSpace: "dxb"
+##
+## Deployment name of dx
+oscpDxDeploymentName: "dx-blue"
+##
+## WAS Admin user to run xmlaccess
+wasUser: "wpadmin"
+##
+## WAS Admin user's password to run xmlaccess
+wasPassword: !vault |
+  $ANSIBLE_VAULT;1.2;AES256;dev
+  64346461306632646633363037396637303934666663343363393064336433646265663736613966
+  3563353433386133356564333632656465326564373838630a373132316266393636333135633663
+  61303938626236356639616261393737623764393061656335616363303839343934633330303130
+  3233623765623433370a323334333534373463353762353339356533396539636136323463653633
+  3534
+##
+## WPS Admin user to run xmlaccess
+wpsUser: "{{ wasUser }}"
+##
+## WPS Admin user's password to run xmlaccess
+wpsPassword: "{{ wasPassword }}"
+##
+## Export of xmlaccess to an file - podname on which xmlaccess should run
+exportCorePodName: "{{ oscpDxDeploymentName }}-core-0"
+##
+## Name of the container (should be core unless HCL changes its setup)
+exportCorePodContainerName: "core"
+##
+## Directory name (in the container) to which the exports will be written to.
+## Ensure that dx_user has write access to that directory
+exportDir: "/opt/HCL/shared/fullExports"
+##
+## Number of historical export files to keep
+exportRetainCopies: "5"
+##
+## XML input file to run for the exprt (don't change unless you have a specific reason)
+exportXmlFile: "/opt/HCL/PortalServer/doc/xml-samples/Export.xml"
+##
+## As export runs long we start it asynchronously. Here we definie how often we check the
+## completion and in which intervals we check. I.e. we check 90 times with 20 seconds
+## between the check. I.e. total wait time is 30 minutes
+exportWaitBetweenChecks: "20"
+exportWaitNumberChecks: "90"
