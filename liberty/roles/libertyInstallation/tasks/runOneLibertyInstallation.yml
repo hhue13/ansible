@@ -184,20 +184,9 @@
       failed_when: __shellResult.rc != 0
     ##
     ## Set the src directory for the active installation depending on FS structure
-    - name: Quirk directories based for non-profile directory installation
-      block:
-        - name: Set source directory for active installation
-          ansible.builtin.set_fact:
-            __activeInstallationDir: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ __binInstall.liberty.edition }}-{{ __binInstall.liberty.version }}/wlp"
-
-        - name: Create softlink for Java (will be a link on link)
-          ansible.builtin.file:
-            dest: "{{ __activeInstallationDir }}/java"
-            src: "{{ __activeInstallationDir }}/../../java"
-            state: link
-            mode: "{{ roleDirectories.libertyBase.mode }}"
-            owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
-            group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
+    - name: Set source directory for active installation
+      ansible.builtin.set_fact:
+        __activeInstallationDir: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ __binInstall.liberty.edition }}-{{ __binInstall.liberty.version }}/wlp"
       when: (( __binInstall.liberty.active == true ) and (( roleDirectories.profileRoot.name is not defined ) or ( roleDirectories.logRoot.name is not defined )))
 
     - name: Set source directory for active installation for profile directory
