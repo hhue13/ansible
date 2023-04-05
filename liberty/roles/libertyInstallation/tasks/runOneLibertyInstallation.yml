@@ -142,7 +142,7 @@
     - name: Determine if installation binary is openliberty installation
       ansible.builtin.set_fact:
         __isOpenLiberty: true
-      when: "__libertyInstallationFile is ansible.builtin.match('^openliberty-.*\\.zip$', ignorecase=true, multiline=false)"
+      when: "__libertyInstallationFile is ansible.builtin.match('^.*\\.zip$', ignorecase=true, multiline=false)"
     ##
     ## Determine if we have an IBM WLP deployment
     - name: Determine if we have an IBM WLP deployment
