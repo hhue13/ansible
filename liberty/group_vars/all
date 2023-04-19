@@ -47,3 +47,6 @@ defaultCustomBootstrapProperties:
   - "grafana.user.password=GRAFFANA"
   - "inBoundStore.password=INBOUND_PWD"
   - "outBoundStore.password=OUTBOUND_PWD"
+##
+## Delegate download to controller node
+downloadBinariesToController: false
