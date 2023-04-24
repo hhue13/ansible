@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 echo "Starting to cleanup old exports at $(date +"%Y%m%d_%H%M%S.%N")"
-sed -i "s#bin/java -classpath#bin/java {{ xmlaccessHeapSettings }} -classpath#g" {{ roleProfileHome }}/PortalServer/bin/xmlaccess.sh
+sed -i "s#bin/java -classpath#bin/java {{ roleXmlaccessHeapSettings }} -classpath#g" {{ roleProfileHome }}/PortalServer/bin/xmlaccess.sh
 nohup {{ roleProfileHome }}/PortalServer/bin/xmlaccess.sh -user {{ roleWpsAdminUser }} -password {{ roleWpsAdminPassword }} -url http://localhost:10039/wps/config -in {{ roleExportXmlFile }} -out {{ __outputFile }} &
 exit 0
