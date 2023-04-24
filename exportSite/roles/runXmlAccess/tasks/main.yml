@@ -67,7 +67,7 @@
         namespace: "{{ roleNs }}"
         host: "{{ roleHost }}"
         api_key: "{{ roleKey }}"
-        command: "bash -c '/tmp/{{ roleTemplatesToProcess[0].script }}'"
+        command: "bash -c '/tmp/{{ roleTemplatesToProcess[0].script }} >/dev/null 2>/dev/null'"
         pod: "{{ roleCorePodName }}"
         container: "{{ roleCoreContainerName }}"
       register: podResult
