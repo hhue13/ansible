@@ -1,0 +1,18 @@
+##
+## Rarse the xmlAccess outfile  for status result=ok
+##
+import xml.etree.ElementTree as ET
+tree1 = ET.parse("{{ __outputFile }}")
+root1 = tree1.getroot()
+if (root1 != None):
+    statusNodes = root1.findall("./status")
+    result = ""
+    for statusNode in statusNodes:
+        try:
+            result = statusNode.get("result")
+        except:
+            pass
+    if (result == "ok"):
+        print (result)
+    else:
+        raise Exception, "Result not ok"

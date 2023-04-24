@@ -8,29 +8,87 @@
       ansible.builtin.set_fact:
         __isCoSign: false
     ##
-    ## Download the IHS binaries
-    - name: Download the installation binaries for IHS from {{ __binInstall.http.url }}
-      ansible.builtin.get_url:
-        url: "{{ __binInstall.http.url }}"
-        dest: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.url | basename }}"
-        mode: "644"
-        owner: "{{ roleInstallation.ihsUsers.adminUser.name }}"
-        group: "{{ roleInstallation.ihsGroups.adminGroup.name }}"
-        checksum: "{{ __binInstall.http.checksum | default(omit) }}"
-        timeout: "{{ roleDownloadSettings.readTimeout }}"
+    ## Download and copy IHS Installation binaries
+    - name: Download and copy IHS Installation binaries
+      block:
+        ##
+        ## Download the IHS binaries to the server
+        - name: Download the installation binaries for IHS from {{ __binInstall.http.url }}
+          ansible.builtin.get_url:
+            url: "{{ __binInstall.http.url }}"
+            dest: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.url | ansible.builtin.basename }}"
+            mode: "644"
+            owner: "{{ roleInstallation.ihsUsers.adminUser.name }}"
+            group: "{{ roleInstallation.ihsGroups.adminGroup.name }}"
+            checksum: "{{ __binInstall.http.checksum | default(omit) }}"
+            timeout: "{{ roleDownloadSettings.readTimeout }}"
+          when: (roleDownloadBinariesToController == false)
+        ##
+        ## Download to controller node and copy to server
+        - name: Downloading IHS to localhost and copy to server
+          block:
+            ##
+            ## Download the IHS binaries to localhost
+            - name: Download the installation binaries to localhost for IHS from {{ __binInstall.http.url }}
+              delegate_to: localhost
+              ansible.builtin.get_url:
+                url: "{{ __binInstall.http.url }}"
+                dest: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.url | ansible.builtin.basename }}"
+                checksum: "{{ __binInstall.http.checksum | default(omit) }}"
+                timeout: "{{ roleDownloadSettings.readTimeout }}"
+              become_user: "{{ roleBecomeRootUser }}"
+            ##
+            ## If we download to the controller we need to copy the file to the server
+            - name: Copy IHS binary installation file to the server
+              ansible.builtin.copy:
+                src:  "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.url | ansible.builtin.basename }}"
+                dest:  "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.url | ansible.builtin.basename }}"
+                mode: "644"
+                owner: "{{ roleInstallation.ihsUsers.adminUser.name }}"
+                group: "{{ roleInstallation.ihsGroups.adminGroup.name }}"
+          when: (roleDownloadBinariesToController == true)
       when: ( __binInstall.http.url is defined )
     ##
-    ## Download the IHS sig file for verification
-    - name: Download the IHS sig file for verification {{ __binInstall.http.sigUrl }}
-      ansible.builtin.get_url:
-        url: "{{ __binInstall.http.sigUrl }}"
-        dest: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.sigUrl | basename }}"
-        mode: "644"
-        owner: "{{ roleInstallation.ihsUsers.adminUser.name }}"
-        group: "{{ roleInstallation.ihsGroups.adminGroup.name }}"
-        checksum: "{{ __binInstall.http.sigChecksum | default(omit) }}"
-        timeout: "{{ roleDownloadSettings.readTimeout }}"
-      when: ( __binInstall.http.sigUrl is defined )
+    ## Download and copy IHS Installation signature file
+    - name: Download and copy IHS Installation signature file
+      block:
+        ##
+        ## Download the IHS sig file for verification
+        - name: Download the IHS sig file for verification {{ __binInstall.http.sigUrl }}
+          ansible.builtin.get_url:
+            url: "{{ __binInstall.http.sigUrl }}"
+            dest: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.sigUrl | ansible.builtin.basename }}"
+            mode: "644"
+            owner: "{{ roleInstallation.ihsUsers.adminUser.name }}"
+            group: "{{ roleInstallation.ihsGroups.adminGroup.name }}"
+            checksum: "{{ __binInstall.http.sigChecksum | default(omit) }}"
+            timeout: "{{ roleDownloadSettings.readTimeout }}"
+          when: ( roleDownloadBinariesToController == false )
+                ##
+        ## Download to controller node and copy to server
+        - name: Downloading IHS to localhost and copy to server
+          block:
+            ##
+            ## Download the IHS sig file for verification to localhost
+            - name: Download the IHS sig file for verification to localhost {{ __binInstall.http.sigUrl }}
+              delegate_to: localhost
+              ansible.builtin.get_url:
+                url: "{{ __binInstall.http.sigUrl }}"
+                dest: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.sigUrl | ansible.builtin.basename }}"
+                checksum: "{{ __binInstall.http.sigChecksum | default(omit) }}"
+                timeout: "{{ roleDownloadSettings.readTimeout }}"
+              become_user: "{{ roleBecomeRootUser }}"
+            ##
+            ## If we download to the controller we need to copy the file to the server
+            - name: Copy IHS signature file from localhost to the server
+              ansible.builtin.copy:
+                src:  "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.sigUrl | ansible.builtin.basename }}"
+                dest:  "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.sigUrl | ansible.builtin.basename }}"
+                mode: "644"
+                owner: "{{ roleInstallation.ihsUsers.adminUser.name }}"
+                group: "{{ roleInstallation.ihsGroups.adminGroup.name }}"
+          when: (roleDownloadBinariesToController == true)
+      when: (  __binInstall.http.sigUrl is defined )
     ##
     ## If we have a signature URL we need to determine if it is to be verified by openssl or
     ## by using cosign as used by IBM WLP (https://www.ibm.com/docs/en/was-liberty/nd?topic=archives-verifying-liberty-release-packages)
@@ -59,8 +117,8 @@
           - "-verify"
           - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.pubKeyFile }}"
           - "-signature"
-          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.sigUrl | basename }}"
-          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.url | basename }}"
+          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.sigUrl | ansible.builtin.basename }}"
+          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.url | ansible.builtin.basename }}"
       register: cmdResult
       failed_when: (cmdResult.rc != 0)
       when: (( __binInstall.http.sigUrl is defined ) and ( __isCoSign == false ))
@@ -75,8 +133,8 @@
           - "--key"
           - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.pubKeyFile }}"
           - "--signature"
-          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.sigUrl | basename }}"
-          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.url | basename }}"
+          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.sigUrl | ansible.builtin.basename }}"
+          - "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.url | ansible.builtin.basename }}"
       when: (( __binInstall.http.sigUrl is defined ) and ( __isCoSign == true ))
     ##
     ## Create IHS target directrory
@@ -91,7 +149,7 @@
     ## Set the IHS installation file name as fact as RegEx matching can't be mixed with Jinja templating
     - name: Set the IHS installation file name as fact
       ansible.builtin.set_fact:
-        __ihsInstallationFile: "{{ __binInstall.http.url | basename }}"
+        __ihsInstallationFile: "{{ __binInstall.http.url | ansible.builtin.basename }}"
     ##
     ## Unpack IHS
     - name: Unpack IHS to {{ roleDirectories.ihsBase.name }}/{{ __binInstall.http.version }}

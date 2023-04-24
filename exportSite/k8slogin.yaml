@@ -1,0 +1,117 @@
+---
+##
+## Checking for env variable K8S_API_TOKEN
+- name: Checking for env variable K8S_API_TOKEN
+  set_fact:
+    k8s_api_token: "{{ lookup('env', 'K8S_API_TOKEN') }}"
+  tags:
+    - always
+##
+## Checking for env variable K8S_HOST_URL
+- name: Checking for env variable K8S_HOST_URL
+  set_fact:
+    k8s_host: "{{ lookup('env', 'K8S_HOST_URL') }}"
+  tags:
+    - always
+##
+## Checking for env variable K8S_USER
+- name: Checking for env variable K8S_USER
+  set_fact:
+    k8s_user: "{{ lookup('env', 'K8S_USER') }}"
+  tags:
+    - always
+##
+## Checking for env variable K8S_PASSWORD
+- name: Checking for env variable K8S_PASSWORD
+  set_fact:
+    k8s_password: "{{ lookup('env', 'K8S_PASSWORD') }}"
+  no_log: true
+  tags:
+    - always
+##
+## If no K8S_HOST_URL is set we use the global var oscpHostApiUrl
+- name: Host is taken from globalVar oscpHostApiUrl
+  set_fact:
+    k8s_host: "{{ oscpHostApiUrl }}"
+  when: (( k8s_host is not defined) or
+    (k8s_host == ''))
+  tags:
+    - always
+##
+## If no K8S_USER is set we use the var oscpKubeAdminUserName
+- name: User is taken from variable oscpKubeAdminUserName
+  set_fact:
+    k8s_user: "{{ oscpKubeAdminUserName }}"
+  when: (( k8s_user is not defined) or
+    (k8s_user == ''))
+  tags:
+    - always
+##
+## If no K8S_PASSWORD is set we use the var oscpKubeAdminPassword
+- name: Password is taken from variable oscpKubeAdminPassword
+  set_fact:
+    k8s_password: "{{ oscpKubeAdminPassword }}"
+  when: (( k8s_password is not defined) or
+    (k8s_password == ''))
+  no_log: true
+  tags:
+    - always
+##
+## Debug K8S_API_TOKEN
+- name: Debug K8S_API_TOKEN
+  debug:
+    msg:
+      - "K8S_API_TOKEN: '{{ k8s_api_token }}'"
+      - "K8S_HOST_URL: '{{ k8s_host }}'"
+      - "K8S_USER: '{{ k8s_user }}'"
+  no_log: true
+  tags:
+    - never
+##
+## Login
+- name: Log in (obtain access token)
+  community.okd.openshift_auth:
+    host: "{{ k8s_host }}"
+    state: present
+    username: "{{ k8s_user }}"
+    password: "{{ k8s_password }}"
+    validate_certs: "no"
+  register: k8s_auth_results
+  when: (( k8s_api_token is not defined ) or
+    ( k8s_api_token == '' ))
+  no_log: true
+  tags:
+    - always
+##
+## Use the api-key from the login
+- name: Use the api-key from the login
+  set_fact:
+    kube_api_key: "{{ k8s_auth_results.k8s_auth.api_key }}"
+  when: (( k8s_api_token is not defined ) or
+    ( k8s_api_token == '' ))
+  no_log: true
+  tags:
+    - always
+##
+## Use the api-key from the env K8S_API_TOKEN
+- name: Use the api-key from the env K8S_API_TOKEN
+  set_fact:
+    kube_api_key: "{{ k8s_api_token }}"
+  when: (( k8s_api_token is defined ) and
+    ( k8s_api_token != '' ))
+  no_log: true
+  tags:
+    - always
+##### ##
+##### ## Debug k8s credentials
+##### - name: Debug
+#####   debug:
+#####     msg:
+#####       - "K8S credentials - 2..."
+#####       - "kube_auth_results.api_key: {{ k8s_auth_results_2.k8s_auth.api_key }}"
+#####       - "kube_auth_results.ca_cert: {{ k8s_auth_results_2.k8s_auth.ca_cert }}"
+#####       - "kube_auth_results.host: {{ k8s_auth_results_2.k8s_auth.host }}"
+#####       - "kube_auth_results.username: {{ k8s_auth_results_2.k8s_auth.username }}"
+#####       - "kube_auth_results.validate_certs: {{ k8s_auth_results_2.k8s_auth.validate_certs }}"
+#####   tags:
+#####     - never

@@ -12,7 +12,7 @@
 ## roleCorePodName: Name of the core pod on which the xmlaccess will run
 ## roleCoreContainerName: Name of the core container
 ## roleTargetDirectoryForXmlFiles: Directory where the backup files will be saved
-## roleXmlAccessOutputPatterm: Pattern for the xmlaccess output file
+## roleXmlAccessOutputPattern: Pattern for the xmlaccess output file
 ## roleBackupTimestamp: Timestamp of the backup
 ## roleTimestampPattern: Placeholder to be replaced with the backup timestamp
 #####################################################################################
@@ -21,7 +21,7 @@
 ## Set the xmlaccess output filename for the backup to replace the pattern with the timestamp
 - name: Set the xmlaccess output filename
   ansible.builtin.set_fact:
-    xmlAccessOutputFile: "{{ roleXmlAccessOutputPatterm | replace(roleTimestampPattern, roleBackupTimestamp) }}"
+    xmlAccessOutputFile: "{{ roleXmlAccessOutputPattern | replace(roleTimestampPattern, roleBackupTimestamp) }}"
   tags:
     - always
 ##
@@ -89,7 +89,7 @@
 ## Set the xmlaccess output link name for the latest link
 - name: Set the xmlaccess latest link filename
   ansible.builtin.set_fact:
-    xmlAccessLinkFile: "{{ roleXmlAccessOutputPatterm | replace(roleTimestampPattern, roleLatestLinkSuffix) }}"
+    xmlAccessLinkFile: "{{ roleXmlAccessOutputPattern | replace(roleTimestampPattern, roleLatestLinkSuffix) }}"
   tags:
     - backup
 

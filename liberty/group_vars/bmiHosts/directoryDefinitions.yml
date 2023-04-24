@@ -14,5 +14,17 @@ libertyDirectories:
     name: "/opt/liberty/ctl/var/wlp"
     mode: 755
   downloadDir:
-    name: "/app/IBM/downloads"
+    name: "/app/IBM/downloads/liberty"
+    mode: 755
+##
+## IHS directories
+ihsDirectories:
+  ihsBase:
+    name: "/opt/liberty/ctl/ihs"
+    mode: 755
+  ihsLogs:
+    name: "/opt/liberty/ctl/var/wlp"
+    mode: 755
+  downloadDir:
+    name: "/app/IBM/downloads/ihs"
     mode: 755

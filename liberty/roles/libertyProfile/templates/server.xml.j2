@@ -20,6 +20,10 @@
         </accessLogging>
     </httpEndpoint>
 
+    <remoteFileAccess>
+    <writeDir>${server.config.dir}</writeDir>
+    </remoteFileAccess>
+
     <!-- Disable security for metrics -->
     <mpMetrics authentication="false"/>
 </server>
