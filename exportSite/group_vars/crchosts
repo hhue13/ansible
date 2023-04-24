@@ -71,3 +71,6 @@ exportXmlFile: "/opt/HCL/PortalServer/doc/xml-samples/Export.xml"
 ## between the check. I.e. total wait time is 30 minutes
 exportWaitBetweenChecks: "20"
 exportWaitNumberChecks: "90"
+##
+## Heap settings for xmlaccess client (required as we are running OOM otherwise)
+xmlaccessHeapSettings: "-Xms512M -Xmx4096m"
