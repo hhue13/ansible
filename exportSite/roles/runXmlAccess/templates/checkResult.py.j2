@@ -2,7 +2,7 @@
 ## Rarse the xmlAccess outfile  for status result=ok
 ##
 import xml.etree.ElementTree as ET
-tree1 = ET.parse("{{ __outputFile }}")
+tree1 = ET.parse("{{ __outputFile }}.cut")
 root1 = tree1.getroot()
 if (root1 != None):
     statusNodes = root1.findall("./status")

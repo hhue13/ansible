@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 echo "Starting to cleanup old exports at $(date +"%Y%m%d_%H%M%S.%N")"
-sed -i "s#bin/java -classpath#bin/java {{ roleXmlaccessHeapSettings }} -classpath#g" {{ roleProfileHome }}/PortalServer/bin/xmlaccess.sh
+##
+## Cleanup existing Heap settings
+sed -i -E 's#-Xms[0-9]{1,9}[mMgGkK] ##g; s#-Xmx[0-9]{1,5}[mMgGkK] ##g' {{ roleProfileHome }}/PortalServer/bin/xmlaccess.sh
+##
+## Inject Heap settings
+sed -i -E "s#bin/java *-classpath#bin/java {{ roleXmlaccessHeapSettings }} -classpath#g" {{ roleProfileHome }}/PortalServer/bin/xmlaccess.sh
+## Start the export in the background to avoid timeouts
 nohup {{ roleProfileHome }}/PortalServer/bin/xmlaccess.sh -user {{ roleWpsAdminUser }} -password {{ roleWpsAdminPassword }} -url http://localhost:10039/wps/config -in {{ roleExportXmlFile }} -out {{ __outputFile }} &
+
 exit 0

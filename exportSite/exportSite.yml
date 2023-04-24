@@ -116,7 +116,7 @@
         roleExportWaitBetweenChecks: "{{ exportWaitBetweenChecks }}"
         roleExportWaitNumberChecks: "{{ exportWaitNumberChecks }}"
         roleExportRetainCopies: "{{ exportRetainCopies }}"
-        roleXmlaccessHeapSettings: "{{ xmlaccessHeapSettings }}"
+        roleXmlaccessHeapSettings: "{{ xmlaccessHeapSettings | default('') }}"
       tags:
         - always
     ##
