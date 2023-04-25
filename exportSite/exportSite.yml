@@ -9,7 +9,7 @@
 ##
 ## Note: Make sure you setup visudo correctly so that "sudo -i -u <become_user>" works
 #######################################################################################################
-- name: Run the postUpgrade tasks after a CF upgrade
+- name: Perform a full xmlaccess export of a site
   hosts: crchosts
   become: yes
   become_user: "{{ oscpOsUser }}"
