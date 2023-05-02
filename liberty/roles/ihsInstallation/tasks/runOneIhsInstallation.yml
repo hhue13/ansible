@@ -22,6 +22,8 @@
             group: "{{ roleInstallation.ihsGroups.adminGroup.name }}"
             checksum: "{{ __binInstall.http.checksum | default(omit) }}"
             timeout: "{{ roleDownloadSettings.readTimeout }}"
+            url_username: "{{ __binInstall.http.user | default(omit) }}"
+            url_password: "{{ __binInstall.http.password | default(omit) }}"
           when: (roleDownloadBinariesToController == false)
         ##
         ## Download to controller node and copy to server
@@ -36,6 +38,8 @@
                 dest: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.url | ansible.builtin.basename }}"
                 checksum: "{{ __binInstall.http.checksum | default(omit) }}"
                 timeout: "{{ roleDownloadSettings.readTimeout }}"
+                url_username: "{{ __binInstall.http.user | default(omit) }}"
+                url_password: "{{ __binInstall.http.password | default(omit) }}"
               become_user: "{{ roleBecomeRootUser }}"
             ##
             ## If we download to the controller we need to copy the file to the server
@@ -63,6 +67,8 @@
             group: "{{ roleInstallation.ihsGroups.adminGroup.name }}"
             checksum: "{{ __binInstall.http.sigChecksum | default(omit) }}"
             timeout: "{{ roleDownloadSettings.readTimeout }}"
+            url_username: "{{ __binInstall.http.user | default(omit) }}"
+            url_password: "{{ __binInstall.http.password | default(omit) }}"
           when: ( roleDownloadBinariesToController == false )
                 ##
         ## Download to controller node and copy to server
@@ -77,6 +83,8 @@
                 dest: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.http.sigUrl | ansible.builtin.basename }}"
                 checksum: "{{ __binInstall.http.sigChecksum | default(omit) }}"
                 timeout: "{{ roleDownloadSettings.readTimeout }}"
+                url_username: "{{ __binInstall.http.user | default(omit) }}"
+                url_password: "{{ __binInstall.http.password | default(omit) }}"
               become_user: "{{ roleBecomeRootUser }}"
             ##
             ## If we download to the controller we need to copy the file to the server
