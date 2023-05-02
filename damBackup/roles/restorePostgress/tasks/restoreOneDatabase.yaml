@@ -49,6 +49,13 @@
   tags:
     - always
 ##
+##
+- name: Wait some seconds to allow dropping the database
+  pause:
+    seconds: "{{ roleWaitTimeBeforeDropDb }}"
+  tags:
+    - always
+##
 ## Create the database
 - name: Create database {{ backupFileDict['name'] }}
   kubernetes.core.k8s_exec:
