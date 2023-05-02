@@ -24,6 +24,8 @@
             group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
             checksum: "{{ __binInstall.java.checksum | default(omit) }}"
             timeout: "{{ roleDownloadSettings.readTimeout }}"
+            url_username: "{{ __binInstall.java.user | default(omit) }}"
+            url_password: "{{ __binInstall.java.password | default(omit) }}"
           when: (roleDownloadBinariesToController == false)
         ##
         ## Download to controller node and copy to server
@@ -36,6 +38,8 @@
                 dest: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.java.url | ansible.builtin.basename }}"
                 checksum: "{{ __binInstall.java.checksum | default(omit) }}"
                 timeout: "{{ roleDownloadSettings.readTimeout }}"
+                url_username: "{{ __binInstall.java.user | default(omit) }}"
+                url_password: "{{ __binInstall.java.password | default(omit) }}"
               become_user: "{{ roleBecomeRootUser }}"
             ##
             ## If we download to the controller we need to copy the file to the server
@@ -63,6 +67,8 @@
             group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
             checksum: "{{ __binInstall.liberty.checksum | default(omit) }}"
             timeout: "{{ roleDownloadSettings.readTimeout }}"
+            url_username: "{{ __binInstall.liberty.user | default(omit) }}"
+            url_password: "{{ __binInstall.liberty.password | default(omit) }}"
           when: (roleDownloadBinariesToController == false)
         ##
         ## Download to controller node and copy to server
@@ -75,6 +81,8 @@
                 dest: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.liberty.url | ansible.builtin.basename }}"
                 checksum: "{{ __binInstall.liberty.checksum | default(omit) }}"
                 timeout: "{{ roleDownloadSettings.readTimeout }}"
+                url_username: "{{ __binInstall.liberty.user | default(omit) }}"
+                url_password: "{{ __binInstall.liberty.password | default(omit) }}"
               become_user: "{{ roleBecomeRootUser }}"
             ##
             ## If we download to the controller we need to copy the file to the server
@@ -102,6 +110,8 @@
             group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
             checksum: "{{ __binInstall.liberty.sigChecksum | default(omit) }}"
             timeout: "{{ roleDownloadSettings.readTimeout }}"
+            url_username: "{{ __binInstall.liberty.user | default(omit) }}"
+            url_password: "{{ __binInstall.liberty.password | default(omit) }}"
           when: (roleDownloadBinariesToController == false)
         ##
         ## Download to controller node and copy to server
@@ -114,6 +124,8 @@
                 dest: "{{ roleDirectories.downloadDir.name }}/{{ __binInstall.liberty.sigUrl | ansible.builtin.basename }}"
                 checksum: "{{ __binInstall.liberty.sigChecksum | default(omit) }}"
                 timeout: "{{ roleDownloadSettings.readTimeout }}"
+                url_username: "{{ __binInstall.liberty.user | default(omit) }}"
+                url_password: "{{ __binInstall.liberty.password | default(omit) }}"
               become_user: "{{ roleBecomeRootUser }}"
             ##
             ## If we download to the controller we need to copy the file to the server
