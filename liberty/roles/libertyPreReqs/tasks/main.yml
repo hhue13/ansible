@@ -63,10 +63,16 @@
         msg: 'The required package "cosign" is missing. Please install it from https://github.com/sigstore/cosign/releases'
       when: ( 'cosign' not in ansible_facts.packages )
 
+    - name: Install additional RPM packages needed
+      ansible.builtin.yum:
+        name: "{{ roleRpmPackagesToBeInstalled }}"
+        state: present
+      when: ((roleRpmPackagesToBeInstalled is defined) and ( roleRpmPackagesToBeInstalled | length > 0 ))
+
     - name: Install additional Python modules needed
       ansible.builtin.pip:
-        name: "{{ pythonModulesToBeInstalled }}"
-      when: ((pythonModulesToBeInstalled is defined) and ( pythonModulesToBeInstalled | length > 0 ))
+        name: "{{ rolePythonModulesToBeInstalled }}"
+      when: ((rolePythonModulesToBeInstalled is defined) and ( rolePythonModulesToBeInstalled | length > 0 ))
 
   become: true
   become_user: "{{ roleBecomeUser }}"
