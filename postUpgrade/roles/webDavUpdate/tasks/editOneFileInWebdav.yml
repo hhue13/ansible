@@ -10,16 +10,51 @@
       tags:
         - always
 
+    - name: Create temporary directory to copy the WebDav file for processing
+      become_user: "root"
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: cpytgt
+      register: cpytgt
+      tags:
+        - always
+
     - name: Mount WebDav filesystem {{ roleWebDavHostUrl }}/{{ webDavItem.webDavMountDir }}
       become_user: "root"
       ansible.builtin.import_tasks: mountWebDav.yml
       tags:
         - always
 
-    - name: Edit the WebDav file {{ webDavItem.webDavMountDir }}/{{ webDavItem.webDavPath }}/{{ webDavItem.file }}
+    - name: Get content of unmodified file  {{ mountpoint.path }}/{{ webDavItem.webDavPath }}/{{ webDavItem.file }}
+      become_user: "root"
+      ansible.builtin.command:
+        argv:
+          - "cat"
+          - "{{ mountpoint.path }}/{{ webDavItem.webDavPath }}/{{ webDavItem.file }}"
+      register: cmdResult
+      failed_when: (cmdResult.rc != 0)
+      tags:
+        - always
+
+    - name: Debug file content of unmodified file {{ mountpoint.path }}/{{ webDavItem.webDavPath }}/{{ webDavItem.file }}
+      ansible.builtin.debug:
+        msg: "File {{ webDavItem.file }} is:\n {{ cmdResult.stdout }}"
+      tags:
+        - always
+
+    - name: Copy WebDav file to local FS to avoid issues with davfs mounts
+      become_user: "root"
+      ansible.builtin.shell: |
+        cp -p "{{ mountpoint.path }}/{{ webDavItem.webDavPath }}/{{ webDavItem.file }}" "{{ cpytgt.path }}/{{ webDavItem.file }}"
+      register: shellResult
+      failed_when: (shellResult.rc != 0)
+      tags:
+        - always
+
+    - name: Edit the WebDav file {{ cpytgt.path }}/{{ webDavItem.file }}
       become_user: "root"
       ansible.builtin.blockinfile:
-        path: "{{ mountpoint.path }}/{{ webDavItem.webDavPath }}/{{ webDavItem.file }}"
+        path: "{{ cpytgt.path }}/{{ webDavItem.file }}"
         block: "{{ webDavItem.textBlock }}"
         marker: "{{ webDavItem.textMarker }}"
         state: "{{ webDavItem.state }}"
@@ -36,7 +71,16 @@
       tags:
         - always
 
-    - name: Display {{ mountpoint.path }}/{{ webDavItem.webDavPath }}/{{ webDavItem.file }}
+    - name: Copy file from local FS back to mounted WebDav location
+      become_user: "root"
+      ansible.builtin.shell: |
+        cp "{{ cpytgt.path }}/{{ webDavItem.file }}" "{{ mountpoint.path }}/{{ webDavItem.webDavPath }}/{{ webDavItem.file }}"
+      register: shellResult
+      failed_when: (shellResult.rc != 0)
+      tags:
+        - always
+
+    - name: Get content of changed file {{ mountpoint.path }}/{{ webDavItem.webDavPath }}/{{ webDavItem.file }}
       become_user: "root"
       ansible.builtin.command:
         argv:
@@ -47,7 +91,7 @@
       tags:
         - always
 
-    - name: Debug file content of {{ mountpoint.path }}/{{ webDavItem.webDavPath }}/{{ webDavItem.file }}
+    - name: Debug file content of modified file {{ mountpoint.path }}/{{ webDavItem.webDavPath }}/{{ webDavItem.file }}
       ansible.builtin.debug:
         msg: "File {{ webDavItem.file }} is:\n {{ cmdResult.stdout }}"
       tags:
@@ -65,3 +109,9 @@
       ansible.builtin.file:
         state: absent
         path: "{{ mountpoint.path }}"
+
+    - name: Cleanup copy target
+      become_user: "root"
+      ansible.builtin.file:
+        state: absent
+        path: "{{ cpytgt.path }}"
