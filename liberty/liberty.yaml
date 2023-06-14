@@ -38,6 +38,8 @@
           roleDirectories: "{{ libertyDirectories }}"
           roleBecomeUser: "{{ rootUser }}"
           roleDownloadBinariesToController: "{{ downloadBinariesToController | default(false) }}"
+          rolePythonModulesToBeInstalled: "{{ pythonModulesToBeInstalled }}"
+          roleRpmPackagesToBeInstalled: "{{ rpmPackagesToBeInstalled }}"
         loop: "{{ liberty.installations }}"
         loop_control:
           loop_var: libInstallation

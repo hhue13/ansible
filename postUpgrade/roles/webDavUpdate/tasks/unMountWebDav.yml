@@ -27,3 +27,14 @@
     state: absent
   tags:
     - always
+
+- name: Remove the option to immediately upload files to the server
+  become_user: "root"
+  ansible.builtin.blockinfile:
+    path: "/etc/davfs2/davfs2.conf"
+    block: |
+      delay_upload 0
+    marker: "# {mark} ANSIBLE MANAGED BLOCK delay_upload"
+    state: absent
+  tags:
+    - always

@@ -304,3 +304,19 @@
   become_user: "{{ libertyUsers.adminUser.name }}"
   tags:
     - always
+
+
+# tasks file for roles/libertyInstallation
+- name: Install liberty from the provided URLs
+  block:
+    ##
+    ## Run restorecon to satisfy SELinux
+    - name: Run restorecon for the liberty installation
+      ansible.builtin.command:
+        cmd: "restorecon -rv {{ roleDirectories.libertyBase.name }}"
+      register: cmdResult
+      failed_when: (cmdResult.rc != 0)
+  become: true
+  become_user: "{{ roleBecomeRootUser }}"
+  tags:
+    - always
