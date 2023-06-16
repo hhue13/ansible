@@ -101,16 +101,22 @@
       ansible.builtin.set_fact:
         oscpDeploymentForTheRoute: "{{ oscpDeployment01 }}"
       when: ( oscpNamespaceForTheRoute == oscpNameSpace01 )
+      tags:
+        - always
 
     - name: Set the deployment for the namespace of the route to {{ oscpDeployment02 }}
       ansible.builtin.set_fact:
         oscpDeploymentForTheRoute: "{{ oscpDeployment02 }}"
       when: ( oscpNamespaceForTheRoute == oscpNameSpace02 )
+      tags:
+        - always
 
     - name: We fail if no deployment is set as this must not happen here
       ansible.builtin.fail:
         msg: "Could not determine the deployment name for namespace {{ oscpNamespaceForTheRoute }}. Make sure that the variable 'oscpNamespaceForTheRoute' is set to either {{ oscpNameSpace01 }} or {{ oscpNameSpace02 }}"
       when: ( (oscpDeploymentForTheRoute is not defined) or (oscpDeploymentForTheRoute == ""))
+      tags:
+        - always
 
     - name: Test if the route exists in namespace {{ oscpNameSpace01 }}
       kubernetes.core.k8s_info:
@@ -184,6 +190,8 @@
       loop_control:
         loop_var: annotation
       when: ( oscpRouteAnnotationsToAdd is defined)
+      tags:
+        - always
 
     - name: Get the yaml of the new route
       ansible.builtin.shell: |
@@ -199,6 +207,74 @@
         token: "{{ slackAuthenticationToken }}"
         msg: "Route created:\n ```{{ shellResult.stdout }}```"
       when: ((sendSlackNotifications is defined) and (sendSlackNotifications == true))
+      tags:
+        - always
+#####       - name: Set the PodDisruptionBudget minavailable for the active namespace {{ oscpNamespaceForTheRoute }}
+#####         kubernetes.core.k8s:
+#####           state: "present"
+#####           host: "{{ k8s_host }}"
+#####           api_key: "{{ kube_api_key }}"
+#####           namespace: "{{ oscpNamespaceForTheRoute }}"
+#####           name: "{{ poddisruptionbudget.name }}"
+#####           definition:
+#####             api_version: "v1"
+#####             kind: PodDisruptionBudget
+#####             spec:
+#####               minAvailable: "{{ poddisruptionbudget.minAvailable.activeNamespace }}"
+#####               selector:
+#####                 matchLabels:
+#####                   poddisruptionbudget: "{{ poddisruptionbudget.value }}"
+#####         tags:
+#####           - always
+    ##
+    ## Set the PodDisruptionBudget to 1 for the namespace with the active route and to 0 for the namespace which does not have the route
+    - name: Set PodDisruptionBudget values
+      block:
+      - name: Remove existing PodDisruptionBudget for namespace {{ oscpNameSpace01 }}
+        kubernetes.core.k8s:
+          state: "absent"
+          host: "{{ k8s_host }}"
+          api_key: "{{ kube_api_key }}"
+          namespace: "{{ oscpNameSpace01 }}"
+          api_version: "v1"
+          kind: PodDisruptionBudget
+          name: "{{ poddisruptionbudget.name }}"
+
+      - name: Remove existing PodDisruptionBudget for namespace {{ oscpNameSpace02 }}
+        kubernetes.core.k8s:
+          state: "absent"
+          host: "{{ k8s_host }}"
+          api_key: "{{ kube_api_key }}"
+          namespace: "{{ oscpNameSpace02 }}"
+          api_version: "v1"
+          kind: PodDisruptionBudget
+          name: "{{ poddisruptionbudget.name }}"
+        ##
+        ## Creating the PodDisruptionBudget using oc as the Collection obviously only supports % values for the minAvailable
+      - name: Set the PodDisruptionBudget minavailable for the active namespace {{ oscpNamespaceForTheRoute }}
+        ansible.builtin.shell: |
+          {{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ oscpNamespaceForTheRoute }} create poddisruptionbudget {{ poddisruptionbudget.name }} --selector={{ poddisruptionbudget.key }}={{ poddisruptionbudget.value }} --min-available={{ poddisruptionbudget.minAvailable.activeNamespace }} --dry-run='client' -o yaml | {{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ oscpNamespaceForTheRoute }} apply -f -
+        register: shellResult
+        failed_when: ( shellResult.rc != 0 )
+        tags:
+          - always
+
+      - name: Set the PodDisruptionBudget minavailable for the inactive namespace "{{ oscpNameSpace01 }}"
+        ansible.builtin.shell: |
+          {{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ oscpNameSpace01 }} create poddisruptionbudget {{ poddisruptionbudget.name }} --selector={{ poddisruptionbudget.key }}={{ poddisruptionbudget.value }} --min-available={{ poddisruptionbudget.minAvailable.inactiveNamespace }} --dry-run='client' -o yaml | {{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ oscpNameSpace01 }} apply -f -
+        register: shellResult
+        failed_when: ( shellResult.rc != 0 )
+        when: (oscpNameSpace01 != oscpNamespaceForTheRoute)
+        tags:
+          - always
+
+      - name: Set the PodDisruptionBudget minavailable for the inactive namespace "{{ oscpNameSpace02 }}"
+        ansible.builtin.shell: |
+          {{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ oscpNameSpace02 }} create poddisruptionbudget {{ poddisruptionbudget.name }} --selector={{ poddisruptionbudget.key }}={{ poddisruptionbudget.value }} --min-available={{ poddisruptionbudget.minAvailable.inactiveNamespace }} --dry-run='client' -o yaml | {{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ oscpNameSpace02 }} apply -f -
+        when: (oscpNameSpace02 != oscpNamespaceForTheRoute)
+        tags:
+          - always
+      when: (poddisruptionbudget is defined)
       tags:
         - always
     ##
