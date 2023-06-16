@@ -51,9 +51,16 @@ oscpDeployment02: "dx-green"
 yqBin: "/usr/local/bin/yq"
 ##
 ## Namespace to which we have to switch
-oscpNamespaceForTheRoute: "{{ oscpNameSpace01 }}"
+oscpNamespaceForTheRoute: "{{ oscpNameSpace02 }}"
 ##
 ## Annotations to be added to the route
 ##### oscpRouteAnnotationsToAdd:
 #####   - name: "haproxy.router.openshift.io/ip_whitelist"
 #####     value: "10.1.63.48/28 10.1.63.52 10.1.63.53"
+poddisruptionbudget:
+  name: dx-pod-disuption-budget
+  key: poddisruptionbudget
+  value: dx
+  minAvailable:
+    activeNamespace: 1
+    inactiveNamespace: 0
