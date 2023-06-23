@@ -222,13 +222,13 @@ libertyServersA6:
         - jakartaee-9.1
         - monitor-1.0
         - mpMetrics-4.0
-      configDropins:
-        overrides:
-          server:
-            templateFile: "templates/configDropins/overrides/server-v2.xml.j2"
-            features:
-              - transportSecurity-1.0
-          adminCenter: "{{ defaultAdminCenterConfig }}"
+#####       configDropins:
+#####         overrides:
+#####           server:
+#####             templateFile: "templates/configDropins/overrides/server-v2.xml.j2"
+#####             features:
+#####               - transportSecurity-1.0
+#####           adminCenter: "{{ defaultAdminCenterConfig }}"
       bootstrapProperties: "{{ defaultCustomBootstrapProperties }}"
     logging: "{{ defaultLogging }}"
 
@@ -253,13 +253,13 @@ libertyServersA6:
         - jakartaee-9.1
         - monitor-1.0
         - mpMetrics-4.0
-      configDropins:
-        overrides:
-          server:
-            templateFile: "templates/configDropins/overrides/server-v2.xml.j2"
-            features:
-              - transportSecurity-1.0
-          adminCenter: "{{ defaultAdminCenterConfig }}"
+#####        configDropins:
+#####          overrides:
+#####            server:
+#####              templateFile: "templates/configDropins/overrides/server-v2.xml.j2"
+#####              features:
+#####                - transportSecurity-1.0
+#####            adminCenter: "{{ defaultAdminCenterConfig }}"
       bootstrapProperties: "{{ defaultCustomBootstrapProperties }}"
     logging: "{{ defaultLogging }}"
 
