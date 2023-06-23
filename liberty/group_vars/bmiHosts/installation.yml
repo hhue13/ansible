@@ -113,9 +113,9 @@ liberty:
             password: "{{ libertyDownloadCredentials01.password | default(omit) }}"
           java:
             active: true
-            version: "jdk-17.0.6+10" ## must match the root directory of the java .tar.gz package
-            url: "https://github.com/ibmruntimes/semeru17-binaries/releases/download/jdk-17.0.6%2B10_openj9-0.36.0/ibm-semeru-open-jdk_x64_linux_17.0.6_10_openj9-0.36.0.tar.gz"
-            checksum: sha256:ce39a4f7c2e08e56083f17f3e44c05e0fbbeba775e670f015a337679c99c54c6
+            version: "ibm-java-x86_64-80" ## must match the root directory of the java .tar.gz package
+            url: "http://192.168.57.1:8080/ibm-java-sdk-8.0-5.41-linux-x86_64.tgz"
+            checksum: sha256:4eeac267d6f9096d0a66ebb3e5424179901df2867e4c116e1a37157d3129b263
             user: "{{ libertyDownloadCredentials01.user | default(omit) }}"
             password: "{{ libertyDownloadCredentials01.password | default(omit) }}"
       profiles:

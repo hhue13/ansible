@@ -508,6 +508,7 @@ libertyServersA13:
       - "-Xverbosegclog:logs/verbosegc.log.%X,3,10000"
       - "-Xms128m"
       - "-Xmx256m"
+      - "-Xhealthcenter:port=27031"
     server:
       features:
         - jakartaee-9.1
@@ -538,6 +539,7 @@ libertyServersA13:
       - "-Xverbosegclog:logs/verbosegc.log.%X,3,10000"
       - "-Xms128m"
       - "-Xmx256m"
+      - "-Xhealthcenter:port=27032"
     server:
       features:
         - jakartaee-9.1
