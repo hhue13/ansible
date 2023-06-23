@@ -132,3 +132,20 @@
       when: (( ihs.installations is defined ) and (ihs.installations | length > 0 ))
       tags:
         - ihsProfiles
+    ##
+    ## Create defined links
+    - name: Create configured links
+      ansible.builtin.file:
+        path: "{{ linkDict.link }}"
+        src: "{{ linkDict.target }}"
+        owner: "{{ linkDict.owner | default(libertyUsers.adminUser.name) }}"
+        group: "{{ linkDict.group | default(libertyGroups.adminGroup.name) }}"
+        state: link
+        force: true
+        follow: false
+      loop: "{{ requiredLinks }}"
+      loop_control:
+        loop_var: linkDict
+      when: (( requiredLinks is defined ) and (requiredLinks | length > 0 ))
+      tags:
+        - always
