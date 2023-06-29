@@ -87,6 +87,16 @@
       loop_control:
         loop_var: __dropinsDirs
     ##
+    ## Create servers dump directory
+    - name: Create servers dump directory
+      ansible.builtin.file:
+        path: "{{ roleDirectories.dumpBaseDir.name }}/{{ roleInstallation.name }}/{{ activeDumpIntermediaryDirNameWIthSlashAtTheEnd | default('dump/') }}/{{ __serverToCreate.name }}"
+        state: directory
+        owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
+        group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
+        mode: "{{ roleDirectories.dumpBaseDir.mode }}"
+      when: ((roleDirectories.dumpBaseDir.name is defined) and (roleDirectories.dumpBaseDir.name | length > 0 ))
+    ##
     ## Create the servers.env file
     - name: Update server.env
       block:

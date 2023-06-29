@@ -7,7 +7,7 @@
         state: file
         suffix: temp
       register: __serverTemplateOut
-    ##eEEERT
+    ##
     ## Debug the variables
     - name: Debug server variables
       ansible.builtin.debug:
@@ -28,6 +28,14 @@
         - "{{ roleDirectories.ihsBase.name }}/{{ roleInstallation.name }}/include"
       loop_control:
         loop_var: __dirToCreate
+    ##
+    ## Ensure write permissions for the group to the directory for plugin propagation Plugins/config/{{ __serverToCreate.name }}
+    - name: nsure write permissions for the group to the directory for plugin propagation Plugins/config/{{ __serverToCreate.name }}
+      ansible.builtin.file:
+        path: "{{ roleDirectories.ihsBase.name }}/{{ roleInstallation.name }}/{{ __profileCreation.name }}/{{ __serverToCreate.name }}/Plugins/config/{{ __serverToCreate.name }}"
+        state: directory
+        mode: "g+w"
+        recurse: true
     ##
     ## Template httpd.conf
     - name: Create httpd.conf for IHS server {{ __serverToCreate.name }}
