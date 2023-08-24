@@ -94,12 +94,6 @@ poddisruptionbudgets:
     minAvailable:
       activeNamespace: 1
       inactiveNamespace: 0
-  - name: pdb-dx-contentComposer
-    key: poddisruptionbudget
-    value: dx-contentComposer
-    minAvailable:
-      activeNamespace: 1
-      inactiveNamespace: 0
   - name: pdb-dx-ringApi
     key: poddisruptionbudget
     value: dx-ringApi
