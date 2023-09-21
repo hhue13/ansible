@@ -4,7 +4,7 @@ echo "Checking result attribte of xmlaccess output file $(date +"%Y%m%d_%H%M%S.%
 ## Due to the huge XML files XML parsing takes ages or runs OOM.
 ## So we extract the status element and verify this only this small file.
 echo "<request>" > "{{ __outputFile }}.cut"
-grep '<status element=' {{ __outputFile }} >> "{{ __outputFile }}.cut"
+grep -E '<status element=|</status>' {{ __outputFile }} >> "{{ __outputFile }}.cut"
 echo "</request>" >> "{{ __outputFile }}.cut"
 ##
 ## Set Java optiopns if needed
