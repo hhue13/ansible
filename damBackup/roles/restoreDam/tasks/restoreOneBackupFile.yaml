@@ -1,4 +1,10 @@
 ---
+- name: Set the tmp directory for the backup files with default just once
+  ansible.builtin.set_fact:
+    __backup_temp_dir: "{{ backupFileDict['tmpDir'] | default('/tmp') }}"
+  tags:
+    - always
+
 - name: Set the default tar command to be non-verbose
   ansible.builtin.set_fact:
     restore_command: "tar -mpxf"
@@ -30,7 +36,7 @@
     namespace: "{{ roleNs }}"
     host: "{{ roleHost }}"
     api_key: "{{ roleKey }}"
-    command: "bash -c '{{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ restoreTemplates[0].sh }} >/dev/null 2>/dev/null'"
+    command: "bash -c '{{ __backup_temp_dir }}/{{ restoreTemplates[0].sh }} >/dev/null 2>/dev/null'"
     pod: "{{ roleDamPodName }}"
     container: "{{ roleDamPodContainerName }}"
   register: podResult
@@ -43,7 +49,7 @@
     namespace: "{{ roleNs }}"
     host: "{{ roleHost }}"
     api_key: "{{ roleKey }}"
-    command: "{{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ restoreTemplates[1].sh }}"
+    command: "{{ __backup_temp_dir }}/{{ restoreTemplates[1].sh }}"
     pod: "{{ roleDamPodName }}"
     container: "{{ roleDamPodContainerName }}"
   register: podResult
@@ -58,7 +64,7 @@
     namespace: "{{ roleNs }}"
     host: "{{ roleHost }}"
     api_key: "{{ roleKey }}"
-    command: "{{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ restoreTemplates[2].sh }}"
+    command: "{{ __backup_temp_dir }}/{{ restoreTemplates[2].sh }}"
     pod: "{{ roleDamPodName }}"
     container: "{{ roleDamPodContainerName }}"
   register: podResult
@@ -72,7 +78,7 @@
     namespace: "{{ roleNs }}"
     host: "{{ roleHost }}"
     api_key: "{{ roleKey }}"
-    command: "rm -rf {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}"
+    command: "rm -rf {{ __backup_temp_dir }}/{{ backupFileDict['backupFile'] }}"
     pod: "{{ roleDamPodName }}"
     container: "{{ roleDamPodContainerName }}"
   register: podResult

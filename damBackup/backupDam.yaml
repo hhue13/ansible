@@ -354,8 +354,11 @@
         api_key: "{{ kube_api_key }}"
         validate_certs: "no"
       when: kube_api_key is defined
+      register: ocpLogoutResult
+      ignore_errors: true
       tags:
         - always
+
     ##
     ## Send slack notifications that playbook has finished
     - name: Send notification message via Slack that backup finished

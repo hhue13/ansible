@@ -1,10 +1,16 @@
 ---
-- name: Make sure the tmp directory for the backup ({{ backupFileDict['tmpDir'] | default('/tmp') }}) exists
+- name: Set the tmp directory for the backup files with default just once
+  ansible.builtin.set_fact:
+    __backup_temp_dir: "{{ backupFileDict['tmpDir'] | default('/tmp') }}"
+  tags:
+    - always
+
+- name: Make sure the tmp directory for the backup ({{ __backup_temp_dir }}) exists
   kubernetes.core.k8s_exec:
     namespace: "{{ roleNs }}"
     host: "{{ roleHost }}"
     api_key: "{{ roleKey }}"
-    command: "mkdir -p {{ backupFileDict['tmpDir'] | default('/tmp') }}"
+    command: "mkdir -p {{ __backup_temp_dir }}"
     pod: "{{ roleDamPodName }}"
     container: "{{ roleDamPodContainerName }}"
     validate_certs: "no"
@@ -23,7 +29,7 @@
       - "{{ roleNs }}"
       - "cp"
       - "{{roleTargetDirectoryForBackupFiles}}/{{ backupFileDict['backupFile'] }}"
-      - "{{ roleDamPodName }}:{{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}"
+      - "{{ roleDamPodName }}:{{ __backup_temp_dir }}/{{ backupFileDict['backupFile'] }}"
       - "-c"
       - "{{ roleDamPodContainerName }}"
   register: cmdResult

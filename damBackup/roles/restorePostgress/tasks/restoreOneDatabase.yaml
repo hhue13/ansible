@@ -1,150 +1,161 @@
 ---
-##
-## Set the database connection limit to 0
-- name: Set the database connection limit to 0
-  kubernetes.core.k8s_exec:
-    namespace: "{{ roleNs }}"
-    host: "{{ roleHost }}"
-    api_key: "{{ roleKey }}"
-    command: 'psql -c "ALTER DATABASE {{ backupFileDict[''name''] }} CONNECTION LIMIT 0;"'
-    pod: "{{ rolePersistentPodName }}"
-    container: "{{ rolePersistentPodContainerName }}"
-  register: podResult
-  failed_when: (podResult.rc != 0)
+- name: Set the tmp directory for the backup files with default just once
+  ansible.builtin.set_fact:
+    __backup_temp_dir: "{{ backupFileDict['tmpDir'] | default('/tmp') }}"
   tags:
     - always
-##
-## Terminate all the existing connections to the database
-- name: Terminate all the existing connections to the database
-  kubernetes.core.k8s_exec:
-    namespace: "{{ roleNs }}"
-    host: "{{ roleHost }}"
-    api_key: "{{ roleKey }}"
-    command: 'psql -c "SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = ''{{ backupFileDict[''name''] }}'' AND pid <> pg_backend_pid();"'
-    pod: "{{ rolePersistentPodName }}"
-    container: "{{ rolePersistentPodContainerName }}"
-  register: podResult
-  failed_when: (podResult.rc != 0)
-  tags:
-    - always
-##
-##
-- name: Wait some seconds to allow connections to terminate
-  pause:
-    seconds: "{{ roleWaitTimeBeforeDropDb }}"
-  tags:
-    - always
-##
-## dropdb dxmediadb
-- name: dropdb {{ backupFileDict['name'] }}
-  kubernetes.core.k8s_exec:
-    namespace: "{{ roleNs }}"
-    host: "{{ roleHost }}"
-    api_key: "{{ roleKey }}"
-    command: "dropdb {{ backupFileDict['name'] }}"
-    pod: "{{ rolePersistentPodName }}"
-    container: "{{ rolePersistentPodContainerName }}"
-  register: podResult
-  failed_when: (podResult.rc != 0)
-  tags:
-    - always
-##
-##
-- name: Wait some seconds to allow dropping the database
-  pause:
-    seconds: "{{ roleWaitTimeBeforeDropDb }}"
-  tags:
-    - always
-##
-## Create the database
-- name: Create database {{ backupFileDict['name'] }}
-  kubernetes.core.k8s_exec:
-    namespace: "{{ roleNs }}"
-    host: "{{ roleHost }}"
-    api_key: "{{ roleKey }}"
-    command: "createdb -O {{ backupFileDict['dbrole'] }} {{ backupFileDict['name'] }}"
-    pod: "{{ rolePersistentPodName }}"
-    container: "{{ rolePersistentPodContainerName }}"
-  register: podResult
-  failed_when: (podResult.rc != 0)
-  tags:
-    - always
-##
-## Remove .gz extension
-- name: Create uncompressed dump files name
-  shell: "echo {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }} | sed s#\\.gz##g"
-  register: cmdResult
-  tags:
-    - always
-##
-## Delete unzipped backup file if it exists
-- name: Delete file {{ cmdResult.stdout }} in case it exists
-  kubernetes.core.k8s_exec:
-    namespace: "{{ roleNs }}"
-    host: "{{ roleHost }}"
-    api_key: "{{ roleKey }}"
-    command: "rm -f {{ cmdResult.stdout }}"
-    pod: "{{ rolePersistentPodName }}"
-    container: "{{ rolePersistentPodContainerName }}"
-  register: podResult
-  failed_when: (podResult.rc != 0)
-  tags:
-    - always
-##
-## Unzip the file to restore
-- name: Unzip backup file {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }} to {{ cmdResult.stdout }}
-  kubernetes.core.k8s_exec:
-    namespace: "{{ roleNs }}"
-    host: "{{ roleHost }}"
-    api_key: "{{ roleKey }}"
-    command: "gunzip -d {{ cmdResult.stdout }}.gz"
-    pod: "{{ rolePersistentPodName }}"
-    container: "{{ rolePersistentPodContainerName }}"
-  register: podResult
-  failed_when: (podResult.rc != 0)
-  tags:
-    - always
-##
-## List temp directory
-- name: List content of {{ backupFileDict['tmpDir'] | default('/tmp') }}
-  kubernetes.core.k8s_exec:
-    namespace: "{{ roleNs }}"
-    host: "{{ roleHost }}"
-    api_key: "{{ roleKey }}"
-    command: "ls -altr {{ backupFileDict['tmpDir'] | default('/tmp') }}"
-    pod: "{{ rolePersistentPodName }}"
-    container: "{{ rolePersistentPodContainerName }}"
-  register: podResult
-  failed_when: (podResult.rc != 0)
-  tags:
-    - always
-##
-## Restore the database
-- name: Restore database {{ backupFileDict['name'] }}
-  kubernetes.core.k8s_exec:
-    namespace: "{{ roleNs }}"
-    host: "{{ roleHost }}"
-    api_key: "{{ roleKey }}"
-    command: 'bash -c "psql {{ backupFileDict[''name''] }} < {{ cmdResult.stdout }}"'
-    pod: "{{ rolePersistentPodName }}"
-    container: "{{ rolePersistentPodContainerName }}"
-    validate_certs: "no"
-  register: podResult
-  failed_when: (podResult.rc != 0)
-  tags:
-    - always
-##
-## Set the connection limt for the database
-- name: Set the connection limt for the database {{ backupFileDict['name'] }}
-  kubernetes.core.k8s_exec:
-    namespace: "{{ roleNs }}"
-    host: "{{ roleHost }}"
-    api_key: "{{ roleKey }}"
-    command: 'psql -c "ALTER DATABASE {{ backupFileDict[''name''] }} CONNECTION LIMIT {{ backupFileDict[''connLimitToSet''] }};"'
-    pod: "{{ rolePersistentPodName }}"
-    container: "{{ rolePersistentPodContainerName }}"
-    validate_certs: "no"
-  register: podResult
-  failed_when: (podResult.rc != 0)
-  tags:
-    - always
+
+- name: Restore one database
+  block:
+    ##
+    ## Set the database connection limit to 0
+    - name: Set the database connection limit to 0
+      kubernetes.core.k8s_exec:
+        namespace: "{{ roleNs }}"
+        host: "{{ roleHost }}"
+        api_key: "{{ roleKey }}"
+        command: 'psql -c "ALTER DATABASE {{ backupFileDict[''name''] }} CONNECTION LIMIT 0;"'
+        pod: "{{ rolePersistentPodName }}"
+        container: "{{ rolePersistentPodContainerName }}"
+      register: podResult
+      failed_when: (podResult.rc != 0)
+      tags:
+        - always
+    ##
+    ## Terminate all the existing connections to the database
+    - name: Terminate all the existing connections to the database
+      kubernetes.core.k8s_exec:
+        namespace: "{{ roleNs }}"
+        host: "{{ roleHost }}"
+        api_key: "{{ roleKey }}"
+        command: 'psql -c "SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = ''{{ backupFileDict[''name''] }}'' AND pid <> pg_backend_pid();"'
+        pod: "{{ rolePersistentPodName }}"
+        container: "{{ rolePersistentPodContainerName }}"
+      register: podResult
+      failed_when: (podResult.rc != 0)
+      tags:
+        - always
+    ##
+    ##
+    - name: Wait some seconds to allow connections to terminate
+      pause:
+        seconds: "{{ roleWaitTimeBeforeDropDb }}"
+      tags:
+        - always
+    ##
+    ## dropdb dxmediadb
+    - name: dropdb {{ backupFileDict['name'] }}
+      kubernetes.core.k8s_exec:
+        namespace: "{{ roleNs }}"
+        host: "{{ roleHost }}"
+        api_key: "{{ roleKey }}"
+        command: "dropdb {{ backupFileDict['name'] }}"
+        pod: "{{ rolePersistentPodName }}"
+        container: "{{ rolePersistentPodContainerName }}"
+      register: podResult
+      failed_when: (podResult.rc != 0)
+      tags:
+        - always
+    ##
+    ##
+    - name: Wait some seconds to allow dropping the database
+      pause:
+        seconds: "{{ roleWaitTimeBeforeDropDb }}"
+      tags:
+        - always
+    ##
+    ## Create the database
+    - name: Create database {{ backupFileDict['name'] }}
+      kubernetes.core.k8s_exec:
+        namespace: "{{ roleNs }}"
+        host: "{{ roleHost }}"
+        api_key: "{{ roleKey }}"
+        command: "createdb -O {{ backupFileDict['dbrole'] }} {{ backupFileDict['name'] }}"
+        pod: "{{ rolePersistentPodName }}"
+        container: "{{ rolePersistentPodContainerName }}"
+      register: podResult
+      failed_when: (podResult.rc != 0)
+      tags:
+        - always
+    ##
+    ## Remove .gz extension
+    - name: Create uncompressed dump files name
+      shell: "echo {{ __backup_temp_dir }}/{{ backupFileDict['backupFile'] }} | sed s#\\.gz##g"
+      register: cmdResult
+      tags:
+        - always
+    ##
+    ## Delete unzipped backup file if it exists
+    - name: Delete file {{ cmdResult.stdout }} in case it exists
+      kubernetes.core.k8s_exec:
+        namespace: "{{ roleNs }}"
+        host: "{{ roleHost }}"
+        api_key: "{{ roleKey }}"
+        command: "rm -f {{ cmdResult.stdout }}"
+        pod: "{{ rolePersistentPodName }}"
+        container: "{{ rolePersistentPodContainerName }}"
+      register: podResult
+      failed_when: (podResult.rc != 0)
+      tags:
+        - always
+    ##
+    ## Unzip the file to restore
+    - name: Unzip backup file {{ __backup_temp_dir }}/{{ backupFileDict['backupFile'] }} to {{ cmdResult.stdout }}
+      kubernetes.core.k8s_exec:
+        namespace: "{{ roleNs }}"
+        host: "{{ roleHost }}"
+        api_key: "{{ roleKey }}"
+        command: "gunzip -d {{ cmdResult.stdout }}.gz"
+        pod: "{{ rolePersistentPodName }}"
+        container: "{{ rolePersistentPodContainerName }}"
+      register: podResult
+      failed_when: (podResult.rc != 0)
+      tags:
+        - always
+    ##
+    ## List temp directory
+    - name: List content of {{ __backup_temp_dir }}
+      kubernetes.core.k8s_exec:
+        namespace: "{{ roleNs }}"
+        host: "{{ roleHost }}"
+        api_key: "{{ roleKey }}"
+        command: "ls -altr {{ __backup_temp_dir }}"
+        pod: "{{ rolePersistentPodName }}"
+        container: "{{ rolePersistentPodContainerName }}"
+      register: podResult
+      failed_when: (podResult.rc != 0)
+      tags:
+        - always
+    ##
+    ## Restore the database
+    - name: Restore database {{ backupFileDict['name'] }}
+      kubernetes.core.k8s_exec:
+        namespace: "{{ roleNs }}"
+        host: "{{ roleHost }}"
+        api_key: "{{ roleKey }}"
+        command: 'bash -c "psql {{ backupFileDict[''name''] }} < {{ cmdResult.stdout }}"'
+        pod: "{{ rolePersistentPodName }}"
+        container: "{{ rolePersistentPodContainerName }}"
+        validate_certs: "no"
+      register: podResult
+      failed_when: (podResult.rc != 0)
+      tags:
+        - always
+  ##
+  ## We always try to set the target connection limit to avoid that DAM stops working
+  always:
+    ##
+    ## Set the connection limt for the database
+    - name: Set the connection limt for the database {{ backupFileDict['name'] }}
+      kubernetes.core.k8s_exec:
+        namespace: "{{ roleNs }}"
+        host: "{{ roleHost }}"
+        api_key: "{{ roleKey }}"
+        command: 'psql -c "ALTER DATABASE {{ backupFileDict[''name''] }} CONNECTION LIMIT {{ backupFileDict[''connLimitToSet''] }};"'
+        pod: "{{ rolePersistentPodName }}"
+        container: "{{ rolePersistentPodContainerName }}"
+        validate_certs: "no"
+      register: podResult
+      failed_when: (podResult.rc != 0)
+      tags:
+        - always
