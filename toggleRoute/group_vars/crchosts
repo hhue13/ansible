@@ -57,10 +57,64 @@ oscpNamespaceForTheRoute: "{{ oscpNameSpace02 }}"
 ##### oscpRouteAnnotationsToAdd:
 #####   - name: "haproxy.router.openshift.io/ip_whitelist"
 #####     value: "10.1.63.48/28 10.1.63.52 10.1.63.53"
-poddisruptionbudget:
-  name: dx-pod-disuption-budget
-  key: poddisruptionbudget
-  value: dx
-  minAvailable:
-    activeNamespace: 1
-    inactiveNamespace: 0
+poddisruptionbudgets:
+  - name: pdb-dx-contentComposer
+    key: poddisruptionbudget
+    value: dx-contentComposer
+    minAvailable:
+      activeNamespace: 1
+      inactiveNamespace: 0
+  - name: pdb-dx-core
+    key: poddisruptionbudget
+    value: dx-core
+    minAvailable:
+      activeNamespace: 1
+      inactiveNamespace: 0
+  - name: pdb-dx-digitalAssetManagement
+    key: poddisruptionbudget
+    value: dx-digitalAssetManagement
+    minAvailable:
+      activeNamespace: 1
+      inactiveNamespace: 0
+  - name: pdb-dx-imageProcessor
+    key: poddisruptionbudget
+    value: dx-imageProcessor
+    minAvailable:
+      activeNamespace: 1
+      inactiveNamespace: 0
+  - name: pdb-dx-persistenceNode
+    key: poddisruptionbudget
+    value: dx-persistenceNode
+    minAvailable:
+      activeNamespace: 1
+      inactiveNamespace: 0
+  - name: pdb-dx-persistenceConnectionPool
+    key: poddisruptionbudget
+    value: dx-persistenceConnectionPool
+    minAvailable:
+      activeNamespace: 1
+      inactiveNamespace: 0
+  - name: pdb-dx-ringApi
+    key: poddisruptionbudget
+    value: dx-ringApi
+    minAvailable:
+      activeNamespace: 1
+      inactiveNamespace: 0
+  - name: pdb-dx-runtimeController
+    key: poddisruptionbudget
+    value: dx-runtimeController
+    minAvailable:
+      activeNamespace: 1
+      inactiveNamespace: 0
+  - name: pdb-dx-haproxy
+    key: poddisruptionbudget
+    value: dx-haproxy
+    minAvailable:
+      activeNamespace: 1
+      inactiveNamespace: 0
+  - name: pdb-dx-licenseManager
+    key: poddisruptionbudget
+    value: dx-licenseManager
+    minAvailable:
+      activeNamespace: 1
+      inactiveNamespace: 0

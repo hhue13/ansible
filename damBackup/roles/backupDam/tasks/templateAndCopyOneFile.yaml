@@ -1,4 +1,10 @@
 ---
+- name: Set the tmp directory for the backup files with default just once
+  ansible.builtin.set_fact:
+    __backup_temp_dir: "{{ backupFileDict['tmpDir'] | default('/tmp') }}"
+  tags:
+    - always
+
 - name: Template and copy a file to the pod
   block:
     - name: Create temporary directory for templating
@@ -23,7 +29,7 @@
         host: "{{ roleHost }}"
         api_key: "{{ roleKey }}"
         local_path: "{{ __backupScript.path }}/{{ __targetFile }}"
-        remote_path: "{{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ __targetFile }}"
+        remote_path: "{{ __backup_temp_dir }}/{{ __targetFile }}"
         pod: "{{ roleDamPodName }}"
         container: "{{ roleDamPodContainerName }}"
         no_preserve: false

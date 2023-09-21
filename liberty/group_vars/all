@@ -11,6 +11,9 @@ slackAuthenticationToken: !vault |
   3835373762646335316537633830383933616439356161613933
 rootUser: "root"
 ##
+## Link name for the active Java installation. Defaults to "dump/"
+## activeDumpIntermediaryDirNameWIthSlashAtTheEnd: "dump/"
+##
 ## Link name for the active Java installation
 activeJavaLinkName: "java"
 ##
