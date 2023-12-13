@@ -9,10 +9,12 @@ if (root1 != None):
     result = ""
     for statusNode in statusNodes:
         try:
+            element = statusNode.get("element")
             result = statusNode.get("result")
+            print "Element: %s \t\t Result: %s" % (element, result)
         except:
             pass
     if (result == "ok"):
-        print (result)
+        print ("Overall result: %s") % result
     else:
         raise Exception, "Result not ok"
