@@ -1,2 +1,5 @@
 #!/usr/bin/env bash
-exit $(cat {{ backupFileDict['tmpDir'] | default('/tmp') }}/runBackup.rc)
+echo -e "runBackup.rc file is:\n$(ls -al {{ backupFileDict['tmpDir'] | default('/tmp') }}/runBackup.rc)"
+__rc=$(cat {{ backupFileDict['tmpDir'] | default('/tmp') }}/runBackup.rc)
+echo "runBackup.rc file contents is: \"${__rc}\""
+exit ${__rc}
