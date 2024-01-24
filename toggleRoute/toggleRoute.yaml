@@ -100,7 +100,7 @@
     - name: Set the deployment for the namespace of the route to {{ oscpDeployment01 }}
       ansible.builtin.set_fact:
         oscpDeploymentForTheRoute: "{{ oscpDeployment01 }}"
-        oscpStsToScaleDown: "{{ oscpDeployment02 }}-core"
+        ocpDeploymentToScaleDown: "{{ oscpDeployment02 }}"
         oscpNsToScaleDown: "{{ oscpNameSpace02 }}"
       when: ( oscpNamespaceForTheRoute == oscpNameSpace01 )
       tags:
@@ -109,7 +109,7 @@
     - name: Set the deployment for the namespace of the route to {{ oscpDeployment02 }}
       ansible.builtin.set_fact:
         oscpDeploymentForTheRoute: "{{ oscpDeployment02 }}"
-        oscpStsToScaleDown: "{{ oscpDeployment01 }}-core"
+        ocpDeploymentToScaleDown: "{{ oscpDeployment01 }}"
         oscpNsToScaleDown: "{{ oscpNameSpace01 }}"
       when: ( oscpNamespaceForTheRoute == oscpNameSpace02 )
       tags:
@@ -244,7 +244,7 @@
         - always
     ##
     ## As we still get traffic to the inactive namespace we scale it down to zero
-    - name: Scale down old deployment to 0 if waitBeforeScaleDown >0
+    - name: Scale down HA Proxy of old deployment to zero and scale the core to 1 if waitBeforeScaleDown >0
       block:
         - name: Waiting for {{ waitBeforeScaleDown }} seconds before scaling down
           ansible.builtin.pause:
@@ -252,15 +252,24 @@
           tags:
             - always
 
-        - name: Scale StatefulSet {{ oscpStsToScaleDown }} down
+        - name: Scale deployment {{ ocpDeploymentToScaleDown }}-haproxy down to zero
           ansible.builtin.shell: |
-              {{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ oscpNsToScaleDown }} scale statefulset {{ oscpStsToScaleDown}} --replicas=0
+              {{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ oscpNsToScaleDown }} scale deployment {{ ocpDeploymentToScaleDown}}-haproxy --replicas=0
           register: shellResult
           failed_when: ( shellResult.rc != 0 )
           tags:
             - always
 
-        - name: Scaling up again if waitBeforeScaleUpAgain >0
+
+        - name: Scale StatefulSet {{ ocpDeploymentToScaleDown }}-core down to one
+          ansible.builtin.shell: |
+              {{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ oscpNsToScaleDown }} scale statefulset {{ ocpDeploymentToScaleDown}}-core --replicas={{ numberCoreReplicasToScaleTo }}
+          register: shellResult
+          failed_when: ( shellResult.rc != 0 )
+          tags:
+            - always
+
+        - name: Scaling up again deployment {{ ocpDeploymentToScaleDown }} if waitBeforeScaleUpAgain >0
           block:
             - name: Waiting for {{ waitBeforeScaleUpAgain }} seconds before scaling up again
               ansible.builtin.pause:
@@ -268,9 +277,9 @@
               tags:
                 - always
 
-            - name: Scale up the StatefulSet {{ oscpStsToScaleDown }} again
+            - name: Scale up the HA Proxy for deployment {{ ocpDeploymentToScaleDown }} to {{ numberHAReplicasToScaleUp }}
               ansible.builtin.shell: |
-                  {{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ oscpNsToScaleDown }} scale statefulset {{ oscpStsToScaleDown}} --replicas={{ numberReplicasToScaleUp }}
+                  {{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ oscpNsToScaleDown }} scale deployment {{ ocpDeploymentToScaleDown}}-haproxy --replicas={{ numberHAReplicasToScaleUp }}
               register: shellResult
               failed_when: ( shellResult.rc != 0 )
               tags:
