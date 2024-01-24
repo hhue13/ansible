@@ -100,6 +100,8 @@
     - name: Set the deployment for the namespace of the route to {{ oscpDeployment01 }}
       ansible.builtin.set_fact:
         oscpDeploymentForTheRoute: "{{ oscpDeployment01 }}"
+        oscpStsToScaleDown: "{{ oscpDeployment02 }}-core"
+        oscpNsToScaleDown: "{{ oscpNameSpace02 }}"
       when: ( oscpNamespaceForTheRoute == oscpNameSpace01 )
       tags:
         - always
@@ -107,6 +109,8 @@
     - name: Set the deployment for the namespace of the route to {{ oscpDeployment02 }}
       ansible.builtin.set_fact:
         oscpDeploymentForTheRoute: "{{ oscpDeployment02 }}"
+        oscpStsToScaleDown: "{{ oscpDeployment01 }}-core"
+        oscpNsToScaleDown: "{{ oscpNameSpace01 }}"
       when: ( oscpNamespaceForTheRoute == oscpNameSpace02 )
       tags:
         - always
@@ -236,6 +240,48 @@
           loop_control:
             loop_var: loop_pdb
       when: (poddisruptionbudgets is defined)
+      tags:
+        - always
+    ##
+    ## As we still get traffic to the inactive namespace we scale it down to zero
+    - name: Scale down old deployment to 0 if waitBeforeScaleDown >0
+      block:
+        - name: Waiting for {{ waitBeforeScaleDown }} seconds before scaling down
+          ansible.builtin.pause:
+            seconds: "{{ waitBeforeScaleDown }}"
+          tags:
+            - always
+
+        - name: Scale StatefulSet {{ oscpStsToScaleDown }} down
+          ansible.builtin.shell: |
+              {{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ oscpNsToScaleDown }} scale statefulset {{ oscpStsToScaleDown}} --replicas=0
+          register: shellResult
+          failed_when: ( shellResult.rc != 0 )
+          tags:
+            - always
+
+        - name: Scaling up again if waitBeforeScaleUpAgain >0
+          block:
+            - name: Waiting for {{ waitBeforeScaleUpAgain }} seconds before scaling up again
+              ansible.builtin.pause:
+                seconds: "{{ waitBeforeScaleUpAgain }}"
+              tags:
+                - always
+
+            - name: Scale up the StatefulSet {{ oscpStsToScaleDown }} again
+              ansible.builtin.shell: |
+                  {{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ oscpNsToScaleDown }} scale statefulset {{ oscpStsToScaleDown}} --replicas={{ numberReplicasToScaleUp }}
+              register: shellResult
+              failed_when: ( shellResult.rc != 0 )
+              tags:
+                - always
+          when: ((waitBeforeScaleUpAgain is defined) and
+                ( waitBeforeScaleUpAgain > 0))
+          tags:
+            - always
+
+      when: ((waitBeforeScaleDown is defined) and
+            ( waitBeforeScaleDown > 0))
       tags:
         - always
     ##

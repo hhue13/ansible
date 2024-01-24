@@ -33,7 +33,7 @@ dockerCliCommand: "podman"
 oscpClientBin: "/usr/local/bin/oc"
 ##
 ## Logout of the OC command shell at the end?
-oscpLogoutOfOc: true
+oscpLogoutOfOc: false
 ##################################################################
 ## playbook specifics
 ##################################################################
@@ -51,70 +51,83 @@ oscpDeployment02: "dx-green"
 yqBin: "/usr/local/bin/yq"
 ##
 ## Namespace to which we have to switch
-oscpNamespaceForTheRoute: "{{ oscpNameSpace02 }}"
+oscpNamespaceForTheRoute: "{{ oscpNameSpace01 }}"
 ##
 ## Annotations to be added to the route
 ##### oscpRouteAnnotationsToAdd:
 #####   - name: "haproxy.router.openshift.io/ip_whitelist"
 #####     value: "10.1.63.48/28 10.1.63.52 10.1.63.53"
-poddisruptionbudgets:
-  - name: pdb-dx-contentComposer
-    key: poddisruptionbudget
-    value: dx-contentComposer
-    minAvailable:
-      activeNamespace: 1
-      inactiveNamespace: 0
-  - name: pdb-dx-core
-    key: poddisruptionbudget
-    value: dx-core
-    minAvailable:
-      activeNamespace: 1
-      inactiveNamespace: 0
-  - name: pdb-dx-digitalAssetManagement
-    key: poddisruptionbudget
-    value: dx-digitalAssetManagement
-    minAvailable:
-      activeNamespace: 1
-      inactiveNamespace: 0
-  - name: pdb-dx-imageProcessor
-    key: poddisruptionbudget
-    value: dx-imageProcessor
-    minAvailable:
-      activeNamespace: 1
-      inactiveNamespace: 0
-  - name: pdb-dx-persistenceNode
-    key: poddisruptionbudget
-    value: dx-persistenceNode
-    minAvailable:
-      activeNamespace: 1
-      inactiveNamespace: 0
-  - name: pdb-dx-persistenceConnectionPool
-    key: poddisruptionbudget
-    value: dx-persistenceConnectionPool
-    minAvailable:
-      activeNamespace: 1
-      inactiveNamespace: 0
-  - name: pdb-dx-ringApi
-    key: poddisruptionbudget
-    value: dx-ringApi
-    minAvailable:
-      activeNamespace: 1
-      inactiveNamespace: 0
-  - name: pdb-dx-runtimeController
-    key: poddisruptionbudget
-    value: dx-runtimeController
-    minAvailable:
-      activeNamespace: 1
-      inactiveNamespace: 0
-  - name: pdb-dx-haproxy
-    key: poddisruptionbudget
-    value: dx-haproxy
-    minAvailable:
-      activeNamespace: 1
-      inactiveNamespace: 0
-  - name: pdb-dx-licenseManager
-    key: poddisruptionbudget
-    value: dx-licenseManager
-    minAvailable:
-      activeNamespace: 1
-      inactiveNamespace: 0
+##### poddisruptionbudgets:
+#####   - name: pdb-dx-contentComposer
+#####     key: poddisruptionbudget
+#####     value: dx-contentComposer
+#####     minAvailable:
+#####       activeNamespace: 1
+#####       inactiveNamespace: 0
+#####   - name: pdb-dx-core
+#####     key: poddisruptionbudget
+#####     value: dx-core
+#####     minAvailable:
+#####       activeNamespace: 1
+#####       inactiveNamespace: 0
+#####   - name: pdb-dx-digitalAssetManagement
+#####     key: poddisruptionbudget
+#####     value: dx-digitalAssetManagement
+#####     minAvailable:
+#####       activeNamespace: 1
+#####       inactiveNamespace: 0
+#####   - name: pdb-dx-imageProcessor
+#####     key: poddisruptionbudget
+#####     value: dx-imageProcessor
+#####     minAvailable:
+#####       activeNamespace: 1
+#####       inactiveNamespace: 0
+#####   - name: pdb-dx-persistenceNode
+#####     key: poddisruptionbudget
+#####     value: dx-persistenceNode
+#####     minAvailable:
+#####       activeNamespace: 1
+#####       inactiveNamespace: 0
+#####   - name: pdb-dx-persistenceConnectionPool
+#####     key: poddisruptionbudget
+#####     value: dx-persistenceConnectionPool
+#####     minAvailable:
+#####       activeNamespace: 1
+#####       inactiveNamespace: 0
+#####   - name: pdb-dx-ringApi
+#####     key: poddisruptionbudget
+#####     value: dx-ringApi
+#####     minAvailable:
+#####       activeNamespace: 1
+#####       inactiveNamespace: 0
+#####   - name: pdb-dx-runtimeController
+#####     key: poddisruptionbudget
+#####     value: dx-runtimeController
+#####     minAvailable:
+#####       activeNamespace: 1
+#####       inactiveNamespace: 0
+#####   - name: pdb-dx-haproxy
+#####     key: poddisruptionbudget
+#####     value: dx-haproxy
+#####     minAvailable:
+#####       activeNamespace: 1
+#####       inactiveNamespace: 0
+#####   - name: pdb-dx-licenseManager
+#####     key: poddisruptionbudget
+#####     value: dx-licenseManager
+#####     minAvailable:
+#####       activeNamespace: 1
+#####       inactiveNamespace: 0
+##
+## Time in seconds to wait before scaling down the old deployment. If this value is not set
+## or set to zero we won't scale down the core statefulset
+waitBeforeScaleDown: 10
+## Time in seconds to wait before scaling up the old deployment again. If this value is not set
+## or set to zero we won't scale up the core statefulset again
+waitBeforeScaleUpAgain: 120
+##
+## Number of core replicas to scale up after a scale down
+numberCoreReplicasToScaleTo: 1
+##
+## Number of core replicas to scale up after a scale down
+numberHAReplicasToScaleUp: 1
