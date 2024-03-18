@@ -91,7 +91,7 @@
         pod: "{{ roleCorePodName }}"
         container: "{{ roleCorePodContainerName }}"
       register: podResult
-      until: (podResult.rc == 0)
+      until: podResult is succeeded
       retries: "{{ roleExportWaitNumberChecks | default('90') }}"
       delay: "{{ roleExportWaitBetweenChecks | default('20') }}"
 
