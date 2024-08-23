@@ -1,5 +1,3 @@
 [crchosts]
-s008aa39r
+epcy.a-it.dev
 
-[crchosts:vars]
-ansible_python_interpreter = /usr/bin/python3
