@@ -7,14 +7,11 @@ libertyDirectories:
   installationSharedDirBase:
     name: "/opt/liberty-shared/ctl/wlp"
     mode: 755
-  ihsBase:
-    name: "/opt/liberty/ctl/ihs"
-    mode: 755
-  ihsLogs:
-    name: "/opt/liberty/ctl/var/wlp"
-    mode: 755
   downloadDir:
     name: "/app/IBM/downloads/liberty"
+    mode: 755
+  dumpBaseDir:
+    name: "/var/wlp"
     mode: 755
 ##
 ## IHS directories
@@ -28,3 +25,16 @@ ihsDirectories:
   downloadDir:
     name: "/app/IBM/downloads/ihs"
     mode: 755
+##
+## Links to create at the end of the installation
+requiredLinks:
+  - target: /opt/liberty-shared/keytab
+    link: /opt/liberty/keytab
+    owner: "nobody"
+    group: "root"
+  - target: /opt/liberty-shared/appl
+    link: /opt/liberty/appl
+  - target: /opt/liberty-shared/mass
+    link: /opt/liberty/mass
+  - target: /opt/liberty-shared/data
+    link: /opt/liberty/data

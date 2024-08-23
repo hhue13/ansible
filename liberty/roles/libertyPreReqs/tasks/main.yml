@@ -39,6 +39,15 @@
       loop_control:
         loop_var: __libDir
     ##
+    ## Create local directory for download
+    - name: Create local directories for liberty download {{ roleInstallationName }}
+      delegate_to: localhost
+      ansible.builtin.file:
+        path: "{{ roleDirectories.downloadDir.name }}"
+        mode: "777"
+        state: directory
+      when: (roleDownloadBinariesToController == true)
+    ##
     ## Check if we have cogsing installed (available via: https://github.com/sigstore/cosign/releases) as this
     ## is required by IBM WebSphere liberty from 23.0.0.2 onwards
     - name: Check if cosign is installed on the system
@@ -54,10 +63,16 @@
         msg: 'The required package "cosign" is missing. Please install it from https://github.com/sigstore/cosign/releases'
       when: ( 'cosign' not in ansible_facts.packages )
 
+    - name: Install additional RPM packages needed
+      ansible.builtin.yum:
+        name: "{{ roleRpmPackagesToBeInstalled }}"
+        state: present
+      when: ((roleRpmPackagesToBeInstalled is defined) and ( roleRpmPackagesToBeInstalled | length > 0 ))
+
     - name: Install additional Python modules needed
       ansible.builtin.pip:
-        name: "{{ pythonModulesToBeInstalled }}"
-      when: ((pythonModulesToBeInstalled is defined) and ( pythonModulesToBeInstalled | length > 0 ))
+        name: "{{ rolePythonModulesToBeInstalled }}"
+      when: ((rolePythonModulesToBeInstalled is defined) and ( rolePythonModulesToBeInstalled | length > 0 ))
 
   become: true
   become_user: "{{ roleBecomeUser }}"

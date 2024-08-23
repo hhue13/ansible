@@ -11,7 +11,17 @@
 
     - name: Init local facts for server creation when logroot & profileroot are defined
       ansible.builtin.set_fact:
+        __wlpServerEnvDir: "{{ __wlpUserDir }}/servers/{{ __serverToCreate.name }}"
+      when: (( roleDirectories.profileRoot.name is defined ) and ( roleDirectories.logRoot.name is defined ))
+
+    - name: Init local facts for server creation when logroot & profileroot are defined
+      ansible.builtin.set_fact:
         __wlpServerDir: "{{ __wlpUserDir }}/servers/{{ __serverToCreate.name }}"
+      when: (( roleDirectories.profileRoot.name is not defined ) or ( roleDirectories.logRoot.name is not defined ))
+
+    - name: Init local facts for server creation when logroot & profileroot are defined
+      ansible.builtin.set_fact:
+        __wlpServerEnvDir: "{{ roleDirectories.libertyBase.name }}/{{ roleInstallation.name }}/{{ roleActiveLibertyLinkName }}/etc"
       when: (( roleDirectories.profileRoot.name is not defined ) or ( roleDirectories.logRoot.name is not defined ))
 
     - name: Init local facts for server creation
@@ -77,12 +87,38 @@
       loop_control:
         loop_var: __dropinsDirs
     ##
+    ## Create servers dump directory
+    - name: Create servers dump directory
+      ansible.builtin.file:
+        path: "{{ roleDirectories.dumpBaseDir.name }}/{{ roleInstallation.name }}/{{ activeDumpIntermediaryDirNameWIthSlashAtTheEnd | default('dump/') }}/{{ __serverToCreate.name }}"
+        state: directory
+        owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
+        group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
+        mode: "{{ roleDirectories.dumpBaseDir.mode }}"
+      when: ((roleDirectories.dumpBaseDir.name is defined) and (roleDirectories.dumpBaseDir.name | length > 0 ))
+    ##
     ## Create the servers.env file
     - name: Update server.env
       block:
+        - name: Ensure that "{{ __wlpServerEnvDir }}" exists
+          ansible.builtin.file:
+            path: "{{ __wlpServerEnvDir }}"
+            state: "directory"
+            owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
+            group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
+            mode: "{{ __modeForServerDirs }}"
         ##
         ## Make sure the file server.env exists
         - name: Ensure that server.env exists
+          ansible.builtin.file:
+            path: "{{ __wlpServerEnvDir }}/server.env"
+            state: "touch"
+            owner: "{{ roleInstallation.libertyUsers.adminUser.name }}"
+            group: "{{ roleInstallation.libertyGroups.adminGroup.name }}"
+            mode: "{{ __modeForServerDirs }}"
+        ##
+        ## Make sure the server's server.env exists
+        - name: Ensure that server's server.env exists
           ansible.builtin.file:
             path: "{{ __wlpServerDir }}/server.env"
             state: "touch"
@@ -100,10 +136,10 @@
             mode: "{{ __modeForServerDirs }}"
         ##
         ## Empty {{ __wlpServerDir }}/server.env
-        - name: Remove current properties from {{ __wlpServerDir }}/server.env
+        - name: Remove current properties from {{ __wlpServerEnvDir }}/server.env
           ansible.builtin.lineinfile:
             state: absent
-            path: "{{ __wlpServerDir }}/server.env"
+            path: "{{ __wlpServerEnvDir }}/server.env"
             regexp: "^.*$"
         ##
         ## Empty {{ __wlpServerDir }}/server.env.sh
@@ -113,10 +149,10 @@
             path: "{{ __wlpServerDir }}/server.env.sh"
             regexp: "^.*$"
 
-        - name: Add property {{ __prop.key }} to {{ __wlpServerDir }}/server.env
+        - name: Add property {{ __prop.key }} to {{ __wlpServerEnvDir }}/server.env
           ansible.builtin.lineinfile:
             state: present
-            path: "{{ __wlpServerDir }}/server.env"
+            path: "{{ __wlpServerEnvDir }}/server.env"
             line: "{{ __prop.key }}={{ __prop.value }}"
           loop:
             - key: "WLP_BIN_DIR"

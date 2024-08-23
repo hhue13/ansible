@@ -222,13 +222,13 @@ libertyServersA6:
         - jakartaee-9.1
         - monitor-1.0
         - mpMetrics-4.0
-      configDropins:
-        overrides:
-          server:
-            templateFile: "templates/configDropins/overrides/server-v2.xml.j2"
-            features:
-              - transportSecurity-1.0
-          adminCenter: "{{ defaultAdminCenterConfig }}"
+#####       configDropins:
+#####         overrides:
+#####           server:
+#####             templateFile: "templates/configDropins/overrides/server-v2.xml.j2"
+#####             features:
+#####               - transportSecurity-1.0
+#####           adminCenter: "{{ defaultAdminCenterConfig }}"
       bootstrapProperties: "{{ defaultCustomBootstrapProperties }}"
     logging: "{{ defaultLogging }}"
 
@@ -253,13 +253,13 @@ libertyServersA6:
         - jakartaee-9.1
         - monitor-1.0
         - mpMetrics-4.0
-      configDropins:
-        overrides:
-          server:
-            templateFile: "templates/configDropins/overrides/server-v2.xml.j2"
-            features:
-              - transportSecurity-1.0
-          adminCenter: "{{ defaultAdminCenterConfig }}"
+#####        configDropins:
+#####          overrides:
+#####            server:
+#####              templateFile: "templates/configDropins/overrides/server-v2.xml.j2"
+#####              features:
+#####                - transportSecurity-1.0
+#####            adminCenter: "{{ defaultAdminCenterConfig }}"
       bootstrapProperties: "{{ defaultCustomBootstrapProperties }}"
     logging: "{{ defaultLogging }}"
 
@@ -508,6 +508,7 @@ libertyServersA13:
       - "-Xverbosegclog:logs/verbosegc.log.%X,3,10000"
       - "-Xms128m"
       - "-Xmx256m"
+      - "-Xhealthcenter:port=27031"
     server:
       features:
         - jakartaee-9.1
@@ -538,6 +539,7 @@ libertyServersA13:
       - "-Xverbosegclog:logs/verbosegc.log.%X,3,10000"
       - "-Xms128m"
       - "-Xmx256m"
+      - "-Xhealthcenter:port=27032"
     server:
       features:
         - jakartaee-9.1

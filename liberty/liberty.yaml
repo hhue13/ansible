@@ -23,8 +23,10 @@
       tags:
         - always
     ##
-    ## Create required users and groups for liberty and IHS installation
-    - name: Create prereqisites for installation
+    ## Install liberty
+    ##
+    ## Create required users and groups for liberty installation
+    - name: Create prereqisites for Liberty installation and install liberty
       block:
       - name: Create required users and groups for liberty
         ansible.builtin.include_role:
@@ -35,10 +37,36 @@
           roleUserInfo: "{{ libInstallation.libertyUsers }}"
           roleDirectories: "{{ libertyDirectories }}"
           roleBecomeUser: "{{ rootUser }}"
+          roleDownloadBinariesToController: "{{ downloadBinariesToController | default(false) }}"
+          rolePythonModulesToBeInstalled: "{{ pythonModulesToBeInstalled }}"
+          roleRpmPackagesToBeInstalled: "{{ rpmPackagesToBeInstalled }}"
         loop: "{{ liberty.installations }}"
         loop_control:
           loop_var: libInstallation
 
+      - name: Install liberty on the server
+        ansible.builtin.include_role:
+          name: libertyInstallation
+        vars:
+          roleActiveLibertyLinkName: "{{ activeLibertyLinkName  }}"
+          roleActiveJavaLinkName: "{{ activeJavaLinkName  }}"
+          roleDirectories: "{{ libertyDirectories }}"
+          roleInstallation: "{{ libInstallation }}"
+          roleDownloadSettings: "{{ downloadSettings }}"
+          roleRootUser: "{{ rootUser }}"
+          roleDownloadBinariesToController: "{{ downloadBinariesToController | default(false) }}"
+          roleBecomeRootUser: "{{ rootUser }}"
+        loop: "{{ liberty.installations }}"
+        loop_control:
+          loop_var: libInstallation
+      tags:
+        - install
+    ##
+    ## Install IHS
+    ##
+    ## Create required users and groups for IHS installation
+    - name: Create prereqisites for IHS installation and install IHS
+      block:
       - name: Create required users and groups for IHS
         ansible.builtin.include_role:
           name: libertyPreReqs
@@ -48,43 +76,25 @@
           roleUserInfo: "{{ ihsInstallation.ihsUsers }}"
           roleDirectories: "{{ ihsDirectories }}"
           roleBecomeUser: "{{ rootUser }}"
+          roleDownloadBinariesToController: "{{ downloadBinariesToController | default(false) }}"
         loop: "{{ ihs.installations }}"
         loop_control:
           loop_var: ihsInstallation
-        when: (( ihs.installations is defined ) and (ihs.installations | length > 0 ))
-      tags:
-        - prereqs
-    ##
-    ## Install liberty
-    - name: Install liberty on the server
-      ansible.builtin.include_role:
-        name: libertyInstallation
-      vars:
-        roleActiveLibertyLinkName: "{{ activeLibertyLinkName  }}"
-        roleActiveJavaLinkName: "{{ activeJavaLinkName  }}"
-        roleDirectories: "{{ libertyDirectories }}"
-        roleInstallation: "{{ libInstallation }}"
-        roleDownloadSettings: "{{ downloadSettings }}"
-        roleRootUser: "{{ rootUser }}"
-      loop: "{{ liberty.installations }}"
-      loop_control:
-        loop_var: libInstallation
-      tags:
-        - install
-    ##
-    ## Install IHS
-    - name: Install IHS on the server
-      ansible.builtin.include_role:
-        name: ihsInstallation
-      vars:
-        roleActiveIhsLinkName: "{{ activeIhsLinkName }}"
-        roleDirectories: "{{ ihsDirectories }}"
-        roleInstallation: "{{ ihsInstallation }}"
-        roleDownloadSettings: "{{ downloadSettings }}"
-        roleRootUser: "{{ rootUser }}"
-      loop: "{{ ihs.installations }}"
-      loop_control:
-        loop_var: ihsInstallation
+
+      - name: Install IHS on the server
+        ansible.builtin.include_role:
+          name: ihsInstallation
+        vars:
+          roleActiveIhsLinkName: "{{ activeIhsLinkName }}"
+          roleDirectories: "{{ ihsDirectories }}"
+          roleInstallation: "{{ ihsInstallation }}"
+          roleDownloadSettings: "{{ downloadSettings }}"
+          roleRootUser: "{{ rootUser }}"
+          roleDownloadBinariesToController: "{{ downloadBinariesToController | default(false) }}"
+          roleBecomeRootUser: "{{ rootUser }}"
+        loop: "{{ ihs.installations }}"
+        loop_control:
+          loop_var: ihsInstallation
       when: (( ihs.installations is defined ) and (ihs.installations | length > 0 ))
       tags:
         - ihsInstall
@@ -122,3 +132,20 @@
       when: (( ihs.installations is defined ) and (ihs.installations | length > 0 ))
       tags:
         - ihsProfiles
+    ##
+    ## Create defined links
+    - name: Create configured links
+      ansible.builtin.file:
+        path: "{{ linkDict.link }}"
+        src: "{{ linkDict.target }}"
+        owner: "{{ linkDict.owner | default(libertyUsers.adminUser.name) }}"
+        group: "{{ linkDict.group | default(libertyGroups.adminGroup.name) }}"
+        state: link
+        force: true
+        follow: false
+      loop: "{{ requiredLinks }}"
+      loop_control:
+        loop_var: linkDict
+      when: (( requiredLinks is defined ) and (requiredLinks | length > 0 ))
+      tags:
+        - always

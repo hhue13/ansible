@@ -11,6 +11,9 @@ slackAuthenticationToken: !vault |
   3835373762646335316537633830383933616439356161613933
 rootUser: "root"
 ##
+## Link name for the active Java installation. Defaults to "dump/"
+## activeDumpIntermediaryDirNameWIthSlashAtTheEnd: "dump/"
+##
 ## Link name for the active Java installation
 activeJavaLinkName: "java"
 ##
@@ -21,6 +24,11 @@ activeLibertyLinkName: "liberty"
 pythonModulesToBeInstalled:
   - pip
   - cryptography>=3.3.1
+##
+## rpm packages we need from the standard yum repos
+rpmPackagesToBeInstalled:
+  - unzip
+  - bzip2
 ##
 ## Default Logging settings
 defaultLogging:
@@ -47,3 +55,26 @@ defaultCustomBootstrapProperties:
   - "grafana.user.password=GRAFFANA"
   - "inBoundStore.password=INBOUND_PWD"
   - "outBoundStore.password=OUTBOUND_PWD"
+##
+## Delegate download to controller node
+downloadBinariesToController: false
+##
+## HTTP Credentials for binaries downloads if download URL is protected by user/pwd
+##### libertyDownloadCredentials01:
+#####   user: user01
+#####   password: : !vault |
+#####     $ANSIBLE_VAULT;1.2;AES256;k8s
+#####     38363931653566313135633663363933653961313032643466336338643239653435386465363834
+#####     6362373239616566313334633235636634393366316464330a323032356632303364613239333237
+#####     32656264656461363961376636386363373339333463346333636532343831303332383461386336
+#####     3731386430383438300a393832363364393062643336616636383065636533646239363635633164
+#####     3964
+##### httpDownloadCredentials01:
+#####   user: user01
+#####   password: : !vault |
+#####     $ANSIBLE_VAULT;1.2;AES256;k8s
+#####     38363931653566313135633663363933653961313032643466336338643239653435386465363834
+#####     6362373239616566313334633235636634393366316464330a323032356632303364613239333237
+#####     32656264656461363961376636386363373339333463346333636532343831303332383461386336
+#####     3731386430383438300a393832363364393062643336616636383065636533646239363635633164
+#####     3964
