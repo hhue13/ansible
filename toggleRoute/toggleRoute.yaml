@@ -62,8 +62,9 @@
       ansible.builtin.debug:
         msg:
           - "API Key is {{ kube_api_key  }}"
+        verbosity: 4
       tags:
-        - never
+        - always
     ##
     ## Run oc login using the api key
     - name: Login to the oc client using the API key
@@ -100,17 +101,27 @@
     - name: Set the deployment for the namespace of the route to {{ oscpDeployment01 }}
       ansible.builtin.set_fact:
         oscpDeploymentForTheRoute: "{{ oscpDeployment01 }}"
+        ocpDeploymentToScaleDown: "{{ oscpDeployment02 }}"
+        oscpNsToScaleDown: "{{ oscpNameSpace02 }}"
       when: ( oscpNamespaceForTheRoute == oscpNameSpace01 )
+      tags:
+        - always
 
     - name: Set the deployment for the namespace of the route to {{ oscpDeployment02 }}
       ansible.builtin.set_fact:
         oscpDeploymentForTheRoute: "{{ oscpDeployment02 }}"
+        ocpDeploymentToScaleDown: "{{ oscpDeployment01 }}"
+        oscpNsToScaleDown: "{{ oscpNameSpace01 }}"
       when: ( oscpNamespaceForTheRoute == oscpNameSpace02 )
+      tags:
+        - always
 
     - name: We fail if no deployment is set as this must not happen here
       ansible.builtin.fail:
         msg: "Could not determine the deployment name for namespace {{ oscpNamespaceForTheRoute }}. Make sure that the variable 'oscpNamespaceForTheRoute' is set to either {{ oscpNameSpace01 }} or {{ oscpNameSpace02 }}"
       when: ( (oscpDeploymentForTheRoute is not defined) or (oscpDeploymentForTheRoute == ""))
+      tags:
+        - always
 
     - name: Test if the route exists in namespace {{ oscpNameSpace01 }}
       kubernetes.core.k8s_info:
@@ -118,6 +129,7 @@
         kind: Route
         namespace: "{{ oscpNameSpace01 }}"
         api_key: "{{ kube_api_key }}"
+        host: "{{ k8s_host }}"
         name: "{{ oscpRouteNameToToggle }}"
       register: routeData01
       ignore_errors: yes
@@ -130,8 +142,35 @@
         kind: Route
         namespace: "{{ oscpNameSpace02 }}"
         api_key: "{{ kube_api_key }}"
+        host: "{{ k8s_host }}"
         name: "{{ oscpRouteNameToToggle }}"
       register: routeData02
+      ignore_errors: yes
+      tags:
+        - always
+
+    - name: Test if the sitemap route exists in namespace {{ oscpNameSpace01 }}
+      kubernetes.core.k8s_info:
+        api_version: route.openshift.io/v1
+        kind: Route
+        namespace: "{{ oscpNameSpace01 }}"
+        api_key: "{{ kube_api_key }}"
+        host: "{{ k8s_host }}"
+        name: "{{ oscpRouteSitemapName }}"
+      register: routeSitemap01
+      ignore_errors: yes
+      tags:
+        - always
+
+    - name: Test if the sitemap route exists in namespace {{ oscpNameSpace02 }}
+      kubernetes.core.k8s_info:
+        api_version: route.openshift.io/v1
+        kind: Route
+        namespace: "{{ oscpNameSpace02 }}"
+        api_key: "{{ kube_api_key }}"
+        host: "{{ k8s_host }}"
+        name: "{{ oscpRouteSitemapName }}"
+      register: routeSitemap02
       ignore_errors: yes
       tags:
         - always
@@ -142,6 +181,9 @@
         - "Status of the route {{ oscpRouteNameToToggle }}: "
         - "Namespace {{ oscpNameSpace01 }}: {{ routeData01.resources | length > 0 }}"
         - "Namespace {{ oscpNameSpace02 }}: {{ routeData02.resources | length > 0 }}"
+        - "Status of the route {{ oscpRouteSitemapName }}: "
+        - "Namespace {{ oscpNameSpace01 }}: {{ routeSitemap01.resources | length > 0 }}"
+        - "Namespace {{ oscpNameSpace02 }}: {{ routeSitemap02.resources | length > 0 }}"
       tags:
         - always
 
@@ -151,6 +193,7 @@
         kind: Route
         namespace: "{{ oscpNameSpace01 }}"
         api_key: "{{ kube_api_key }}"
+        host: "{{ k8s_host }}"
         name: "{{ oscpRouteNameToToggle }}"
         state: absent
       when: (routeData01.resources | length > 0)
@@ -163,15 +206,50 @@
         kind: Route
         namespace: "{{ oscpNameSpace02 }}"
         api_key: "{{ kube_api_key }}"
+        host: "{{ k8s_host }}"
         name: "{{ oscpRouteNameToToggle }}"
         state: absent
       when: (routeData02.resources | length > 0)
       tags:
         - always
 
+    - name: Delete the existing sitemap route from the namespace {{ oscpNameSpace01 }}
+      kubernetes.core.k8s:
+        api_version: route.openshift.io/v1
+        kind: Route
+        namespace: "{{ oscpNameSpace01 }}"
+        api_key: "{{ kube_api_key }}"
+        host: "{{ k8s_host }}"
+        name: "{{ oscpRouteSitemapName }}"
+        state: absent
+      when: (routeSitemap01.resources | length > 0)
+      tags:
+        - always
+
+    - name: Delete the existing sitemap route from the namespace {{ oscpNameSpace02 }}
+      kubernetes.core.k8s:
+        api_version: route.openshift.io/v1
+        kind: Route
+        namespace: "{{ oscpNameSpace02 }}"
+        api_key: "{{ kube_api_key }}"
+        host: "{{ k8s_host }}"
+        name: "{{ oscpRouteSitemapName }}"
+        state: absent
+      when: (routeSitemap02.resources | length > 0)
+      tags:
+        - always
+
     - name: Copy the existing Route to a new name and update host
       ansible.builtin.shell: |
-        {{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ oscpNamespaceForTheRoute }} get routes {{ oscpDeploymentForTheRoute }}-passthrough -o yaml | {{ yqBin }} eval 'del(.metadata.annotations."kubectl.kubernetes.io/last-applied-configuration", .metadata.annotations."openshift.io/host.generated", .metadata.creationTimestamp, .metadata.resourceVersion, .metadata.uid, .status)' | {{ yqBin }} '.spec.host = "{{ oscpRouteHostNameToSet }}", .metadata.name = "{{ oscpRouteNameToToggle }}"' | {{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ oscpNamespaceForTheRoute }} apply -f -
+        {{ oscpClientBin | default('/usr/local/bin/oc') }} --token={{ kube_api_key }} --server={{ k8s_host }} -n {{ oscpNamespaceForTheRoute }} get routes {{ oscpDeploymentForTheRoute }}-passthrough -o yaml | {{ yqBin }} eval 'del(.metadata.annotations."kubectl.kubernetes.io/last-applied-configuration", .metadata.annotations."openshift.io/host.generated", .metadata.creationTimestamp, .metadata.resourceVersion, .metadata.uid, .status)' | {{ yqBin }} '.spec.host = "{{ oscpRouteHostNameToSet }}", .metadata.name = "{{ oscpRouteNameToToggle }}"' | {{ oscpClientBin | default('/usr/local/bin/oc') }}  --token={{ kube_api_key }} --server={{ k8s_host }} -n {{ oscpNamespaceForTheRoute }} apply -f -
+      register: shellResult
+      failed_when: ( shellResult.rc != 0 )
+      tags:
+        - always
+
+    - name: Copy the existing Sitemap Route to a new name and update host
+      ansible.builtin.shell: |
+        {{ oscpClientBin | default('/usr/local/bin/oc') }} --token={{ kube_api_key }} --server={{ k8s_host }} -n {{ oscpNamespaceForTheRoute }} get routes {{ oscpDeploymentForTheRoute }}-nginx-route -o yaml | {{ yqBin }} eval 'del(.metadata.annotations."kubectl.kubernetes.io/last-applied-configuration", .metadata.annotations."openshift.io/host.generated", .metadata.creationTimestamp, .metadata.resourceVersion, .metadata.uid, .status)' | {{ yqBin }} '.spec.host = "{{ oscpRouteSitemapHostName }}", .metadata.name = "{{ oscpRouteSitemapName }}"' | {{ oscpClientBin | default('/usr/local/bin/oc') }} --token={{ kube_api_key }} --server={{ k8s_host }} -n {{ oscpNamespaceForTheRoute }} apply -f -
       register: shellResult
       failed_when: ( shellResult.rc != 0 )
       tags:
@@ -179,19 +257,30 @@
 
     - name: Add annotate route if needed
       ansible.builtin.shell: |
-        {{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ oscpNamespaceForTheRoute  }} annotate route {{ oscpRouteNameToToggle }} "{{ annotation.name }}"="{{ annotation.value }}"
+        {{ oscpClientBin | default('/usr/local/bin/oc') }} --token={{ kube_api_key }} --server={{ k8s_host }} -n {{ oscpNamespaceForTheRoute  }} annotate route {{ oscpRouteNameToToggle }} "{{ annotation.name }}"="{{ annotation.value }}"
       loop: "{{ oscpRouteAnnotationsToAdd }}"
       loop_control:
         loop_var: annotation
       when: ( oscpRouteAnnotationsToAdd is defined)
+      tags:
+        - always
 
     - name: Get the yaml of the new route
       ansible.builtin.shell: |
-        {{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ oscpNamespaceForTheRoute  }} get route {{ oscpRouteNameToToggle }} -o yaml
+        {{ oscpClientBin | default('/usr/local/bin/oc') }} --token={{ kube_api_key }} --server={{ k8s_host }} -n {{ oscpNamespaceForTheRoute  }} get route {{ oscpRouteNameToToggle }} -o yaml
       register: shellResult
       failed_when: ( shellResult.rc != 0 )
       tags:
         - always
+
+    - name: Get the yaml of the new sitemap route
+      ansible.builtin.shell: |
+        {{ oscpClientBin | default('/usr/local/bin/oc') }} --token={{ kube_api_key }} --server={{ k8s_host }} -n {{ oscpNamespaceForTheRoute  }} get route {{ oscpRouteSitemapName }} -o yaml
+      register: shellResultSitemap
+      failed_when: ( shellResultSitemap.rc != 0 )
+      tags:
+        - always
+
     ##
     ## Send the list of files to Slack
     - name: Send the list of files to Slack
@@ -201,12 +290,100 @@
       when: ((sendSlackNotifications is defined) and (sendSlackNotifications == true))
       tags:
         - always
+
+    - name: Send the list of sitemap files to Slack
+      community.general.slack:
+        token: "{{ slackAuthenticationToken }}"
+        msg: "Sitemap Route created:\n ```{{ shellResultSitemap.stdout }}```"
+      when: ((sendSlackNotifications is defined) and (sendSlackNotifications == true))
+#####       - name: Set the PodDisruptionBudget minavailable for the active namespace {{ oscpNamespaceForTheRoute }}
+#####         kubernetes.core.k8s:
+#####           state: "present"
+#####           host: "{{ k8s_host }}"
+#####           api_key: "{{ kube_api_key }}"
+#####           namespace: "{{ oscpNamespaceForTheRoute }}"
+#####           name: "{{ poddisruptionbudget.name }}"
+#####           definition:
+#####             api_version: "v1"
+#####             kind: PodDisruptionBudget
+#####             spec:
+#####               minAvailable: "{{ poddisruptionbudget.minAvailable.activeNamespace }}"
+#####               selector:
+#####                 matchLabels:
+#####                   poddisruptionbudget: "{{ poddisruptionbudget.value }}"
+#####         tags:
+#####           - always
+    ##
+    ## Set the PodDisruptionBudget to 1 for the namespace with the active route and to 0 for the namespace which does not have the route
+    - name: Set PodDisruptionBudget values
+      block:
+        - name: Setup PodDisruptionBudgets
+          ansible.builtin.include_tasks: "setPdbs.yaml"
+          loop: "{{ poddisruptionbudgets }}"
+          loop_control:
+            loop_var: loop_pdb
+      when: (poddisruptionbudgets is defined)
+      tags:
+        - always
+    ##
+    ## As we still get traffic to the inactive namespace we scale it down to zero
+    - name: Scale down HA Proxy of old deployment to zero and scale the core to 1 if waitBeforeScaleDown >0
+      block:
+        - name: Waiting for {{ waitBeforeScaleDown }} seconds before scaling down
+          ansible.builtin.pause:
+            seconds: "{{ waitBeforeScaleDown }}"
+          tags:
+            - always
+
+        - name: Scale deployment {{ ocpDeploymentToScaleDown }}-haproxy down to zero
+          ansible.builtin.shell: |
+              {{ oscpClientBin | default('/usr/local/bin/oc') }} --token={{ kube_api_key }} --server={{ k8s_host }} -n {{ oscpNsToScaleDown }} scale deployment {{ ocpDeploymentToScaleDown}}-haproxy --replicas=0
+          register: shellResult
+          failed_when: ( shellResult.rc != 0 )
+          tags:
+            - always
+
+
+        - name: Scale StatefulSet {{ ocpDeploymentToScaleDown }}-core down to one
+          ansible.builtin.shell: |
+              {{ oscpClientBin | default('/usr/local/bin/oc') }} --token={{ kube_api_key }} --server={{ k8s_host }} -n {{ oscpNsToScaleDown }} scale statefulset {{ ocpDeploymentToScaleDown}}-core --replicas={{ numberCoreReplicasToScaleTo }}
+          register: shellResult
+          failed_when: ( shellResult.rc != 0 )
+          tags:
+            - always
+
+        - name: Scaling up again deployment {{ ocpDeploymentToScaleDown }} if waitBeforeScaleUpAgain >0
+          block:
+            - name: Waiting for {{ waitBeforeScaleUpAgain }} seconds before scaling up again
+              ansible.builtin.pause:
+                seconds: "{{ waitBeforeScaleUpAgain }}"
+              tags:
+                - always
+
+            - name: Scale up the HA Proxy for deployment {{ ocpDeploymentToScaleDown }} to {{ numberHAReplicasToScaleUp }}
+              ansible.builtin.shell: |
+                  {{ oscpClientBin | default('/usr/local/bin/oc') }} --token={{ kube_api_key }} --server={{ k8s_host }} -n {{ oscpNsToScaleDown }} scale deployment {{ ocpDeploymentToScaleDown}}-haproxy --replicas={{ numberHAReplicasToScaleUp }}
+              register: shellResult
+              failed_when: ( shellResult.rc != 0 )
+              tags:
+                - always
+          when: ((waitBeforeScaleUpAgain is defined) and
+                ( waitBeforeScaleUpAgain > 0))
+          tags:
+            - always
+
+      when: ((waitBeforeScaleDown is defined) and
+            ( waitBeforeScaleDown > 0))
+      tags:
+        - always
     ##
     ## Perform the oc logout
     - name: Logout of the command line client
       ansible.builtin.command:
         argv:
           - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+          - "--token={{ kube_api_key }}"
+          - "--server={{ k8s_host }}"
           - "logout"
       when: ((oscpLogoutOfOc is defined) and
         (oscpLogoutOfOc | bool))
@@ -221,13 +398,14 @@
         api_key: "{{ kube_api_key }}"
         validate_certs: "no"
       when: kube_api_key is defined
+      ignore_errors: true
       tags:
         - always
 
     - name: Send stop notification message via Slack
       community.general.slack:
         token: "{{ slackAuthenticationToken }}"
-        msg: "Toggle DX route: {{ inventory_hostname }} finished successfully"
+        msg: "Toggle DX route and sitemap: {{ inventory_hostname }} finished successfully"
       when: ((sendSlackNotifications is defined) and (sendSlackNotifications == true))
       tags:
         - always

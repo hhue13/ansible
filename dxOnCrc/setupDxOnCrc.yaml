@@ -5,20 +5,8 @@
   become_user: "{{ oscpOsUser }}"
   gather_facts: true
   module_defaults:
-    kubernetes.core.k8s:
-      validate_certs: "no"
-    kubernetes.core.k8s_info:
-      validate_certs: "no"
-    kubernetes.core.k8s_exec:
-      validate_certs: "no"
-    kubernetes.core.k8s_cp:
-      validate_certs: "no"
-    community.okd.openshift_auth:
-      validate_certs: "no"
-    community.okd.openshift_process:
-      validate_certs: "no"
-    community.okd.openshift_route:
-      validate_certs: "no"
+    group/k8s:
+      validate_certs: false
   #########################
   ## Tasks of the play-book
   #########################

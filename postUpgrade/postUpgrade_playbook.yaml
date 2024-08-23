@@ -76,9 +76,9 @@
       ansible.builtin.debug:
         msg:
           - "API Key is {{ kube_api_key  }}"
-      no_log: true
+        verbosity: 4
       tags:
-        - never
+        - always
     ##
     ## Run oc login using the api key
     - name: Login to the oc client using the API key
@@ -214,6 +214,8 @@
       ansible.builtin.command:
         argv:
           - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+          - "--token={{ kube_api_key }}"
+          - "--server={{ k8s_host }}"
           - "logout"
       when: ((oscpLogoutOfOc is defined) and
         (oscpLogoutOfOc | bool))
@@ -228,5 +230,6 @@
         api_key: "{{ kube_api_key }}"
         validate_certs: "no"
       when: kube_api_key is defined
+      ignore_errors: true
       tags:
         - always

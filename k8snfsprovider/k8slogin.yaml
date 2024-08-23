@@ -64,17 +64,17 @@
       - "K8S_API_TOKEN: '{{ k8s_api_token }}'"
       - "K8S_HOST_URL: '{{ k8s_host }}'"
       - "K8S_USER: '{{ k8s_user }}'"
+    verbosity: 4
   tags:
-    - never
+    - always
 ##
 ## Login
 - name: Log in (obtain access token)
-  community.okd.openshift_auth:
+  community.okd.openshift_auth:.okd.openshift_auth:
     host: "{{ k8s_host }}"
     state: present
     username: "{{ k8s_user }}"
     password: "{{ k8s_password }}"
-    validate_certs: "no"
   register: k8s_auth_results
   when: (( k8s_api_token is not defined ) or
     ( k8s_api_token == '' ))

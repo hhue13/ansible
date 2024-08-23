@@ -1,0 +1,8 @@
+---
+# role defaults
+rolePodXmlFile: "syncPortletSettingsCreateExportXml"
+rolePodXmlFileDir: "/tmp"
+roleCorePodName: "{{ roleDeployment }}-core-0"
+roleCoreContainerName: "core"
+roleRetentionPeriod: 30
+roleProfileHome: "/opt/HCL/wp_profile"

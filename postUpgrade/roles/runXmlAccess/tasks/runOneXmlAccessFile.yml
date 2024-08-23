@@ -44,6 +44,8 @@
   ansible.builtin.command:
     argv:
       - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+      - "--token={{ roleKey }}"
+      - "--server={{ roleHost }}"
       - "-n"
       - "{{ roleNs }}"
       - "cp"

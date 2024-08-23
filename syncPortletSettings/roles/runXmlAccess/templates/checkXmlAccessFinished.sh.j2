@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+echo "Checking if xmlaccess completed at $(date +"%Y%m%d_%H%M%S.%N")"
+##
+## Outputfile does not exit so not yet done
+test -f {{ __outputFile }} || exit 1
+##
+## Request must be finished
+tail -1 {{ __outputFile }} | grep '<\/request>' 2>&1 >/dev/null  || exit 1
+##
+## Cleanup existing Heap settings again
+sed -i -E 's#-Xms[0-9]{1,9}[mMgGkK] ##g; s#-Xmx[0-9]{1,5}[mMgGkK] ##g' {{ roleProfileHome }}/PortalServer/bin/xmlaccess.sh
+##
+## Remove the import file
+if [[ -f "{{ roleExportXmlFile }}" ]] ; then
+    rm -f "{{ roleExportXmlFile }}"
+fi
+
+exit 0

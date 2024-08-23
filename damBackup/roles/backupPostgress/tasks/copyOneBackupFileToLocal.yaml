@@ -1,14 +1,22 @@
 ---
-- name: Copy DB backup file {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['name'] }}_{{ roleBackupType }}_{{ roleBackupTimestamp }}.dmp.gz to {{ roleTargetDirectoryForBackupFiles }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupType }}_{{ roleBackupTimestamp }}.dmp.gz
+- name: Set the tmp directory for the backup files with default just once
+  ansible.builtin.set_fact:
+    __backup_temp_dir: "{{ backupFileDict['tmpDir'] | default('/tmp') }}"
+  tags:
+    - always
+
+- name: Copy DB backup file {{ __backup_temp_dir }}/{{ backupFileDict['name'] }}_{{ roleBackupType }}_{{ roleBackupTimestamp }}.dmp.gz to {{ roleTargetDirectoryForBackupFiles }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupType }}_{{ roleBackupTimestamp }}.dmp.gz
   ansible.builtin.command:
     argv:
       - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+      - "--token={{ roleKey }}"
+      - "--server={{ roleHost }}"
       - "-n"
       - "{{ roleNs }}"
       - "cp"
       - "-c"
       - "{{ rolePersistentPodContainerName }}"
-      - "{{ rolePersistentPodName }}:{{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupType }}_{{ roleBackupTimestamp }}.dmp.gz"
+      - "{{ rolePersistentPodName }}:{{ __backup_temp_dir }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupType }}_{{ roleBackupTimestamp }}.dmp.gz"
       - "{{ roleTargetDirectoryForBackupFiles }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupType }}_{{ roleBackupTimestamp }}.dmp.gz"
   register: cmdResult
   failed_when: (cmdResult.rc != 0)
@@ -20,7 +28,7 @@
     namespace: "{{ roleNs }}"
     host: "{{ roleHost }}"
     api_key: "{{ roleKey }}"
-    command: "rm -f {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupType }}_{{ roleBackupTimestamp }}*.dmp.gz"
+    command: "rm -f {{ __backup_temp_dir }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupType }}_{{ roleBackupTimestamp }}.dmp.gz"
     pod: "{{ rolePersistentPodName }}"
     container: "{{ rolePersistentPodContainerName }}"
   register: podResult

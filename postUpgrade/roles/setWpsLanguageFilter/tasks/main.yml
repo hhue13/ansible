@@ -116,7 +116,66 @@
     namespace: "{{ roleNs }}"
     host: "{{ roleHost }}"
     api_key: "{{ roleKey }}"
-    command: "sed -i 's#com.ibm.wps.engine.ExtendedLocaleFilter#se.goteborg.filters.GbgFixedLocalesFilter#g' /tmp/oper/wps.war/WEB-INF/web_merged.xml"
+    command: "sed -i 's#{{ roleFilterClassToReplace }}#{{ roleNewFilterClass }}#g' /tmp/oper/wps.war/WEB-INF/web_merged.xml"
+    pod: "{{ rolePodName }}"
+    container: "{{ roleCoreContainerName }}"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+
+- name: Create temporary directory for templating
+  ansible.builtin.tempfile:
+    state: directory
+    prefix: template
+  register: templateDir
+  tags:
+    - always
+
+- name: Generate CORS init params from template
+  ansible.builtin.template:
+    src: cors_init_params.j2
+    dest: "{{ templateDir.path }}/generated_cors_params.txt"
+  tags:
+    - always
+
+- name: Read the generated CORS init params into a variable
+  ansible.builtin.slurp:
+    src: "{{ templateDir.path }}/generated_cors_params.txt"
+  register: cors_init_params
+  tags:
+    - always
+
+- name: Setfact for with content of slurped file decoded
+  ansible.builtin.set_fact:
+    content_as_fact: "{{ cors_init_params['content'] | b64decode }}"
+  tags:
+    - always
+
+- name: Cleanup target directory for templating
+  ansible.builtin.file:
+    state: absent
+    path: "{{ templateDir.path }}"
+
+- name: Adding CORS config in web.xml in {{ rolePodName }}/{{ roleCoreContainerName }}
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "sed -i '/{{ CSFRFilterClassToConfigure }}/a {{ content_as_fact }}' /tmp/oper/wps.war/WEB-INF/web.xml"
+    pod: "{{ rolePodName }}"
+    container: "{{ roleCoreContainerName }}"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+
+- name: Adding CORS config in web_merged.xml in {{ rolePodName }}/{{ roleCoreContainerName }}
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "sed -i '/{{ CSFRFilterClassToConfigure }}/a {{ content_as_fact }}' /tmp/oper/wps.war/WEB-INF/web_merged.xml"
     pod: "{{ rolePodName }}"
     container: "{{ roleCoreContainerName }}"
   register: podResult

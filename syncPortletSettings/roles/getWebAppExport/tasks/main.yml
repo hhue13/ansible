@@ -1,0 +1,87 @@
+---
+# tasks file for getWebAppExport
+- name: Run the xmlAccess export for the configured portlets
+  block:
+    - name: Create temporary directory for templating
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: xmlaccess
+      register: __xmlaccess
+
+    - name: Fetch the template
+      ansible.builtin.fetch:
+        src: "{{ roleGbgScriptsDir }}/gbgScripts/bin/syncPortletSettingsCreateExportXml.sh.j2"
+        dest: "{{ __xmlaccess.path }}/syncPortletSettingsCreateExportXml.sh.j2"
+        flat: true
+
+    - name: Template bash script to create XML file on the pod
+      ansible.builtin.template:
+        src: "{{ __xmlaccess.path }}/syncPortletSettingsCreateExportXml.sh.j2"
+        dest: "{{ __xmlaccess.path }}/syncPortletSettingsCreateExportXml.sh"
+        mode: "755"
+      no_log: true
+
+    - name: Debug api_key for the copy using K8S module
+      ansible.builtin.debug:
+        msg: "api_key used to copy: {{ roleKey }}"
+        verbosity: 4
+
+    - name: Copy templated file to pod as /tmp/syncPortletSettingsCreateExportXml.sh
+      kubernetes.core.k8s_cp:
+        namespace: "{{ roleNs }}"
+        host: "{{ roleHost }}"
+        api_key: "{{ roleKey }}"
+        local_path: "{{ __xmlaccess.path }}/syncPortletSettingsCreateExportXml.sh"
+        remote_path: "/tmp/syncPortletSettingsCreateExportXml.sh"
+        pod: "{{ roleCorePodName }}"
+        container: "{{ roleCoreContainerName }}"
+        no_preserve: false
+        state: to_pod
+
+    - name: Create the xmlaccess output for the web-app being synchronized
+      kubernetes.core.k8s_exec:
+        namespace: "{{ roleNs }}"
+        host: "{{ roleHost }}"
+        api_key: "{{ roleKey }}"
+        command: "/tmp/syncPortletSettingsCreateExportXml.sh"
+        pod: "{{ roleCorePodName }}"
+        container: "{{ roleCoreContainerName }}"
+      register: podResult
+      failed_when: (podResult.rc != 0)
+
+    - name: Remove target file in case it exists
+      ansible.builtin.file:
+        name: "{{ roleXmlFile }}"
+        state: absent
+
+    - name: Copy the generated XML file to the Ansible  host
+      kubernetes.core.k8s_cp:
+        namespace: "{{ roleNs }}"
+        host: "{{ roleHost }}"
+        api_key: "{{ roleKey }}"
+        local_path: "{{ roleXmlFile }}"
+        remote_path: "{{ rolePodXmlFileDir }}/{{ rolePodXmlFile }}.xml"
+        pod: "{{ roleCorePodName }}"
+        container: "{{ roleCoreContainerName }}"
+        no_preserve: false
+        state: from_pod
+
+    - name: Cleanup files in the container {{ roleCorePodName }}/{{ roleCoreContainerName }}
+      kubernetes.core.k8s_exec:
+        namespace: "{{ roleNs }}"
+        host: "{{ roleHost }}"
+        api_key: "{{ roleKey }}"
+        command: "bash -c 'rm -f {{ rolePodXmlFileDir }}/{{ rolePodXmlFile }}.* ; rm -f /tmp/syncPortletSettingsCreateExportXml.sh'"
+        pod: "{{ roleCorePodName }}"
+        container: "{{ roleCoreContainerName }}"
+      register: podResult
+      failed_when: (podResult.rc != 0)
+  tags:
+    - always
+  always:
+    - name: Cleanup temporary directory for templating
+      ansible.builtin.file:
+        name: "{{ __xmlaccess.path }}"
+        state: absent
+      tags:
+        - always

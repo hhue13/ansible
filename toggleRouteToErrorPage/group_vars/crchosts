@@ -1,0 +1,70 @@
+---
+sendSlackNotifications: true
+## Slack authentication token
+## ansible-vault encrypt_string --vault-id dev@~ansible_password '<plain-text-password>' --name 'slackAuthenticationToken'
+slackAuthenticationToken: !vault |
+  $ANSIBLE_VAULT;1.2;AES256;k8s
+  65633237306638333632333338393138643438356261636635643263653632633061396132356662
+  6538643234393332643631396631623230393131326361330a366437383563623633623663373730
+  36343438616232316634336131636432623430333663666532626530396362643666383566643663
+  3530326333663164360a666666383838383931613962623638613961663033303261303363636361
+  66303637323662633637326330373837623364303638376439656139623964363862333035323534
+  3966643562376466313136323364326466336137363935643566
+##
+## OSCP Authenticaton data used to login to K8S
+## ansible-vault encrypt_string --vault-id dev@~ansible_password '<plain-text-password>' --name 'oscpKubeAdminPassword'
+oscpKubeAdminUserName: f1itsystemutvocp
+oscpKubeAdminPassword: !vault |
+  $ANSIBLE_VAULT;1.2;AES256;k8s
+  63616530363562636462366331613236376430323838663130386463343264636262633634626632
+  6163343032363331643338616264623638326364616330610a323839383361636434323937616537
+  65376438623565363739393966333963383364333439313039323935373537626439366339623131
+  6463613832663236650a656565643861663334623963313962393836363931373734653332623137
+  3562
+##
+## OSCP installation details
+oscpDomain: gbgpaas.se
+oscpClusterName: ocptest
+##
+## Docker CLI command (docker | podman)
+dockerCliCommand: "docker"
+##
+## OpenShift client to be used
+oscpClientBin: "/usr/local/bin/oc"
+##
+## Logout of the OC command shell at the end?
+oscpLogoutOfOc: true
+##################################################################
+## playbook specifics
+##################################################################
+oscpRouteNameToToggle: gbg-route
+oscpRouteHostNameToSet: testgot.goteborg.se
+## Namespace-1
+oscpNameSpace01: "008t-dxb"
+oscpDeployment01: "dx-blue"
+##
+## Namespace-2
+oscpNameSpace02: "008t-dxg"
+oscpDeployment02: "dx-green"
+##
+## Namespace to which we have to switch
+oscpNamespaceForTheRoute: "{{ oscpNameSpace01 }}"
+##
+## Annotations to be added to the route
+oscpRouteAnnotationsToAdd:
+  - name: "haproxy.router.openshift.io/ip_whitelist"
+    value: "10.1.63.48/28 10.1.63.52 10.1.63.53"
+##
+## Where to find yq
+yqBin: "/usr/local/bin/yq"
+
+##
+## Time in seconds to wait before scaling down the old deployment. If this value is not set
+## or set to zero we won't scale down the HA deployment
+waitBeforeScaleDown: 2
+## Time in seconds to wait before scaling up the old deployment again. If this value is not set
+## or set to zero we won't scale up the HA deployment again
+waitBeforeScaleUpAgain: 2
+##
+## Number of core replicas to scale up after a scale down
+numberHAReplicasToScaleUp: 3

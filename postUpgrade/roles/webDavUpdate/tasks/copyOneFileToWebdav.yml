@@ -36,7 +36,7 @@
     - name: Check what we've got from git to {{ gitCheckout.path }}
       become_user: "root"
       ansible.builtin.shell: |
-        echo "Git director {{ gitCheckout.path }}  ..."
+        echo "Git directory {{ gitCheckout.path }}  ..."
         cd {{ gitCheckout.path }}
         find .
       register: shellOut

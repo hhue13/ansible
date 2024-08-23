@@ -1,0 +1,5 @@
+#######################################################
+## Extra variables
+#######################################################
+oscpHostApiUrl: https://api.epyc.cloud.a-it.dev:6443
+oscpOsUser: hhuebler

@@ -1,0 +1,30 @@
+# Check the route and set the facts
+####################################
+- name: Check if namespace {{ __deployment.namespace }} has route {{ roleActiveRouteName }}
+  kubernetes.core.k8s_info:
+    api_version: route.openshift.io/v1
+    kind: Route
+    namespace: "{{ __deployment.namespace }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    name: "{{ roleActiveRouteName }}"
+  register: __routeData
+  ignore_errors: true
+  tags:
+    - always
+
+- name: Set the facts for the active line if we find the route
+  ansible.builtin.set_fact:
+    activeNamespace: "{{ __deployment.namespace }}"
+    activeDeployment: "{{ __deployment.deployment }}"
+  when: (__routeData.resources | length > 0)
+  tags:
+    - always
+
+- name: Set the facts for the inactive line if we find the route
+  ansible.builtin.set_fact:
+    inActiveNamespace: "{{ __deployment.namespace }}"
+    inActiveDeployment: "{{ __deployment.deployment }}"
+  when: (__routeData.resources | length == 0)
+  tags:
+    - always

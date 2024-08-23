@@ -1,0 +1,347 @@
+---
+#######################################################################################################
+## Triggers the automatic sync of the portlet settings
+##
+## ansible-playbook -e @globalVars syncPortletSettings_playbook.yaml
+## ansible-playbook --vault-id k8s@~/ansible_password -e @globalVars syncPortletSettings_playbook.yaml
+##
+## Note: Make sure you setup visudo correctly so that "sudo -i -u <become_user>" works
+#######################################################################################################
+- name: Synchronize portlet settings between the two lines
+  hosts: crchosts
+  become: true
+  become_user: "{{ oscpOsUser }}"
+  gather_facts: true
+  force_handlers: true
+  vars_files:
+    - "{{ includedVars | default('group_vars/crchosts') }}"
+  module_defaults:
+    kubernetes.core.k8s:
+      validate_certs: "no"
+    kubernetes.core.k8s_info:
+      validate_certs: "no"
+    kubernetes.core.k8s_exec:
+      validate_certs: "no"
+    kubernetes.core.k8s_cp:
+      validate_certs: "no"
+    community.okd.openshift_auth:
+      validate_certs: "no"
+    community.okd.openshift_process:
+      validate_certs: "no"
+    community.okd.openshift_route:
+      validate_certs: "no"
+  #########################
+  ## Tasks of the play-book
+  #########################
+  tasks:
+    - name: Starting play-book
+      block:
+        - name: Echo hostname
+          ansible.builtin.debug:
+            msg: "Running on host: {{ ansible_hostname }}"
+            verbosity: 2
+          tags:
+            - always
+
+        - name: Send notification message via Slack
+          community.general.slack:
+            token: "{{ slackAuthenticationToken }}"
+            msg: "Started syncPortletSettings processing"
+          when: ((sendSlackNotifications is defined) and (sendSlackNotifications))
+          tags:
+            - always
+        ##
+        ## Install the required RPMs
+        - name: Install required RPMs
+          ansible.builtin.yum:
+            use_backend: dnf
+            name: "{{ requiredRpms }}"
+            state: present
+            validate_certs: true
+            sslverify: true
+          become: true
+          become_user: root
+          tags:
+            - always
+
+        - name: Install required pip modules
+          ansible.builtin.pip:
+            name: "{{ requiredPipModules }}"
+            state: present
+          tags:
+            - always
+
+        - name: Set K8S login facts
+          ansible.builtin.include_tasks: k8slogin.yaml
+          tags:
+            - always
+
+        - name: Dump API Key in MAIN
+          ansible.builtin.debug:
+            msg:
+              - "API Key is {{ kube_api_key }}"
+            verbosity: 4
+          tags:
+            - never
+
+        - name: Login to the oc client using the API key
+          ansible.builtin.command:
+            argv:
+              - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+              - "login"
+              - "--token={{ kube_api_key }}"
+              - "--server={{ k8s_host }}"
+              - "--insecure-skip-tls-verify=true"
+          register: cmdResult
+          changed_when: cmdResult.rc == 0
+          no_log: false
+          tags:
+            - always
+
+        - name: Debug the command result of 'oc login'
+          ansible.builtin.debug:
+            msg:
+              - "cmdResult is {{ cmdResult }}"
+            verbosity: 2
+          tags:
+            - always
+        ##############
+        ## Debug Vars
+        ##############
+        - name: Print some debug information
+          vars:
+            msg: |
+              Module Variables ("vars"):
+              --------------------------------
+              {{ vars | to_nice_json }}
+
+              Environment Variables ("environment"):
+              --------------------------------
+              {{ environment | to_nice_json }}
+
+              GROUP NAMES Variables ("group_names"):
+              --------------------------------
+              {{ group_names | to_nice_json }}
+
+              GROUPS Variables ("groups"):
+              --------------------------------
+              {{ groups | to_nice_json }}
+
+              HOST Variables ("hostvars"):
+              --------------------------------
+              {{ hostvars | to_nice_json }}
+          ansible.builtin.debug:
+            msg: "{{ msg.split('\n') }}"
+            verbosity: 4
+
+        - name: Display hostvars
+          ansible.builtin.debug:
+            msg: "hostvars:\n\n{{ hostvars | to_yaml}}\n\n"
+            verbosity: 4
+
+        - name: Create temporary directory for git checkout
+          ansible.builtin.tempfile:
+            state: directory
+            prefix: git_
+          register: gitCheckout
+          tags:
+            - always
+
+        - name: Checkout gbgScripts Repo
+          ansible.builtin.include_role:
+            name: checkoutGitRepo
+          vars:
+            roleGitSource: "{{ scriptsGitSource }}"
+            roleCheckoutDest: "{{ gitCheckout.path }}"
+          tags:
+            - always
+
+        - name: Determine the currently active line
+          ansible.builtin.include_role:
+            name: getActiveLine
+          vars:
+            roleActiveRouteName: "{{ oscpDxActiveRoute }}"
+            roleDeployments: "{{ oscpDeployments }}"
+            roleHost: "{{ k8s_host }}"
+            roleKey: "{{ kube_api_key }}"
+          tags:
+            - always
+
+        - name: Debug the active and inactive line informaton
+          ansible.builtin.debug:
+            msg:
+              - "Determined the following line as the ACTIVE line:"
+              - " Namespace: \"{{ activeNamespace }}\""
+              - " Deployment: \"{{ activeDeployment }}\""
+              - "Determined the following line as the INACTIVE line:"
+              - " Namespace: \"{{ inActiveNamespace }}\""
+              - " Deployment: \"{{ inActiveDeployment }}\""
+            verbosity: 2
+
+        - name: Get the exported web-app xml file for the active line
+          ansible.builtin.include_role:
+            name: getWebAppExport
+          vars:
+            roleWpsUser: "{{ wpsUser }}"
+            roleWpsPassword: "{{ wpsPassword }}"
+            roleWebmodsToBeExported: "{{ webmodsToBeExported }}"
+            roleGbgScriptsDir: "{{ gitCheckout.path }}"
+            roleNs: "{{ activeNamespace }}"
+            roleHost: "{{ k8s_host }}"
+            roleKey: "{{ kube_api_key }}"
+            roleDeployment: "{{ activeDeployment }}"
+            roleXmlFile: "{{ webmodsXMLActiveLine }}"
+            roleXmlBackupDirOnPod: "{{ webmodsXmlBackupDirOnPod }}"
+            rolePodXmlFileDir: "{{ xmlAccessExportsDir }}"
+            roleRetentionPeriod: "{{ webmodsXMLExportRetentionPeriod  | default(omit) }}"
+          tags:
+            - always
+
+        - name: Get the exported web-app xml file for the in-active line
+          ansible.builtin.include_role:
+            name: getWebAppExport
+          vars:
+            roleWpsUser: "{{ wpsUser }}"
+            roleWpsPassword: "{{ wpsPassword }}"
+            roleWebmodsToBeExported: "{{ webmodsToBeExported }}"
+            roleGbgScriptsDir: "{{ gitCheckout.path }}"
+            roleNs: "{{ inActiveNamespace }}"
+            roleHost: "{{ k8s_host }}"
+            roleKey: "{{ kube_api_key }}"
+            roleDeployment: "{{ inActiveDeployment }}"
+            roleXmlFile: "{{ webmodsXMLInActiveLine }}"
+            roleXmlBackupDirOnPod: "{{ webmodsXmlBackupDirOnPod }}"
+            rolePodXmlFileDir: "{{ xmlAccessExportsDir }}"
+            roleRetentionPeriod: "{{ webmodsXMLExportRetentionPeriod  | default(omit) }}"
+          tags:
+            - always
+
+        - name: Create XML file to sync portlet preferences
+          ansible.builtin.shell: |
+            {{ gitCheckout.path }}/gbgScripts/bin/syncPortletSettings.py -s {{ webmodsXMLActiveLine }}  -t {{ webmodsXMLInActiveLine }} -d {{ webmodsXMLSycFile }} -l {{ scriptLogLevel | default("INFO") }}
+          register: cmdResult
+          failed_when: (cmdResult.rc != 0)
+          tags:
+            - always
+
+        - name: Logging StdOut/StdErr produced by syncPortletSettings.py
+          ansible.builtin.debug:
+            msg: "{{ msg.split('\n') }}"
+          vars:
+            msg: |
+              "syncPortletSettings.py - STDOUT:"
+              {{ cmdResult.stdout }}
+
+              "syncPortletSettings.py - STDERR:"
+              {{ cmdResult.stderr }}
+
+        - name: Retrieving the current timestamp
+          ansible.builtin.set_fact:
+            current_timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
+          tags:
+            - always
+
+        - name: Run the xmlaccess to apply the portlet settings to the inactive line
+          ansible.builtin.include_role:
+            name: runXmlAccess
+          vars:
+            roleDeployment: "{{ inActiveDeployment }}"
+            roleHost: "{{ k8s_host }}"
+            roleKey: "{{ kube_api_key }}"
+            roleNs: "{{ inActiveNamespace }}"
+            roleCorePodName: "{{ inActiveDeployment }}-core-0"
+            roleCorePodContainerName: "core"
+            roleWpsAdminUser: "{{ wpsUser }}"
+            roleWpsAdminPassword: "{{ wpsPassword }}"
+            roleBackupTimeStamp: "{{ current_timestamp }}"
+            roleExportXmlFile: "{{ webmodsXMLSycFile }}"
+            roleExportDir: "{{ xmlAccessExportsDir }}"
+            roleXmlAccessOutputFilePrefix: "{{ webmodsXMLSycFile | ansible.builtin.basename | splitext | first }}"
+            roleExportWaitBetweenChecks: "{{ exportWaitBetweenChecks }}"
+            roleExportWaitNumberChecks: "{{ exportWaitNumberChecks }}"
+            roleXmlaccessHeapSettings: "{{ xmlaccessHeapSettings | default('') }}"
+          when: (( dryRun is defined) and ( dryRun == false))
+          tags:
+            - always
+
+        - name: Notify that we are doing a dry-run only
+          ansible.builtin.debug:
+            msg:
+              - "Portlet settings differences are NOT applied as \"dry-run\" is not defined or is defined but set to \"true\""
+              - "Check file \"{{ webmodsXMLSycFile }}\" to verify the calculated changed on host \"{{ inventory_hostname }}\""
+          when: (( dryRun is not defined) or ((dryRun is defined) and ( dryRun )))
+        ###################################################################
+        ##
+        ## If we succeed until here set the runResult state to success
+        ##
+        ###################################################################
+        - name: Set runResult status to success
+          ansible.builtin.set_fact:
+            runResult: "SUCCESS"
+          tags:
+            - always
+
+      #####################################################################
+      ## If we fail in the processing we set the runResult state to failed
+      #####################################################################
+      rescue:
+        - name: Set runResult status to failed
+          ansible.builtin.set_fact:
+            runResult: "FAILED"
+          tags:
+            - always
+
+      always:
+        - name: Logout of oc and K8S
+          block:
+          - name: Cleanup temp. directory for git checkout
+            ansible.builtin.file:
+              path: "{{ gitCheckout.path }}"
+              state: absent
+              force: true
+          ##
+          ## Perform the oc logout
+          - name: Logout of the command line client
+            ansible.builtin.command:
+              argv:
+                - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+                - "logout"
+                - "--token={{ kube_api_key }}"
+                - "--server={{ k8s_host }}"
+            when: ((oscpLogoutOfOc is defined) and
+              (oscpLogoutOfOc | bool))
+            tags:
+              - always
+          ##
+          ## Logout
+          - name: If login succeeded, try to log out (revoke access token)
+            community.okd.openshift_auth:
+              host: "{{ k8s_host }}"
+              state: absent
+              api_key: "{{ kube_api_key }}"
+              validate_certs: "no"
+            when: kube_api_key is defined
+            ignore_errors: true
+            tags:
+              - always
+          ##
+          ## failed in the logout phase
+          rescue:
+            - name: Set runResult status to failed
+              ansible.builtin.set_fact:
+                runResult: "FAILED"
+              tags:
+                - always
+
+        - name: Send notification message via Slack
+          community.general.slack:
+            token: "{{ slackAuthenticationToken }}"
+            msg: "Finished syncPortletSettings processing with \"{{ runResult }}\""
+          when: ((sendSlackNotifications is defined) and (sendSlackNotifications))
+          tags:
+            - always
+
+        - name: As we are rescuing failures the play-book seems to finish successfully although not fully executed. Force a fail
+          ansible.builtin.fail:
+            msg: "Failing tasks in the play-book found. Failing ..."
+          when: (runResult == "FAILED")

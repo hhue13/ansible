@@ -11,6 +11,8 @@
   ansible.builtin.command:
     argv:
       - "{{ roleClientBin | default('/usr/local/bin/oc') }}"
+      - "--token={{ roleKey }}"
+      - "--server={{ roleHost }}"
       - "-n"
       - "{{ roleNs }}"
       - "cp"

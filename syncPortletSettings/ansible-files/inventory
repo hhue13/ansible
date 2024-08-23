@@ -1,0 +1,5 @@
+[crchosts]
+s008aa39r
+
+[crchosts:vars]
+ansible_python_interpreter = /usr/bin/python3

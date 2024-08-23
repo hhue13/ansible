@@ -9,7 +9,7 @@
 ##
 ## Note: Make sure you setup visudo correctly so that "sudo -i -u <become_user>" works
 #######################################################################################################
-- name: Run the postUpgrade tasks after a CF upgrade
+- name: Perform a full xmlaccess export of a site
   hosts: crchosts
   become: yes
   become_user: "{{ oscpOsUser }}"
@@ -53,9 +53,9 @@
       ansible.builtin.debug:
         msg:
           - "API Key is {{ kube_api_key  }}"
-      no_log: true
+        verbosity: 4
       tags:
-        - never
+        - always
     ##############
     ## Debug Vars
     ##############
@@ -116,6 +116,7 @@
         roleExportWaitBetweenChecks: "{{ exportWaitBetweenChecks }}"
         roleExportWaitNumberChecks: "{{ exportWaitNumberChecks }}"
         roleExportRetainCopies: "{{ exportRetainCopies }}"
+        roleXmlaccessHeapSettings: "{{ xmlaccessHeapSettings | default('') }}"
       tags:
         - always
     ##
@@ -127,5 +128,6 @@
         api_key: "{{ kube_api_key }}"
         validate_certs: "no"
       when: kube_api_key is defined
+      ignore_errors: true
       tags:
         - always

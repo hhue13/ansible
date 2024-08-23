@@ -23,7 +23,6 @@
 ## Create secret
 - name: Create LDAP Bind secret
   k8s:
-    validate_certs: "no"
     host: "{{ apiHost }}"
     api_key: "{{ apiKey }}"
     state: present
@@ -98,7 +97,6 @@
 ## Update OAuth providers to include LDAP
 - name: Configure OAuth providers
   k8s:
-    validate_certs: "no"
     host: "{{ apiHost }}"
     state: present
     api_key: "{{ apiKey }}"
@@ -131,7 +129,6 @@
     ## Create cluster role binding to user from LDAP
     - name: Add admins from LDAP to the cluster-adm role
       k8s:
-        validate_certs: "no"
         host: "{{ apiHost }}"
         api_key: "{{ apiKey }}"
         state: present

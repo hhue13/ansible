@@ -1,0 +1,102 @@
+---
+#######################################################################################################
+## Triggers the automatic sync of the portlet settings
+##
+## ansible-playbook -e @globalVars syncPortletSettings_playbook.yaml
+## ansible-playbook --vault-id k8s@~/ansible_password -e @globalVars syncPortletSettings_playbook.yaml
+##
+## Note: Make sure you setup visudo correctly so that "sudo -i -u <become_user>" works
+#######################################################################################################
+- name: Synchronize portlet settings between the two lines
+  hosts: testhost
+  become: true
+  become_user: "{{ oscpOsUser }}"
+  gather_facts: true
+  force_handlers: true
+  module_defaults:
+    kubernetes.core.k8s:
+      validate_certs: "no"
+    kubernetes.core.k8s_info:
+      validate_certs: "no"
+    kubernetes.core.k8s_exec:
+      validate_certs: "no"
+    kubernetes.core.k8s_cp:
+      validate_certs: "no"
+    community.okd.openshift_auth:
+      validate_certs: "no"
+    community.okd.openshift_process:
+      validate_certs: "no"
+    community.okd.openshift_route:
+      validate_certs: "no"
+  #########################
+  ## Tasks of the play-book
+  #########################
+  tasks:
+    - name: Starting play-book
+      block:
+        - name: Echo hostname
+          ansible.builtin.debug:
+            msg: "Running on host: {{ ansible_hostname }}"
+            verbosity: 2
+          tags:
+            - always
+
+        - name: Set K8S login facts
+          ansible.builtin.include_tasks: k8slogin.yaml
+          tags:
+            - always
+
+        - name: Dump API Key in MAIN
+          ansible.builtin.debug:
+            msg:
+              - "API Key is {{ kube_api_key }}"
+            verbosity: 4
+          tags:
+            - always
+
+        - name: Login to the oc client using the API key
+          ansible.builtin.command:
+            argv:
+              - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+              - "login"
+              - "--token={{ kube_api_key }}"
+              - "--server={{ k8s_host }}"
+              - "--insecure-skip-tls-verify=true"
+          register: cmdResult
+          changed_when: cmdResult.rc == 0
+          no_log: false
+          tags:
+            - always
+
+        - name: Debug the command result of 'oc login'
+          ansible.builtin.debug:
+            msg:
+              - "cmdResult is {{ cmdResult }}"
+            verbosity: 2
+          tags:
+            - always
+
+      always:
+          ##
+          ## Perform the oc logout
+          - name: Logout of the command line client
+            ansible.builtin.command:
+              argv:
+                - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+                - "logout"
+            when: ((oscpLogoutOfOc is defined) and
+              (oscpLogoutOfOc | bool))
+            tags:
+              - never
+          ##
+          ## Logout
+          - name: If login succeeded, try to log out (revoke access token)
+            community.okd.openshift_auth:
+              host: "{{ k8s_host }}"
+              state: absent
+              api_key: "{{ kube_api_key }}"
+              validate_certs: "no"
+            when: kube_api_key is defined
+            ignore_errors: true
+            tags:
+              - never

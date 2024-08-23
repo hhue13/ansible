@@ -1,0 +1,20 @@
+---
+# Role defaults
+roleCoreContainerName: "core"
+roleCorePodName: "{{ roleDeployment }}-core-0"
+roleProfileHome: "/opt/HCL/wp_profile"
+roleXmlAccessOutputFilePrefix: "siteExport"
+roleExportRetainCopies: 21
+##
+## DO NOT CHANGE ORDER!
+roleTemplatesToProcess:
+  - template: "exportXmlAccess.sh.j2"
+    script: "exportXmlAccess.sh"
+  - template: "checkXmlAccessFinished.sh.j2"
+    script: "checkXmlAccessFinished.sh"
+  - template: "checkXmlAccessResult.sh.j2"
+    script: "checkXmlAccessResult.sh"
+  - template: "checkResult.py.j2"
+    script: "checkResult.py"
+  - template: "cleanupOldExports.sh.j2"
+    script: "cleanupOldExports.sh"

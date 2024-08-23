@@ -16,6 +16,7 @@
     kind: Pod
     namespace: "{{ roleNs }}"
     api_key: "{{ roleKey }}"
+    host: "{{ roleHost }}"
     label_selectors:
       - "app={{ roleAppTag }}"
   register: podData
@@ -38,6 +39,7 @@
     kind: Pod
     namespace: "{{ roleNs }}"
     api_key: "{{ roleKey }}"
+    host: "{{ roleHost }}"
     name: "{{ item }}"
   loop: "{{ podData | json_query('resources[*].metadata.name') }}"
   tags:

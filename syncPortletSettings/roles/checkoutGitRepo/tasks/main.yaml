@@ -1,0 +1,25 @@
+---
+# tasks file for checkoutGitRepo
+- name: Get the value of SSH_AUTH_SOCK
+  set_fact:
+    __ssh_auth_sock: "{{ lookup('env', 'SSH_AUTH_SOCK') }}"
+  tags:
+    - always
+
+- name: Clone the repository
+  ansible.builtin.git:
+    accept_hostkey: true
+    repo: "{{ roleGitSource.gitRepositoryUrl }}"
+    dest: "{{ roleCheckoutDest }}"
+    umask: "{{ roleCheckoutUmask | default('022') }}"
+    version: "{{ roleGitSource.gitBranchOrVersion }}"
+    remote: "{{ roleGitSource.gitRemote }}"
+    key_file: "{{ roleGitSource.gitPrivateKey }}"
+    single_branch: true
+    depth: 1
+    recursive: true
+  environment:
+    GIT_TERMINAL_PROMPT: 0 # reports "terminal prompts disabled" on missing password
+    SSH_AUTH_SOCK: "{{ __ssh_auth_sock }}"
+  tags:
+    - always

@@ -1,6 +1,24 @@
 #!/usr/bin/env bash
-echo "Checking result attribte of xmlaccess output file $(date +"%Y%m%d_%H%M%S.%N")"
+echo "Checking result attribute of xmlaccess output file $(date +"%Y%m%d_%H%M%S.%N")"
+##
+## Due to the huge XML files XML parsing takes ages or runs OOM.
+## So we extract the status element and verify this only this small file.
+echo "<request>" > "{{ __outputFile }}.cut"
+grep -E '<status element=|</status>' {{ __outputFile }} >> "{{ __outputFile }}.cut"
+echo "</request>" >> "{{ __outputFile }}.cut"
+##
+## Set Java optiopns if needed
+if [[ "{{ roleXmlaccessHeapSettings }}." == "." ]] ; then
+    JAVAOPTION=""
+else
+    JAVAOPTION=""
+    for __x in {{ roleXmlaccessHeapSettings }} ; do
+        JAVAOPTION="${JAVAOPTION} -javaoption ${__x}"
+    done
+fi
 ##
 ## Check the result of the xmlaccess xml file
-{{ roleProfileHome }}/bin/wsadmin.sh -lang jython -connType none -f /tmp/{{ roleTemplatesToProcess[3].script }} || exit 1
+{{ roleProfileHome }}/bin/wsadmin.sh -lang jython -connType none  ${JAVAOPTION} -f /tmp/{{ roleTemplatesToProcess[3].script }} || exit 1
+
+rm -rf "{{ __outputFile }}.cut"
 exit 0

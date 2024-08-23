@@ -10,8 +10,8 @@
   become_user: "{{ oscpOsUser }}"
   gather_facts: true
   module_defaults:
-    k8s:
-      validate_certs: "no"
+    group/k8s:
+      validate_certs: false
   #########################
   ## Tasks of the play-book
   #########################
@@ -280,7 +280,6 @@
         ## Logout again
         - name: Log-out of k8s
           community.okd.openshift_auth:
-            validate_certs: "no"
             host: "{{ k8s_host }}"
             state: absent
             api_key: "{{ kube_api_key }}"

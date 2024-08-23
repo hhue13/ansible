@@ -1,10 +1,16 @@
 ---
-- name: Make sure the tmp directory for the backup ({{ backupFileDict['tmpDir'] | default('/tmp') }}) exists
+- name: Set the tmp directory for the backup files with default just once
+  ansible.builtin.set_fact:
+    __backup_temp_dir: "{{ backupFileDict['tmpDir'] | default('/tmp') }}"
+  tags:
+    - always
+
+- name: Make sure the tmp directory for the backup ({{ __backup_temp_dir }}) exists
   kubernetes.core.k8s_exec:
     namespace: "{{ roleNs }}"
     host: "{{ roleHost }}"
     api_key: "{{ roleKey }}"
-    command: "mkdir -p {{ backupFileDict['tmpDir'] | default('/tmp') }}"
+    command: "mkdir -p {{ __backup_temp_dir }}"
     pod: "{{ rolePersistentPodName }}"
     container: "{{ rolePersistentPodContainerName }}"
   register: podResult
@@ -17,7 +23,7 @@
     namespace: "{{ roleNs }}"
     host: "{{ roleHost }}"
     api_key: "{{ roleKey }}"
-    command: "pg_dump -d {{ backupFileDict['name'] }} -f {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupType }}_{{ roleBackupTimestamp }}.dmp"
+    command: "pg_dump -d {{ backupFileDict['name'] }} -f {{ __backup_temp_dir }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupType }}_{{ roleBackupTimestamp }}.dmp"
     pod: "{{ rolePersistentPodName }}"
     container: "{{ rolePersistentPodContainerName }}"
   register: podResult
@@ -32,7 +38,7 @@
     namespace: "{{ roleNs }}"
     host: "{{ roleHost }}"
     api_key: "{{ roleKey }}"
-    command: "pg_dump -d {{ backupFileDict['name'] }} --exclude-table-data=*.event_log --exclude-table-data=*.subscriber_registration -f {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupType }}_{{ roleBackupTimestamp }}.dmp"
+    command: "pg_dump -d {{ backupFileDict['name'] }} --exclude-table-data=*.event_log --exclude-table-data=*.subscriber_registration -f {{ __backup_temp_dir }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupType }}_{{ roleBackupTimestamp }}.dmp"
     pod: "{{ rolePersistentPodName }}"
     container: "{{ rolePersistentPodContainerName }}"
   register: podResult
@@ -47,7 +53,7 @@
     namespace: "{{ roleNs }}"
     host: "{{ roleHost }}"
     api_key: "{{ roleKey }}"
-    command: "gzip -9 {{ backupFileDict['tmpDir'] | default('/tmp') }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupType }}_{{ roleBackupTimestamp }}.dmp"
+    command: "gzip -9 {{ __backup_temp_dir }}/{{ backupFileDict['backupFile'] }}_{{ roleBackupType }}_{{ roleBackupTimestamp }}.dmp"
     pod: "{{ rolePersistentPodName }}"
     container: "{{ rolePersistentPodContainerName }}"
   register: podResult

@@ -13,17 +13,17 @@ slackAuthenticationToken: !vault |
 ##
 ## OSCP Authenticaton data used to login to K8S
 ## ansible-vault encrypt_string --vault-id dev@~ansible_password '<plain-text-password>' --name 'oscpKubeAdminPassword'
-oscpKubeAdminUserName: hhue
+oscpKubeAdminUserName: ocpadmin
 oscpKubeAdminPassword: !vault |
   $ANSIBLE_VAULT;1.2;AES256;k8s
-  30653463636438626431613430343637343231646363346436656634393731356662343133383861
-  3639646239346438323762353733373861356337303631350a346132653638366563643831373532
-  66633030356533616631643333313137386132343962653764653335613263316639306266643731
-  3537613466653462640a333531656263383639313236613137313837626232326261306339356531
-  3032
+  37613738616564613333373463316138393562346235306263343463636666313132663733303263
+  3965383935313732643633346266653636366135366138330a396465666637313066333439666664
+  33323461653665353635623462323764393233366433306436303165343636396535663964303465
+  6234373731373265660a346334346130613530396266366335653932396433663132303363623166
+  3439
 ##
 ## OSCP installation details
-oscpDomain: cloud1.2i.at
+oscpDomain: a-it.dev
 oscpClusterName: epyc
 ##
 ## Docker CLI command (docker | podman)
@@ -38,7 +38,7 @@ oscpLogoutOfOc: true
 ## playbook specifics
 ##################################################################
 oscpRouteNameToToggle: dx-route
-oscpRouteHostNameToSet: dx.2i.at
+oscpRouteHostNameToSet: portal.a-it.dev
 ## Namespace-1
 oscpNameSpace01: "dxb"
 oscpDeployment01: "dx-blue"

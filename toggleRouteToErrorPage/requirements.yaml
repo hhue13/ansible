@@ -1,0 +1,5 @@
+---
+collections:
+  - name: community.okd
+    version: 2.3.0
+  - name: kubernetes.core

@@ -1,0 +1,19 @@
+# tasks file for getActiveLine
+##############################
+- name: Init result facts
+  ansible.builtin.set_fact:
+    activeNamespace: ''
+    activeDeployment: ''
+    inActiveNamespace: ''
+    inActiveDeployment: ''
+  tags:
+    - always
+
+- name: Iterate over all entries of roleDeployments to determine the active activeNamespace
+  ansible.builtin.include_tasks: checkIfRouteExists.yaml
+  when: (( activeNamespace == '' ) and (activeDeployment == ''))
+  loop: "{{ roleDeployments }}"
+  loop_control:
+    loop_var: __deployment
+  tags:
+    - always

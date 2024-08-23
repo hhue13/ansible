@@ -58,15 +58,15 @@
     - always
 ##
 ## Debug K8S_API_TOKEN
-- name: Debug K8S_API_TOKEN
+- name: Debug K8S_API_TOKEN taken from the environment
   debug:
     msg:
       - "K8S_API_TOKEN: '{{ k8s_api_token }}'"
       - "K8S_HOST_URL: '{{ k8s_host }}'"
       - "K8S_USER: '{{ k8s_user }}'"
-  no_log: true
+    verbosity: 4
   tags:
-    - never
+    - always
 ##
 ## Login
 - name: Log in (obtain access token)
@@ -102,16 +102,13 @@
   no_log: true
   tags:
     - always
-##### ##
-##### ## Debug k8s credentials
-##### - name: Debug
-#####   debug:
-#####     msg:
-#####       - "K8S credentials - 2..."
-#####       - "kube_auth_results.api_key: {{ k8s_auth_results_2.k8s_auth.api_key }}"
-#####       - "kube_auth_results.ca_cert: {{ k8s_auth_results_2.k8s_auth.ca_cert }}"
-#####       - "kube_auth_results.host: {{ k8s_auth_results_2.k8s_auth.host }}"
-#####       - "kube_auth_results.username: {{ k8s_auth_results_2.k8s_auth.username }}"
-#####       - "kube_auth_results.validate_certs: {{ k8s_auth_results_2.k8s_auth.validate_certs }}"
-#####   tags:
-#####     - never
+##
+## Debug k8s credentials
+- name: Debug
+  debug:
+    msg:
+      - "kube_api_key: {{ kube_api_key }}"
+      - "k8s_host: {{ k8s_host }}"
+    verbosity: 4
+  tags:
+    - always

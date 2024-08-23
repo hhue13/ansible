@@ -67,7 +67,7 @@
         namespace: "{{ roleNs }}"
         host: "{{ roleHost }}"
         api_key: "{{ roleKey }}"
-        command: "bash -c '/tmp/{{ roleTemplatesToProcess[0].script }}'"
+        command: "bash -c '/tmp/{{ roleTemplatesToProcess[0].script }} >/dev/null 2>/dev/null'"
         pod: "{{ roleCorePodName }}"
         container: "{{ roleCoreContainerName }}"
       register: podResult
@@ -91,7 +91,7 @@
         pod: "{{ roleCorePodName }}"
         container: "{{ roleCorePodContainerName }}"
       register: podResult
-      until: (podResult.rc == 0)
+      until: podResult is succeeded
       retries: "{{ roleExportWaitNumberChecks | default('90') }}"
       delay: "{{ roleExportWaitBetweenChecks | default('20') }}"
 

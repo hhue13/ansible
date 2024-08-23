@@ -12,7 +12,7 @@
 ## roleCorePodName: Name of the core pod on which the xmlaccess will run
 ## roleCoreContainerName: Name of the core container
 ## roleTargetDirectoryForXmlFiles: Directory where the backup files will be saved
-## roleXmlAccessOutputPatterm: Pattern for the xmlaccess output file
+## roleXmlAccessOutputPattern: Pattern for the xmlaccess output file
 ## roleBackupTimestamp: Timestamp of the backup
 ## roleTimestampPattern: Placeholder to be replaced with the backup timestamp
 #####################################################################################
@@ -21,7 +21,7 @@
 ## Set the xmlaccess output filename for the backup to replace the pattern with the timestamp
 - name: Set the xmlaccess output filename
   ansible.builtin.set_fact:
-    xmlAccessOutputFile: "{{ roleXmlAccessOutputPatterm | replace(roleTimestampPattern, roleBackupTimestamp) }}"
+    xmlAccessOutputFile: "{{ roleXmlAccessOutputPattern | replace(roleTimestampPattern, roleBackupTimestamp) }}"
   tags:
     - always
 ##
@@ -43,6 +43,8 @@
   ansible.builtin.command:
     argv:
       - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+      - "--token={{ roleKey }}"
+      - "--server={{ roleHost }}"
       - "-n"
       - "{{ roleNs }}"
       - "cp"
@@ -69,10 +71,12 @@
     - always
 ##
 ## Copy the backed up data to the target directory
-- name: Copy xml output file to the backup directory
+- name: Copy XML output file to the backup directory
   ansible.builtin.command:
     argv:
       - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+      - "--token={{ roleKey }}"
+      - "--server={{ roleHost }}"
       - "-n"
       - "{{ roleNs }}"
       - "cp"
@@ -85,11 +89,36 @@
   tags:
     - always
 
+- name: Cleanup XML output file on the pod
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "rm -rf /tmp/{{ xmlAccessOutputFile }}"
+    pod: "{{ roleCorePodName }}"
+    container: "{{ roleCoreContainerName }}"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - always
+
+- name: Cleanup XML input file on the pod if we restore
+  kubernetes.core.k8s_exec:
+    namespace: "{{ roleNs }}"
+    host: "{{ roleHost }}"
+    api_key: "{{ roleKey }}"
+    command: "rm -rf {{ xmlInputFile }}"
+    pod: "{{ roleCorePodName }}"
+    container: "{{ roleCoreContainerName }}"
+  register: podResult
+  failed_when: (podResult.rc != 0)
+  tags:
+    - restore
 ##
 ## Set the xmlaccess output link name for the latest link
 - name: Set the xmlaccess latest link filename
   ansible.builtin.set_fact:
-    xmlAccessLinkFile: "{{ roleXmlAccessOutputPatterm | replace(roleTimestampPattern, roleLatestLinkSuffix) }}"
+    xmlAccessLinkFile: "{{ roleXmlAccessOutputPattern | replace(roleTimestampPattern, roleLatestLinkSuffix) }}"
   tags:
     - backup
 

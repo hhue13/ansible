@@ -1,0 +1,10 @@
+\                <init-param>\
+                        <param-name>com.ibm.portal.cors.domain.list</param-name>\
+                        <param-value>{% for domain in corsHosts %}{{ domain.url }}{% if not loop.last %} {% endif %}{% endfor %}</param-value>\
+\                </init-param>\
+{% for domain in corsHosts %}
+\                <init-param>\
+                        <param-name>com.ibm.portal.cors.domain.{{ domain.url }}.maxage</param-name>\
+                        <param-value>{{ domain.maxage }}</param-value>\
+\                </init-param>\
+{% endfor %}

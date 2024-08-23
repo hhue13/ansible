@@ -1,0 +1,55 @@
+---
+sendSlackNotifications: false
+## Slack authentication token
+## ansible-vault encrypt_string --vault-id dev@~ansible_password '<plain-text-password>' --name 'slackAuthenticationToken'
+slackAuthenticationToken: !vault |
+  $ANSIBLE_VAULT;1.2;AES256;ks8
+  35343964373661346235363936613731636365353365646638363033366538376130323561383739
+  3632306563303435646530666235356231323639613166620a636130353264356530623331303333
+  36396566363062396162343030346666616432656264393631653239373932323834323334313732
+  3762616536356435350a343064363765656238376564356532626238336265393666393739366335
+  63633262363839646237366638383838303861383864323337376233346132396335343964663130
+  39633136353530346263616666613662663732663434303066356265333162366637326564663166
+  343566613435326562663634373831393433
+##
+## AWX Controller host / user & Pwd
+controller_host: awx-awx.apps.epyc.cloud.a-it.dev
+##
+## User to login to AWX
+controller_username: admin
+##
+## Password for the user to login to AWX
+## ansible-vault encrypt_string --vault-id ks8@~/ansible_password '<plain-text-password>' --name 'controller_password'
+controller_password: !vault |
+  $ANSIBLE_VAULT;1.2;AES256;ks8
+  34333035326233343336613763386139633232396430303261623636326533653166386631613031
+  3966383666646662396637316136383435356639323736360a323736333232383037393638396537
+  65623065666436356130353233336231396333613230623861663538643463633537613136653366
+  6362663132333530350a626462663132323565623937356363613733356561626133396437376639
+  3136
+##
+## Pip modules required
+requiredPipModules:
+  - awxkit
+  - pyyaml
+##
+## AWX Assets output file data
+exportsFileDirectory: "/tmp/awx"
+exportsFile: "{{ controller_host }}"
+##
+## AWX Assets import file data
+importFileDir: "/tmp/awx"
+importFile: "imports.json"
+##
+## AWX settings
+awxSettings: []
+  ##### - name: "ANSIBLE_TIMEOUT"
+  #####   value: "30"
+  ##### - name: "ANSIBLE_PERSISTENT_COMMAND_TIMEOUT"
+  #####   value: "60"
+  ##### - name: "ANSIBLE_PERSISTENT_CONNECT_TIMEOUT"
+  #####   value: "60"
+##
+## Housekeeping
+exportsRetentionPeriod: 21
+

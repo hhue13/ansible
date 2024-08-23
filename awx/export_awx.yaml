@@ -1,0 +1,169 @@
+---
+#######################################################################################################
+## Requires the following collections and python modules:
+##
+## See README.md for required software dependencies
+##
+## ansible-playbook --vault-id k8s@~/ansible_password -e @globalVars toggleRoute.yaml
+##
+## Note: Make sure you setup visudo correctly so that "sudo -i -u <become_user>" works
+#######################################################################################################
+- name: Export awx settings
+  hosts: crchosts
+  become: yes
+  become_user: "{{ oscpOsUser }}"
+  gather_facts: true
+  force_handlers: true
+  vars_files:
+  - "{{ includedVars | default('group_vars/crchosts') }}"
+
+  module_defaults:
+    awx.awx.export:
+      validate_certs: "false"
+  #########################
+  ## Tasks of the play-book
+  #########################
+  tasks:
+    - name: Send notification message via Slack that export started
+      community.general.slack:
+        token: "{{ slackAuthenticationToken }}"
+        msg: "AWX export on host: {{ controller_host }} started"
+      when: ((sendSlackNotifications is defined) and (sendSlackNotifications == true))
+      tags:
+        - export
+
+    - name: Send notification message via Slack that import started
+      community.general.slack:
+        token: "{{ slackAuthenticationToken }}"
+        msg: "AWX import on host: {{ controller_host }} started"
+      when: ((sendSlackNotifications is defined) and (sendSlackNotifications == true))
+      tags:
+        - import
+
+    - name: Retrieving the current timestamp
+      ansible.builtin.set_fact:
+        backup_timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
+      tags:
+        - always
+
+    - name: Install required pip modules
+      ansible.builtin.pip:
+        name: "{{ requiredPipModules }}"
+        state: present
+      tags:
+        - always
+
+    - name: Calculate export filename
+      ansible.builtin.set_fact:
+        importFileName: "{{ importFileDir }}/{{ importFile }}"
+        exportFileName: "{{ exportsFileDirectory }}/{{ exportsFile }}_{{ backup_timestamp }}.json"
+      tags:
+        - always
+
+    ###########################################################
+    ## E X P O R T
+    ###########################################################
+
+    - name: Export all AWX assets
+      awx.awx.export:
+        all: true
+        controller_host: "{{ controller_host }}"
+        controller_username: "{{ controller_username }}"
+        controller_password: "{{ controller_password }}"
+      register: exportResult
+      no_log: true
+      tags:
+        - export
+
+    - name: Dump the exported assets to the screen
+      ansible.builtin.debug:
+        msg:
+          - "Exported Assets are: {{ exportResult.assets }}"
+        verbosity: 4
+      tags:
+        - export
+
+    - name: Write the exported assets to a file "{{ exportsFile }}_{{ backup_timestamp }}.json"
+      ansible.builtin.copy:
+        dest: "{{ exportFileName }}"
+        mode: 0750
+        content: "{{ exportResult.assets | to_nice_json }}"
+      tags:
+        - export
+
+    - name: Link the latest export file to be the import file
+      ansible.builtin.shell: |
+        rm -rf {{ importFileName }}
+        ln {{ exportFileName }} {{ importFileName }}
+      register: shellResult
+      failed_when: (shellResult.rc != 0)
+      tags:
+        - export
+
+    ##
+    ## Housekeeping - cleanup old backups
+    - name: Housekeeping - cleanup old exports
+      ansible.builtin.shell: |
+        find {{ exportsFileDirectory }} -name "{{ exportsFile }}_*.json" -mtime +{{ exportsRetentionPeriod | default('90') }} -exec rm -rf {} \;
+      register: cmdResult
+      failed_when: (cmdResult.rc != 0)
+      tags:
+        - export
+    ###########################################################
+    ## I M P O R T
+    ###########################################################
+    - name: Read import data from "{{ importFileName }}"
+      ansible.builtin.slurp:
+        src: "{{ importFileName }}"
+      register: slurpedImportFile
+      no_log: true
+      tags:
+        - import
+
+    - name: Dump the exported assets to the screen
+      ansible.builtin.debug:
+        msg:
+          - "Assets to be imported are:\n {{ slurpedImportFile['content'] | b64decode | from_json() }}"
+        verbosity: 4
+      tags:
+        - import
+
+    - name: Import the exported assets from file "{{ importFileName }}"
+      awx.awx.import:
+        assets: "{{ slurpedImportFile['content'] | b64decode | from_json() }}"
+        controller_host: "{{ controller_host }}"
+        controller_username: "{{ controller_username }}"
+        controller_password: "{{ controller_password }}"
+      tags:
+        - import
+
+    - name: Apply configured settings
+      awx.awx.settings:
+        name: "{{ awxSetting.name }}"
+        value: "{{ awxSetting.value }}"
+        controller_host: "{{ controller_host }}"
+        controller_username: "{{ controller_username }}"
+        controller_password: "{{ controller_password }}"
+      loop: "{{ awxSettings }}"
+      loop_control:
+        loop_var: awxSetting
+      tags:
+        - import
+    ###########################################################
+    ## Done ....
+    ###########################################################
+    - name: Send notification message via Slack that export finished
+      community.general.slack:
+        token: "{{ slackAuthenticationToken }}"
+        msg: "AWX export on host: {{ controller_host }} finished"
+      when: ((sendSlackNotifications is defined) and (sendSlackNotifications == true))
+      tags:
+        - export
+
+    - name: Send notification message via Slack that import finished
+      community.general.slack:
+        token: "{{ slackAuthenticationToken }}"
+        msg: "AWX import on host: {{ controller_host }} finished"
+      when: ((sendSlackNotifications is defined) and (sendSlackNotifications == true))
+      tags:
+        - import

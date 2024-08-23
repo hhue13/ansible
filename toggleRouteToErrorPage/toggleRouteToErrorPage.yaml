@@ -1,0 +1,288 @@
+---
+#######################################################################################################
+## Requires the following collections and python modules:
+##
+## See README.md for required software dependencies
+##
+## ansible-playbook --vault-id k8s@~/ansible_password -i ansible-files/inventory -e @globalVars.yaml toggleRouteToErrorPage.yaml
+##
+## Note: Make sure you setup visudo correctly so that "sudo -i -u <become_user>" works
+#######################################################################################################
+- name: Toggle ErrorPage route in namespace
+  hosts: crchosts
+  become: yes
+  become_user: "{{ oscpOsUser }}"
+  gather_facts: true
+  force_handlers: true
+  vars_files:
+  - "{{ includedVars | default('group_vars/crchosts') }}"
+
+  module_defaults:
+    kubernetes.core.k8s:
+      validate_certs: "no"
+    kubernetes.core.k8s_info:
+      validate_certs: "no"
+    kubernetes.core.k8s_exec:
+      validate_certs: "no"
+    kubernetes.core.k8s_cp:
+      validate_certs: "no"
+    community.okd.openshift_auth:
+      validate_certs: "no"
+    community.okd.openshift_process:
+      validate_certs: "no"
+    community.okd.openshift_route:
+      validate_certs: "no"
+  #########################
+  ## Tasks of the play-book
+  #########################
+  tasks:
+    - name: Send start notification message via Slack
+      community.general.slack:
+        token: "{{ slackAuthenticationToken }}"
+        msg: "Toggle Errorpage route: {{ inventory_hostname }} started"
+      when: ((sendSlackNotifications is defined) and (sendSlackNotifications == true))
+      tags:
+        - always
+    ##
+    ## Set login facts
+    - name: Set K8S login facts
+      include_tasks: k8slogin.yaml
+      tags:
+        - always
+    ##
+    ## Retrieving the current timestamp
+    - name: Retrieving the current timestamp
+      ansible.builtin.set_fact:
+        backup_timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
+      tags:
+        - always
+    ##
+    ## Dump API Key
+    - name: Dump API Key in MAIN
+      ansible.builtin.debug:
+        msg:
+          - "API Key is {{ kube_api_key  }}"
+        verbosity: 4
+      tags:
+        - always
+    ##
+    ## Run oc login using the api key
+    - name: Login to the oc client using the API key
+      ansible.builtin.command:
+        argv:
+          - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+          - "login"
+          - "--token={{ kube_api_key }}"
+          - "--server={{ k8s_host }}"
+      register: cmdResult
+      ##### failed_when: (cmdResult.rc != 0)
+      tags:
+        - always
+    ##
+    ## Run oc login using the api key
+    - name: Debug the command result of 'oc login'
+      ansible.builtin.debug:
+        msg:
+          - "cmdResult is {{ cmdResult }}"
+      tags:
+        - always
+
+    ########################################################################################
+    ### Toggle the route to/from errorpage
+    ########################################################################################
+
+    - name: Test if yq is installed
+      ansible.builtin.shell: |
+        which {{ yqBin }}
+      register: shellResult
+      failed_when: (shellResult.rc != 0)
+      tags:
+        - always
+
+    - name: Set the deployment for the namespace of the route to {{ oscpDeployment01 }}
+      ansible.builtin.set_fact:
+        oscpDeploymentForTheRoute: "{{ oscpDeployment01 }}"
+        ocpDeploymentToScaleDown: "{{ oscpDeployment01 }}"
+        oscpNsToScaleDown: "{{ oscpNameSpace01 }}"
+      when: ( oscpNamespaceForTheRoute == oscpNameSpace01 )
+
+    - name: Set the deployment for the namespace of the route to {{ oscpDeployment02 }}
+      ansible.builtin.set_fact:
+        oscpDeploymentForTheRoute: "{{ oscpDeployment02 }}"
+        ocpDeploymentToScaleDown: "{{ oscpDeployment02 }}"
+        oscpNsToScaleDown: "{{ oscpNameSpace02 }}"
+      when: ( oscpNamespaceForTheRoute == oscpNameSpace02 )
+
+    - name: We fail if no deployment is set as this must not happen here
+      ansible.builtin.fail:
+        msg: "Could not determine the deployment name for namespace {{ oscpNamespaceForTheRoute }}. Make sure that the variable 'oscpNamespaceForTheRoute' is set to either {{ oscpNameSpace01 }} or {{ oscpNameSpace02 }}"
+      when: ( (oscpDeploymentForTheRoute is not defined) or (oscpDeploymentForTheRoute == ""))
+
+    - name: Test if the route exists in namespace {{ oscpNameSpace01 }}
+      kubernetes.core.k8s_info:
+        api_version: route.openshift.io/v1
+        kind: Route
+        namespace: "{{ oscpNameSpace01 }}"
+        api_key: "{{ kube_api_key }}"
+        host: "{{ k8s_host }}"
+        name: "{{ oscpRouteNameToToggle }}"
+      register: routeData01
+      ignore_errors: yes
+      tags:
+        - always
+
+    - name: Test if the route exists in namespace {{ oscpNameSpace02 }}
+      kubernetes.core.k8s_info:
+        api_version: route.openshift.io/v1
+        kind: Route
+        namespace: "{{ oscpNameSpace02 }}"
+        api_key: "{{ kube_api_key }}"
+        host: "{{ k8s_host }}"
+        name: "{{ oscpRouteNameToToggle }}"
+      register: routeData02
+      ignore_errors: yes
+      tags:
+        - always
+
+    - name: Debug current route status
+      ansible.builtin.debug:
+        msg:
+        - "Status of the route {{ oscpRouteNameToToggle }}: "
+        - "Namespace {{ oscpNameSpace01 }}: {{ routeData01.resources | length > 0 }}"
+        - "Namespace {{ oscpNameSpace02 }}: {{ routeData02.resources | length > 0 }}"
+      tags:
+        - always
+
+    - name: Delete the existing route from the namespace {{ oscpNameSpace01 }}
+      kubernetes.core.k8s:
+        api_version: route.openshift.io/v1
+        kind: Route
+        namespace: "{{ oscpNameSpace01 }}"
+        api_key: "{{ kube_api_key }}"
+        host: "{{ k8s_host }}"
+        name: "{{ oscpRouteNameToToggle }}"
+        state: absent
+      when: (routeData01.resources | length > 0)
+      tags:
+        - always
+
+    - name: Delete the existing route from the namespace {{ oscpNameSpace02 }}
+      kubernetes.core.k8s:
+        api_version: route.openshift.io/v1
+        kind: Route
+        namespace: "{{ oscpNameSpace02 }}"
+        api_key: "{{ kube_api_key }}"
+        host: "{{ k8s_host }}"
+        name: "{{ oscpRouteNameToToggle }}"
+        state: absent
+      when: (routeData02.resources | length > 0)
+      tags:
+        - always
+
+    - name: Copy the existing Route to a new name and update host
+      ansible.builtin.shell: |
+        {{ oscpClientBin | default('/usr/local/bin/oc') }} --token={{ kube_api_key }} --server={{ k8s_host }} -n {{ oscpNamespaceForTheRoute }} get routes gbg-error-pages-route -o yaml | {{ yqBin }} eval 'del(.metadata.annotations."kubectl.kubernetes.io/last-applied-configuration", .metadata.annotations."openshift.io/host.generated", .metadata.creationTimestamp, .metadata.resourceVersion, .metadata.uid, .status)' | {{ yqBin }} '.spec.host = "{{ oscpRouteHostNameToSet }}", .metadata.name = "{{ oscpRouteNameToToggle }}"' | {{ oscpClientBin | default('/usr/local/bin/oc') }} --token={{ kube_api_key }} --server={{ k8s_host }} -n {{ oscpNamespaceForTheRoute }} apply -f -
+      register: shellResult
+      failed_when: ( shellResult.rc != 0 )
+      tags:
+        - always
+
+    - name: Add annotate route if needed
+      ansible.builtin.shell: |
+        {{ oscpClientBin | default('/usr/local/bin/oc') }} --token={{ kube_api_key }} --server={{ k8s_host }} -n {{ oscpNamespaceForTheRoute  }} annotate route {{ oscpRouteNameToToggle }} "{{ annotation.name }}"="{{ annotation.value }}"
+      loop: "{{ oscpRouteAnnotationsToAdd }}"
+      loop_control:
+        loop_var: annotation
+      when: ( oscpRouteAnnotationsToAdd is defined)
+
+    - name: Get the yaml of the new route
+      ansible.builtin.shell: |
+        {{ oscpClientBin | default('/usr/local/bin/oc') }} --token={{ kube_api_key }} --server={{ k8s_host }} -n {{ oscpNamespaceForTheRoute  }} get route {{ oscpRouteNameToToggle }} -o yaml
+      register: shellResult
+      failed_when: ( shellResult.rc != 0 )
+      tags:
+        - always
+    ##
+    ## Send the list of files to Slack
+    - name: Send the list of files to Slack
+      community.general.slack:
+        token: "{{ slackAuthenticationToken }}"
+        msg: "Route created:\n ```{{ shellResult.stdout }}```"
+      when: ((sendSlackNotifications is defined) and (sendSlackNotifications == true))
+      tags:
+        - always
+    ##
+    ## As we still get traffic to the inactive namespace we scale it down to zero
+    - name: Scale down HA Proxy of old deployment to zero and scale the core to 1 if waitBeforeScaleDown >0
+      block:
+        - name: Waiting for {{ waitBeforeScaleDown }} seconds before scaling down
+          ansible.builtin.pause:
+            seconds: "{{ waitBeforeScaleDown }}"
+          tags:
+            - always
+
+        - name: Scale deployment {{ ocpDeploymentToScaleDown }}-haproxy down to zero in namespace {{ oscpNsToScaleDown }}
+          ansible.builtin.shell: |
+              {{ oscpClientBin | default('/usr/local/bin/oc') }} --token={{ kube_api_key }} --server={{ k8s_host }} -n {{ oscpNsToScaleDown }} scale deployment {{ ocpDeploymentToScaleDown}}-haproxy --replicas=0
+          register: shellResult
+          failed_when: ( shellResult.rc != 0 )
+          tags:
+            - always
+
+        - name: Scaling up again deployment {{ ocpDeploymentToScaleDown }} if waitBeforeScaleUpAgain >0
+          block:
+            - name: Waiting for {{ waitBeforeScaleUpAgain }} seconds before scaling up again
+              ansible.builtin.pause:
+                seconds: "{{ waitBeforeScaleUpAgain }}"
+              tags:
+                - always
+
+            - name: Scale up deployment {{ ocpDeploymentToScaleDown }}-haproxy to {{ numberHAReplicasToScaleUp }} in namespace {{ oscpNsToScaleDown }}
+              ansible.builtin.shell: |
+                  {{ oscpClientBin | default('/usr/local/bin/oc') }} --token={{ kube_api_key }} --server={{ k8s_host }} -n {{ oscpNsToScaleDown }} scale deployment {{ ocpDeploymentToScaleDown}}-haproxy --replicas={{ numberHAReplicasToScaleUp }}
+              register: shellResult
+              failed_when: ( shellResult.rc != 0 )
+              tags:
+                - always
+          when: ((waitBeforeScaleUpAgain is defined) and
+                ( waitBeforeScaleUpAgain > 0))
+          tags:
+            - always
+
+      when: ((waitBeforeScaleDown is defined) and
+            ( waitBeforeScaleDown > 0))
+      tags:
+        - always
+    ##
+    ## Perform the oc logout
+    - name: Logout of the command line client
+      ansible.builtin.command:
+        argv:
+          - "{{ oscpClientBin | default('/usr/local/bin/oc') }}"
+          - "--token={{ kube_api_key }}"
+          - "--server={{ k8s_host }}"
+          - "logout"
+      when: ((oscpLogoutOfOc is defined) and
+        (oscpLogoutOfOc | bool))
+      tags:
+        - always
+    ##
+    ## Logout
+    - name: If login succeeded, try to log out (revoke access token)
+      community.okd.openshift_auth:
+        host: "{{ k8s_host }}"
+        state: absent
+        api_key: "{{ kube_api_key }}"
+        validate_certs: "no"
+      when: kube_api_key is defined
+      ignore_errors: true
+      tags:
+        - always
+
+    - name: Send stop notification message via Slack
+      community.general.slack:
+        token: "{{ slackAuthenticationToken }}"
+        msg: "Toggle DX route: {{ inventory_hostname }} finished successfully"
+      when: ((sendSlackNotifications is defined) and (sendSlackNotifications == true))
+      tags:
+        - always
