@@ -193,7 +193,7 @@
             roleXmlFile: "{{ webmodsXMLActiveLine }}"
             roleXmlBackupDirOnPod: "{{ webmodsXmlBackupDirOnPod }}"
             rolePodXmlFileDir: "{{ xmlAccessExportsDir }}"
-            roleRetentionPeriod: "{{ webmodsXMLExportRetentionPeriod  | default(omit) }}"
+            roleRetentionPeriod: "{{ webmodsXMLExportRetentionPeriod  | default(10) }}"
           tags:
             - always
 
@@ -212,7 +212,7 @@
             roleXmlFile: "{{ webmodsXMLInActiveLine }}"
             roleXmlBackupDirOnPod: "{{ webmodsXmlBackupDirOnPod }}"
             rolePodXmlFileDir: "{{ xmlAccessExportsDir }}"
-            roleRetentionPeriod: "{{ webmodsXMLExportRetentionPeriod  | default(omit) }}"
+            roleRetentionPeriod: "{{ webmodsXMLExportRetentionPeriod  | default(10) }}"
           tags:
             - always
 
