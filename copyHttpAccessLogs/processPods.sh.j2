@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -ex
+echo "Copying http access logs to {{ backupBaseDir }} for namespace {{ namespace.name }} for pods: \"{{ cmdResult.stdout }}\""
+
+for __pod in {{ cmdResult.stdout }} ; do
+  {{ oscpClientBin | default('/usr/local/bin/oc') }} --token={{ kube_api_key }} --server={{ k8s_host }} -n {{ namespace.name }} -c {{ oscpCoreContainerName }} cp /tmp/moveLogsOnPod.sh ${__pod}:/tmp/moveLogsOnPod.sh
+
+  {{ oscpClientBin | default('/usr/local/bin/oc') }} --token={{ kube_api_key }} --server={{ k8s_host }} -n {{ namespace.name }} -c {{ oscpCoreContainerName }} exec -it ${__pod} -- /bin/bash /tmp/moveLogsOnPod.sh {{ backupBaseDir }} ${__pod} '{{ backupFilePattern }}' {{ backupRetentionPeriod | default('90') }}
+done
+
+echo "Files copied to {{ backupBaseDir }} for namespace {{ namespace.name }} for pods: \"{{ cmdResult.stdout }}\""
+

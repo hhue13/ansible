@@ -1,0 +1,41 @@
+---
+- name: Determine the list of pods running for the namespace {{ namespace }}
+  ansible.builtin.shell: |
+    {{ oscpClientBin | default('/usr/local/bin/oc') }} -n {{ namespace.name }} get pods | grep "{{ namespace.deployment }}-core-" | awk '{print $1}'| tr [:cntrl:] " "
+  register: cmdResult
+  failed_when: (cmdResult.rc != 0)
+  tags:
+    - always
+
+- name: Debug the command result of 'oc get pods'
+  ansible.builtin.debug:
+    msg:
+      - "cmdResult is {{ cmdResult.stdout }}"
+  tags:
+    - always
+
+- name: Template shell script to invoke file move
+  ansible.builtin.template:
+    src: processPods.sh.j2
+    dest: /tmp/processPods.sh
+    mode: '0755'
+  tags:
+    - always
+
+- name: Copy moveLogsOnPod.sh to Ansible Controller
+  ansible.builtin.copy:
+    src: moveLogsOnPod.sh
+    dest: "/tmp/moveLogsOnPod.sh"
+    mode: '0755'
+  tags:
+    - always
+
+- name: Run processPods.sh
+  ansible.builtin.shell: |
+    /tmp/processPods.sh
+  register: cmdResult
+  failed_when: (cmdResult.rc != 0)
+  tags:
+    - always
+
+
