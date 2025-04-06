@@ -1,0 +1,46 @@
+---
+##
+## OSCP Authenticaton data used to login to K8S
+## ansible-vault encrypt_string --vault-id dev@~ansible_password '<plain-text-password>' --name 'oscpKubeAdminPassword'
+oscpKubeAdminUserName: ocpadmin
+oscpKubeAdminPassword: !vault |
+  $ANSIBLE_VAULT;1.2;AES256;dev
+  63623962306535613566376431386162623632643636643662376462353634633634373639333135
+  3634376136616430326538313465383966653335643738310a306164623030343937633630316266
+  32383437323864663263393032313938626564303761306464313730656238613935336466333232
+  6435326130616131360a373465376463326432313439376539313839343532376462383665666131
+  6565
+## OSCP installation details
+oscpDomain: gbgpaas.se
+oscpClusterName: k8st
+##
+## Namespaces on which the backup/restore will be performed
+oscpNamespaces:
+  - name: "dxg"
+    deployment: "dx-green"
+oscpCoreContainerName: core
+##
+## OpenShift client to be used
+oscpClientBin: "/usr/local/bin/oc"
+##
+## Logout of the OC command shell at the end?
+oscpLogoutOfOc: true
+##
+## Target directory for backups. This is also the locations for the files to restore!
+backupBaseDir: "/tmp/syndication/accesslogs"
+backupFilePattern: "/opt/HCL/logs/WebSphere_Portal/https_access_*.log"
+##
+## How long too keep old backups (in days)
+backupRetentionPeriod: 90
+## Slackrelated config
+sendSlackNotifications: false
+## Slack authentication token
+## ansible-vault encrypt_string --vault-id dev@~ansible_password '<plain-text-password>' --name 'slackAuthenticationToken'
+slackAuthenticationToken: !vault |
+  $ANSIBLE_VAULT;1.2;AES256;ks8
+  62663330373062393833343462646333636262393535643564303232346232363931303036386363
+  6166333237383730383633626633626234386463656239330a376334366631353333396233363064
+  62373638326433643034653039316263333431383766343662623065373435376630393936333764
+  3532623135623431650a323564326162396331613235366531393737636131353837383732663832
+  31626239646531653162366233363264313539646438633664393630363135303830333465386236
+  3835373762646335316537633830383933616439356161613933
